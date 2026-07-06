@@ -1,0 +1,196 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import { supabase } from "./supabase";
+import type { Basket, Idea, Phase } from "./types";
+
+type State = {
+  basket: Basket | null;
+  ideas: Idea[];
+  myVotes: Record<string, string>; // phase -> idea_id (bu kullanıcının o fazdaki oyu)
+  loading: boolean;
+  connected: boolean;
+};
+
+/**
+ * ★ REALTIME OYLAMA PRIMITIFI — sosyal oy / build finalist / presenter oyu, üçü de bunu kullanır.
+ *
+ * - baskets + ideas postgres_changes canlı dinlenir (vote_count trigger ile güncellenir).
+ * - Oy: optimistic local artış → insert → realtime/fetch ile reconcile (çift sayma yok, REPLACE mantığı).
+ * - Dayanıklılık: reconnect (subscribe status), kopunca 3sn fallback polling, sekme görünürlüğünde tazeleme.
+ */
+export function useRealtimeVotes(basketId: string, voter: string) {
+  const [state, setState] = useState<State>({
+    basket: null,
+    ideas: [],
+    myVotes: {},
+    loading: true,
+    connected: false,
+  });
+
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const fetchAll = useCallback(async () => {
+    const [basketRes, ideasRes, votesRes] = await Promise.all([
+      supabase.from("baskets").select("*").eq("id", basketId).single(),
+      supabase
+        .from("ideas")
+        .select("*")
+        .eq("basket_id", basketId)
+        .order("created_at", { ascending: true }),
+      supabase
+        .from("votes")
+        .select("phase, idea_id")
+        .eq("basket_id", basketId)
+        .eq("voter", voter),
+    ]);
+
+    const myVotes: Record<string, string> = {};
+    for (const v of votesRes.data ?? []) {
+      myVotes[v.phase as string] = v.idea_id as string;
+    }
+
+    setState((prev) => ({
+      ...prev,
+      basket: (basketRes.data as Basket) ?? prev.basket,
+      ideas: (ideasRes.data as Idea[]) ?? prev.ideas,
+      myVotes,
+      loading: false,
+    }));
+  }, [basketId, voter]);
+
+  const stopPolling = useCallback(() => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  }, []);
+
+  const startPolling = useCallback(() => {
+    if (pollRef.current) return;
+    pollRef.current = setInterval(() => {
+      void fetchAll();
+    }, 3000);
+  }, [fetchAll]);
+
+  useEffect(() => {
+    let active = true;
+    void fetchAll();
+
+    const channel = supabase
+      .channel("basket:" + basketId)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "ideas", filter: `basket_id=eq.${basketId}` },
+        (payload) => {
+          if (!active) return;
+          setState((prev) => {
+            let ideas = prev.ideas;
+            if (payload.eventType === "INSERT") {
+              const row = payload.new as Idea;
+              ideas = prev.ideas.some((i) => i.id === row.id)
+                ? prev.ideas
+                : [...prev.ideas, row];
+            } else if (payload.eventType === "UPDATE") {
+              const row = payload.new as Idea;
+              ideas = prev.ideas.map((i) => (i.id === row.id ? { ...i, ...row } : i));
+            } else if (payload.eventType === "DELETE") {
+              const old = payload.old as { id: string };
+              ideas = prev.ideas.filter((i) => i.id !== old.id);
+            }
+            return { ...prev, ideas };
+          });
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "baskets", filter: `id=eq.${basketId}` },
+        (payload) => {
+          if (!active) return;
+          setState((prev) => ({ ...prev, basket: payload.new as Basket }));
+        }
+      )
+      .subscribe((status) => {
+        if (!active) return;
+        if (status === "SUBSCRIBED") {
+          setState((prev) => ({ ...prev, connected: true }));
+          stopPolling();
+          void fetchAll(); // reconnect sonrası stale veriyi düzelt
+        } else if (
+          status === "CHANNEL_ERROR" ||
+          status === "TIMED_OUT" ||
+          status === "CLOSED"
+        ) {
+          setState((prev) => ({ ...prev, connected: false }));
+          startPolling();
+        }
+      });
+
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void fetchAll();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
+    return () => {
+      active = false;
+      document.removeEventListener("visibilitychange", onVisible);
+      stopPolling();
+      supabase.removeChannel(channel);
+    };
+  }, [basketId, fetchAll, startPolling, stopPolling]);
+
+  /** Oy ver — optimistic. Çift oy (23505) sessizce yutulur. */
+  const vote = useCallback(
+    async (ideaId: string, phase: Phase) => {
+      let alreadyVoted = false;
+      setState((prev) => {
+        if (prev.myVotes[phase]) {
+          alreadyVoted = true;
+          return prev;
+        }
+        return {
+          ...prev,
+          myVotes: { ...prev.myVotes, [phase]: ideaId },
+          ideas: prev.ideas.map((i) =>
+            i.id === ideaId ? { ...i, vote_count: i.vote_count + 1 } : i
+          ),
+        };
+      });
+      if (alreadyVoted) return;
+
+      const { error } = await supabase.from("votes").insert({
+        basket_id: basketId,
+        idea_id: ideaId,
+        phase,
+        voter,
+      });
+
+      if (error && error.code !== "23505") {
+        // Gerçek hata → optimistic'i geri al, tekrar denenebilsin.
+        setState((prev) => {
+          const nextVotes = { ...prev.myVotes };
+          delete nextVotes[phase];
+          return {
+            ...prev,
+            myVotes: nextVotes,
+            ideas: prev.ideas.map((i) =>
+              i.id === ideaId ? { ...i, vote_count: Math.max(0, i.vote_count - 1) } : i
+            ),
+          };
+        });
+      }
+      // 23505 = zaten oy vermiş: sessizce yut, realtime/fetch doğru sayıyı getirir.
+    },
+    [basketId, voter]
+  );
+
+  return {
+    basket: state.basket,
+    ideas: state.ideas,
+    myVotes: state.myVotes,
+    loading: state.loading,
+    connected: state.connected,
+    vote,
+    refresh: fetchAll,
+  };
+}
