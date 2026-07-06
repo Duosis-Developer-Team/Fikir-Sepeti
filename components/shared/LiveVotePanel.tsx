@@ -40,7 +40,7 @@ export function LiveVotePanel({
               transition={{ type: "spring", stiffness: 380, damping: 32 }}
               className="relative overflow-hidden rounded-[18px]"
               style={{
-                background: "#272727",
+                background: "#242424",
                 border: `1px solid ${lead ? soft(accent, 0.5) : "rgba(255,255,255,0.09)"}`,
               }}
             >
@@ -64,9 +64,9 @@ export function LiveVotePanel({
                 {onVote && (
                   <button
                     onClick={() => onVote(idea.id, phase)}
-                    disabled={mine}
-                    className="shrink-0 rounded-full px-[18px] py-[10px] text-[0.9rem] font-semibold transition"
-                    style={mine ? { background: accent.base, color: "#161616" } : { background: "#EDEDED", color: "#161616" }}
+                    title={mine ? "oyunu geri al" : "oy ver"}
+                    className="shrink-0 rounded-full px-[18px] py-[10px] text-[0.9rem] font-semibold transition hover:opacity-90"
+                    style={mine ? { background: accent.base, color: "#0F0F0F" } : { background: "#EDEDED", color: "#0F0F0F" }}
                   >
                     {mine ? "oyun ✓" : "oy ver"}
                   </button>

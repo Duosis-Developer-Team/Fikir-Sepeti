@@ -139,49 +139,56 @@ export function useRealtimeVotes(basketId: string, voter: string) {
     };
   }, [basketId, fetchAll, startPolling, stopPolling]);
 
-  /** Oy ver — optimistic. Çift oy (23505) sessizce yutulur. */
+  /**
+   * Oy ver / değiştir / geri al — optimistic.
+   * Aynı fikre tekrar tıkla → oyu geri al. Başka fikre tıkla → oyunu taşı.
+   * Trigger sadece INSERT/DELETE'te çalıştığı için değiştirmede eski oyu silip yenisini ekleriz.
+   */
   const vote = useCallback(
     async (ideaId: string, phase: Phase) => {
-      let alreadyVoted = false;
+      const h: { action: "unvote" | "change" | "new" } = { action: "new" };
       setState((prev) => {
-        if (prev.myVotes[phase]) {
-          alreadyVoted = true;
-          return prev;
-        }
-        return {
-          ...prev,
-          myVotes: { ...prev.myVotes, [phase]: ideaId },
-          ideas: prev.ideas.map((i) =>
-            i.id === ideaId ? { ...i, vote_count: i.vote_count + 1 } : i
-          ),
-        };
-      });
-      if (alreadyVoted) return;
-
-      const { error } = await supabase.from("votes").insert({
-        basket_id: basketId,
-        idea_id: ideaId,
-        phase,
-        voter,
-      });
-
-      if (error && error.code !== "23505") {
-        // Gerçek hata → optimistic'i geri al, tekrar denenebilsin.
-        setState((prev) => {
+        const prevId = prev.myVotes[phase];
+        if (prevId === ideaId) {
+          h.action = "unvote";
           const nextVotes = { ...prev.myVotes };
           delete nextVotes[phase];
           return {
             ...prev,
             myVotes: nextVotes,
-            ideas: prev.ideas.map((i) =>
-              i.id === ideaId ? { ...i, vote_count: Math.max(0, i.vote_count - 1) } : i
-            ),
+            ideas: prev.ideas.map((i) => (i.id === ideaId ? { ...i, vote_count: Math.max(0, i.vote_count - 1) } : i)),
           };
-        });
+        }
+        h.action = prevId ? "change" : "new";
+        return {
+          ...prev,
+          myVotes: { ...prev.myVotes, [phase]: ideaId },
+          ideas: prev.ideas.map((i) => {
+            if (i.id === ideaId) return { ...i, vote_count: i.vote_count + 1 };
+            if (i.id === prevId) return { ...i, vote_count: Math.max(0, i.vote_count - 1) };
+            return i;
+          }),
+        };
+      });
+
+      const delOld = () =>
+        supabase.from("votes").delete().eq("basket_id", basketId).eq("phase", phase).eq("voter", voter);
+      const insNew = () =>
+        supabase.from("votes").insert({ basket_id: basketId, idea_id: ideaId, phase, voter });
+
+      try {
+        if (h.action === "unvote") {
+          await delOld();
+        } else {
+          if (h.action === "change") await delOld();
+          const { error } = await insNew();
+          if (error && error.code !== "23505") throw error;
+        }
+      } catch {
+        void fetchAll(); // hata → server doğrusunu getir
       }
-      // 23505 = zaten oy vermiş: sessizce yut, realtime/fetch doğru sayıyı getirir.
     },
-    [basketId, voter]
+    [basketId, voter, fetchAll]
   );
 
   return {

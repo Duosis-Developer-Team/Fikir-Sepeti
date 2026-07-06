@@ -13,24 +13,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col">
       <header
-        className="sticky top-0 z-20 flex items-center justify-between px-[clamp(24px,5vw,56px)] py-4"
-        style={{ borderBottom: "1px solid rgba(255,255,255,0.08)", background: "rgba(30,30,30,0.82)", backdropFilter: "blur(14px)" }}
+        className="sticky top-0 z-20 flex items-center justify-between px-[clamp(24px,5vw,56px)] py-[14px]"
+        style={{ borderBottom: "1px solid rgba(255,255,255,0.08)", background: "#181818" }}
       >
-        <Link href="/" className="flex items-center gap-3">
-          <span className="inline-flex h-[18px] items-end gap-[2px]">
-            <span className="w-1 rounded-[1px]" style={{ height: 9, background: "#F2795F" }} />
-            <span className="w-1 rounded-[1px]" style={{ height: 16, background: "#E7A93F" }} />
-            <span className="w-1 rounded-[1px]" style={{ height: 12, background: "#33C293" }} />
+        <Link href="/" className="flex items-center gap-2.5">
+          <span className="font-display grid h-[30px] w-[30px] place-items-center rounded-[9px] text-[1.05rem] font-extrabold" style={{ background: "linear-gradient(140deg,#F2795F,#E7A93F)", color: "#0F0F0F" }}>
+            F
           </span>
-          <span className="text-[0.82rem] font-bold uppercase tracking-[0.22em]" style={{ color: "#EDEDED" }}>Fikir Sepeti</span>
+          <span className="font-display text-[1.02rem] font-bold tracking-tight" style={{ color: "#EDEDED" }}>Fikir Sepeti</span>
         </Link>
         {name && (
-          <div className="flex items-center gap-[9px]">
-            <span className="grid h-7 w-7 place-items-center rounded-full text-[0.78rem] font-bold" style={{ background: "linear-gradient(135deg,#E7A93F,#F2795F)", color: "#161616" }}>
+          <Link href="/profil" className="flex items-center gap-[9px] rounded-full border border-transparent py-1 pl-1 pr-2 transition hover:border-[rgba(255,255,255,0.15)]">
+            <span className="grid h-7 w-7 place-items-center rounded-full text-[0.78rem] font-bold" style={{ background: "linear-gradient(135deg,#E7A93F,#F2795F)", color: "#0F0F0F" }}>
               {name.charAt(0).toLocaleUpperCase("tr")}
             </span>
             <span className="text-[0.92rem]" style={{ color: "#C4C4C4" }}>{name}</span>
-          </div>
+          </Link>
         )}
       </header>
       <div className="flex-1">{children}</div>

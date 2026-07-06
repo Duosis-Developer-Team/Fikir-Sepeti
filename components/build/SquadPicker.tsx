@@ -11,12 +11,16 @@ export function SquadPicker({
   winner,
   voter,
   accent,
+  isOwner,
+  owner,
   onResolve,
 }: {
   basketId: string;
   winner: Idea | null;
   voter: string;
   accent: Accent;
+  isOwner: boolean;
+  owner: string;
   onResolve: () => void;
 }) {
   const [members, setMembers] = useState<string[]>([]);
@@ -53,9 +57,9 @@ export function SquadPicker({
             onKeyDown={(e) => e.key === "Enter" && join(name)}
             placeholder="İsim"
             className="min-w-0 flex-1 rounded-[14px] px-[18px] py-[13px] text-sm outline-none"
-            style={{ background: "#272727", border: "1px solid rgba(255,255,255,0.10)", color: "#EDEDED" }}
+            style={{ background: "#242424", border: "1px solid rgba(255,255,255,0.10)", color: "#EDEDED" }}
           />
-          <button onClick={() => join(voter)} className="shrink-0 rounded-[14px] px-5 text-sm font-bold" style={{ background: accent.base, color: "#161616" }}>Ben varım</button>
+          <button onClick={() => join(voter)} className="shrink-0 rounded-[14px] px-5 text-sm font-bold" style={{ background: accent.base, color: "#0F0F0F" }}>Ben varım</button>
         </div>
       </div>
 
@@ -66,9 +70,15 @@ export function SquadPicker({
         </div>
       )}
 
-      <button onClick={onResolve} className="w-full rounded-full py-[17px] text-[1.02rem] font-bold transition hover:-translate-y-[2px]" style={{ background: accent.base, color: "#161616", boxShadow: `0 18px 44px -18px ${soft(accent, 0.85)}` }}>
-        Sonuçlandır
-      </button>
+      {isOwner ? (
+        <button onClick={onResolve} className="w-full rounded-full py-[17px] text-[1.02rem] font-bold transition hover:-translate-y-[2px]" style={{ background: accent.base, color: "#0F0F0F", boxShadow: `0 18px 44px -18px ${soft(accent, 0.85)}` }}>
+          Sonuçlandır
+        </button>
+      ) : (
+        <div className="w-full rounded-full py-[15px] text-center text-[0.92rem]" style={{ background: "#242424", border: "1px solid rgba(255,255,255,0.08)", color: "#9A9A9A" }}>
+          Squad&apos;a katılabilirsin — sonucu <span className="font-semibold" style={{ color: "#EDEDED" }}>{owner}</span> açıklayacak.
+        </div>
+      )}
     </div>
   );
 }

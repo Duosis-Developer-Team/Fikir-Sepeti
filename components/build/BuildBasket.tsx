@@ -20,6 +20,8 @@ const FINALIST_COUNT = 3;
 export function BuildBasket({ basket: initial, voter, accent }: { basket: Basket; voter: string; accent: Accent }) {
   const { basket, ideas, myVotes, connected, vote } = useRealtimeVotes(initial.id, voter);
   const b = basket ?? initial;
+  const owner = b.created_by ?? "Sepeti açan";
+  const isOwner = Boolean(voter) && voter === b.created_by;
   const finalists = useMemo(() => ideas.filter((i) => i.is_finalist), [ideas]);
   const totalVotes = useMemo(() => ideas.reduce((s, i) => s + i.vote_count, 0), [ideas]);
   const authors = useMemo(() => {
@@ -44,8 +46,13 @@ export function BuildBasket({ basket: initial, voter, accent }: { basket: Basket
 
   const primary = "w-full rounded-full py-[17px] text-[1.02rem] font-bold transition hover:-translate-y-[2px]";
   const ghost = "w-full rounded-full py-[18px] text-[1rem] font-semibold transition";
-  const primaryStyle = { background: accent.base, color: "#161616", boxShadow: `0 18px 44px -18px ${soft(accent, 0.85)}` };
+  const primaryStyle = { background: accent.base, color: "#0F0F0F", boxShadow: `0 18px 44px -18px ${soft(accent, 0.85)}` };
   const ghostStyle = { background: "transparent", border: `1px solid ${soft(accent, 0.4)}`, color: accent.base };
+  const note = (text: string) => (
+    <div className="w-full rounded-full py-[15px] text-center text-[0.92rem]" style={{ background: "#242424", border: "1px solid rgba(255,255,255,0.08)", color: "#9A9A9A" }}>
+      {text}
+    </div>
+  );
 
   if (b.status === "resolved") {
     return (
@@ -59,9 +66,9 @@ export function BuildBasket({ basket: initial, voter, accent }: { basket: Basket
   return (
     <div className="flex flex-col gap-7">
       {/* özet şeridi */}
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl px-5 py-4" style={{ background: "#272727", border: "1px solid rgba(255,255,255,0.08)" }}>
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl px-5 py-4" style={{ background: "#242424", border: "1px solid rgba(255,255,255,0.08)" }}>
         <div className="flex items-center gap-4">
-          <Avatars names={authors} size={30} ring="#272727" />
+          <Avatars names={authors} size={30} ring="#242424" />
           <span className="tnum text-[0.95rem]" style={{ color: "#9A9A9A" }}>
             <span className="font-bold" style={{ color: "#EDEDED" }}>{ideas.length}</span> fikir · <span className="font-bold" style={{ color: "#EDEDED" }}>{totalVotes}</span> oy
           </span>
@@ -79,13 +86,15 @@ export function BuildBasket({ basket: initial, voter, accent }: { basket: Basket
           <IdeaInput accent={accent} withTag placeholder="Ne yapalım? (proje fikri)" onAdd={async (text, tag) => { await addIdea({ basket_id: b.id, text, tag, created_by: voter }); }} />
           <div className="flex flex-col gap-[10px]">
             {ideas.map((i) => (
-              <motion.div key={i.id} layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3 rounded-2xl px-5 py-[14px]" style={{ background: "#272727", border: "1px solid rgba(255,255,255,0.09)" }}>
+              <motion.div key={i.id} layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3 rounded-2xl px-5 py-[14px]" style={{ background: "#242424", border: "1px solid rgba(255,255,255,0.09)" }}>
                 <span className="font-display flex-1 text-[1.1rem] font-semibold" style={{ color: "#EDEDED" }}>{i.text}</span>
                 {i.tag && <span className="rounded-full px-[11px] py-[5px] text-[0.78rem] font-semibold" style={{ background: soft(accent, 0.14), color: accent.base }}>{i.tag}</span>}
               </motion.div>
             ))}
           </div>
-          {ideas.length > 0 && <button onClick={() => advance("finalists")} className={primary} style={primaryStyle}>Finalist oylamasına geç →</button>}
+          {ideas.length > 0 && (isOwner
+            ? <button onClick={() => advance("finalists")} className={primary} style={primaryStyle}>Finalist oylamasına geç →</button>
+            : note(`Fikir atabilirsin — fazları ${owner} yönetiyor.`))}
         </div>
       )}
 
@@ -93,7 +102,9 @@ export function BuildBasket({ basket: initial, voter, accent }: { basket: Basket
         <div className="flex flex-col gap-3">
           <p className="text-[0.92rem]" style={{ color: "#9A9A9A" }}>En çok oy alan {FINALIST_COUNT} fikir finalist olur.</p>
           <LiveVotePanel ideas={ideas} phase="finalists" myVoteId={myVotes["finalists"]} onVote={vote} accent={accent} />
-          <button onClick={lockFinalists} className={ghost} style={ghostStyle}>Finalistleri kilitle</button>
+          {isOwner
+            ? <button onClick={lockFinalists} className={ghost} style={ghostStyle}>Finalistleri kilitle</button>
+            : note(`Oyunu ver — finalistleri ${owner} kilitleyecek.`)}
         </div>
       )}
 
@@ -101,23 +112,27 @@ export function BuildBasket({ basket: initial, voter, accent }: { basket: Basket
         <div className="flex flex-col gap-3">
           <p className="text-[0.92rem]" style={{ color: "#9A9A9A" }}>Her finaliste demo bilgisi gir.</p>
           {finalists.map((i) => <DemoCard key={i.id} idea={i} accent={accent} />)}
-          <button onClick={() => advance("voting")} className={primary} style={primaryStyle}>Sunuma hazır →</button>
+          {isOwner
+            ? <button onClick={() => advance("voting")} className={primary} style={primaryStyle}>Sunuma hazır →</button>
+            : note(`Demo bilgisi girebilirsin — sunumu ${owner} başlatacak.`)}
         </div>
       )}
 
       {b.phase === "voting" && (
         <div className="flex flex-col gap-3">
-          <Link href={`/basket/${b.id}/present`} target="_blank" className="block w-full rounded-2xl py-[19px] text-center text-[1.05rem] font-semibold transition hover:-translate-y-[2px]" style={{ background: "#EDEDED", color: "#161616" }}>
+          <Link href={`/basket/${b.id}/present`} target="_blank" className="block w-full rounded-2xl py-[19px] text-center text-[1.05rem] font-semibold transition hover:-translate-y-[2px]" style={{ background: "#EDEDED", color: "#0F0F0F" }}>
             Presenter modunu aç ↗
           </Link>
           <p className="text-center text-[0.92rem]" style={{ color: "#9A9A9A" }}>Sahnedeki demoya telefonundan oy ver.</p>
           <LiveVotePanel ideas={finalists} phase="voting" myVoteId={myVotes["voting"]} onVote={vote} accent={accent} />
-          <button onClick={() => advance("squad")} className={ghost} style={ghostStyle}>Oylamayı bitir → squad</button>
+          {isOwner
+            ? <button onClick={() => advance("squad")} className={ghost} style={ghostStyle}>Oylamayı bitir → squad</button>
+            : note(`Oyunu ver — oylamayı ${owner} bitirecek.`)}
         </div>
       )}
 
       {b.phase === "squad" && (
-        <SquadPicker basketId={b.id} winner={winner} voter={voter} accent={accent} onResolve={() => winner && resolveBasket(b.id, winner.id)} />
+        <SquadPicker basketId={b.id} winner={winner} voter={voter} accent={accent} isOwner={isOwner} owner={owner} onResolve={() => winner && resolveBasket(b.id, winner.id)} />
       )}
     </div>
   );

@@ -64,7 +64,7 @@ export default function NameGate({ children }: { children: React.ReactNode }) {
                 onClick={commit}
                 disabled={draft.trim().length < 2}
                 className="mt-3 w-full rounded-full py-3 text-sm font-semibold transition disabled:opacity-40"
-                style={{ background: "#EDEDED", color: "#161616" }}
+                style={{ background: "#EDEDED", color: "#0F0F0F" }}
               >
                 Devam
               </button>

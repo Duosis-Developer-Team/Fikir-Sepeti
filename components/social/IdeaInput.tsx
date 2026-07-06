@@ -36,7 +36,7 @@ export function IdeaInput({
           onKeyDown={(e) => e.key === "Enter" && submit()}
           placeholder={placeholder}
           className="min-w-0 flex-1 rounded-[14px] px-[18px] py-[15px] text-[1rem] outline-none"
-          style={{ background: "#272727", border: "1px solid rgba(255,255,255,0.10)", color: "#EDEDED" }}
+          style={{ background: "#242424", border: "1px solid rgba(255,255,255,0.10)", color: "#EDEDED" }}
           onFocus={(e) => (e.currentTarget.style.borderColor = soft(accent, 0.6))}
           onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.10)")}
         />
@@ -59,7 +59,7 @@ export function IdeaInput({
                 onClick={() => setTag(active ? "" : t)}
                 className="rounded-full px-[13px] py-[7px] text-[0.84rem] transition"
                 style={{
-                  background: active ? soft(accent, 0.16) : "#272727",
+                  background: active ? soft(accent, 0.16) : "#242424",
                   border: `1px solid ${active ? soft(accent, 0.5) : "rgba(255,255,255,0.10)"}`,
                   color: active ? accent.base : "#9A9A9A",
                 }}

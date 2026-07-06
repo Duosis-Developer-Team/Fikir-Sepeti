@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import confetti from "canvas-confetti";
 import { addIdea, deleteIdea } from "@/lib/db";
 import { soft, type Accent } from "@/lib/accent";
 import type { Basket, Idea } from "@/lib/types";
@@ -14,12 +13,14 @@ export function RaffleReveal({
   ideas,
   voter,
   accent,
+  isOwner,
   onWinner,
 }: {
   basket: Basket;
   ideas: Idea[];
   voter: string;
   accent: Accent;
+  isOwner: boolean;
   onWinner: (winner: Idea) => void;
 }) {
   const [phase, setPhase] = useState<"idle" | "rolling" | "revealed">("idle");
@@ -43,10 +44,6 @@ export function RaffleReveal({
   const showStage = phase !== "idle";
   const revealed = phase === "revealed";
 
-  const fireConfetti = () => {
-    confetti({ particleCount: 150, spread: 90, startVelocity: 42, origin: { y: 0.55 }, colors: [accent.base, accent.light, "#EDEDED", "#E7A93F"] });
-  };
-
   const pull = async () => {
     if (phase === "rolling" || ideas.length < 2) return;
     const winner = ideas[Math.floor(Math.random() * ideas.length)];
@@ -55,7 +52,6 @@ export function RaffleReveal({
     if (reduced()) {
       setName(winner.text);
       setPhase("revealed");
-      fireConfetti();
       return;
     }
     setPhase("rolling");
@@ -71,7 +67,6 @@ export function RaffleReveal({
         rollT.current = setTimeout(() => {
           setName(winner.text);
           setPhase("revealed");
-          fireConfetti();
         }, delay);
       }
     };
@@ -105,7 +100,7 @@ export function RaffleReveal({
           onKeyDown={(e) => e.key === "Enter" && add()}
           placeholder="Yeni aday ekle…"
           className="min-w-0 flex-1 rounded-[14px] px-[18px] py-[15px] text-[1rem] outline-none"
-          style={{ background: "#272727", border: "1px solid rgba(255,255,255,0.10)", color: "#EDEDED" }}
+          style={{ background: "#242424", border: "1px solid rgba(255,255,255,0.10)", color: "#EDEDED" }}
           onFocus={(e) => (e.currentTarget.style.borderColor = soft(accent, 0.6))}
           onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.10)")}
         />
@@ -115,7 +110,7 @@ export function RaffleReveal({
       <div className="mb-[14px] mt-7 text-[0.72rem] font-semibold uppercase tracking-[0.22em]" style={{ color: "#6E6E6E" }}>Adaylar</div>
       <div className="flex flex-wrap gap-[10px]">
         {ideas.map((idea) => (
-          <span key={idea.id} className="inline-flex items-center gap-[10px] rounded-full py-[11px] pl-[18px] pr-2 text-[0.98rem]" style={{ background: "#272727", border: "1px solid rgba(255,255,255,0.10)", color: "#EDEDED" }}>
+          <span key={idea.id} className="inline-flex items-center gap-[10px] rounded-full py-[11px] pl-[18px] pr-2 text-[0.98rem]" style={{ background: "#242424", border: "1px solid rgba(255,255,255,0.10)", color: "#EDEDED" }}>
             {idea.text}
             <button onClick={() => deleteIdea(idea.id)} className="grid h-[22px] w-[22px] place-items-center rounded-full text-[0.9rem] leading-none transition" style={{ background: "rgba(255,255,255,0.06)", color: "#9A9A9A" }} title="çıkar">×</button>
           </span>
@@ -124,21 +119,29 @@ export function RaffleReveal({
       </div>
 
       <div className="mt-11 flex flex-col items-center gap-[14px]">
-        <span className="text-[0.92rem]" style={{ color: "#9A9A9A" }}>Karar çıkmadı mı? Bırak kura seçsin.</span>
-        <button
-          onClick={pull}
-          disabled={ideas.length < 2}
-          className="inline-flex items-center gap-[11px] rounded-full px-11 py-[17px] text-[1.05rem] font-bold transition hover:-translate-y-[3px] disabled:opacity-40"
-          style={{ background: accent.base, color: "#161616", boxShadow: `0 18px 44px -18px ${soft(accent, 0.85)}`, animation: ideas.length < 2 ? "none" : "fs-float 4s ease-in-out infinite" }}
-        >
-          <svg width="19" height="19" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="5" stroke="#161616" strokeWidth="2.2" /><circle cx="8.5" cy="8.5" r="1.7" fill="#161616" /><circle cx="12" cy="12" r="1.7" fill="#161616" /><circle cx="15.5" cy="15.5" r="1.7" fill="#161616" /></svg>
-          Kura çek
-        </button>
+        {isOwner ? (
+          <>
+            <span className="text-[0.92rem]" style={{ color: "#9A9A9A" }}>Karar çıkmadı mı? Bırak kura seçsin.</span>
+            <button
+              onClick={pull}
+              disabled={ideas.length < 2}
+              className="inline-flex items-center gap-[11px] rounded-full px-11 py-[17px] text-[1.05rem] font-bold transition hover:-translate-y-[3px] disabled:opacity-40"
+              style={{ background: accent.base, color: "#0F0F0F", boxShadow: `0 18px 44px -18px ${soft(accent, 0.85)}`, animation: ideas.length < 2 ? "none" : "fs-float 4s ease-in-out infinite" }}
+            >
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="5" stroke="#0F0F0F" strokeWidth="2.2" /><circle cx="8.5" cy="8.5" r="1.7" fill="#0F0F0F" /><circle cx="12" cy="12" r="1.7" fill="#0F0F0F" /><circle cx="15.5" cy="15.5" r="1.7" fill="#0F0F0F" /></svg>
+              Kura çek
+            </button>
+          </>
+        ) : (
+          <div className="rounded-full px-6 py-[15px] text-center text-[0.92rem]" style={{ background: "#242424", border: "1px solid rgba(255,255,255,0.08)", color: "#9A9A9A" }}>
+            Aday ekleyebilirsin — kurayı <span className="font-semibold" style={{ color: "#EDEDED" }}>{basket.created_by ?? "sepeti açan"}</span> çekecek.
+          </div>
+        )}
       </div>
 
       {/* SAHNE */}
       {showStage && (
-        <div className="fixed inset-0 z-50 overflow-hidden" style={{ background: "#161616" }}>
+        <div className="fixed inset-0 z-50 overflow-hidden" style={{ background: "#0F0F0F" }}>
           <div className="pointer-events-none absolute inset-0 z-[1]" style={{ background: "radial-gradient(120% 90% at 50% 42%, transparent 40%, rgba(0,0,0,0.6) 100%)" }} />
           {/* bloom */}
           <div
@@ -177,7 +180,7 @@ export function RaffleReveal({
               <span className="text-[1.05rem]" style={{ color: "#9A9A9A", opacity: revealed ? 1 : 0, transition: "opacity 600ms ease 340ms" }}>{ideas.length} aday arasından çekildi</span>
               <div className="mt-3 flex gap-3" style={{ opacity: revealed ? 1 : 0, transition: "opacity 500ms ease 440ms" }}>
                 <button onClick={again} className="rounded-full px-[26px] py-3 text-[0.95rem] font-semibold transition" style={{ border: `1px solid ${soft(accent, 0.4)}`, background: "transparent", color: accent.base }}>Tekrar çek</button>
-                <button onClick={finish} className="rounded-full px-[26px] py-3 text-[0.95rem] font-bold" style={{ background: accent.base, color: "#161616" }}>Kazananı onayla</button>
+                <button onClick={finish} className="rounded-full px-[26px] py-3 text-[0.95rem] font-bold" style={{ background: accent.base, color: "#0F0F0F" }}>Kazananı onayla</button>
               </div>
             </div>
           </div>

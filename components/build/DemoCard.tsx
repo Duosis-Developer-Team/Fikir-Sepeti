@@ -18,10 +18,10 @@ export function DemoCard({ idea, accent }: { idea: Idea; accent: Accent }) {
   };
 
   const field = "w-full rounded-xl px-3 py-[10px] text-sm outline-none";
-  const fieldStyle = { background: "#1E1E1E", border: "1px solid rgba(255,255,255,0.10)", color: "#EDEDED" } as const;
+  const fieldStyle = { background: "#181818", border: "1px solid rgba(255,255,255,0.10)", color: "#EDEDED" } as const;
 
   return (
-    <div className="rounded-2xl p-4" style={{ background: "#272727", border: "1px solid rgba(255,255,255,0.09)" }}>
+    <div className="rounded-2xl p-4" style={{ background: "#242424", border: "1px solid rgba(255,255,255,0.09)" }}>
       <div className="flex items-center gap-2">
         <p className="font-display text-[1.1rem] font-semibold" style={{ color: "#EDEDED" }}>{idea.text}</p>
         {idea.tag && <span className="rounded-full px-[11px] py-[5px] text-[0.78rem] font-semibold" style={{ background: soft(accent, 0.14), color: accent.base }}>{idea.tag}</span>}

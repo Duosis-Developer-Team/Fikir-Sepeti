@@ -1,12 +1,7 @@
 "use client";
 
-const AV = ["#F2795F", "#33C293", "#6B8CF0", "#E7A93F"];
-
-function color(name: string) {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
-  return AV[h % AV.length];
-}
+// Yığında pozisyona göre renk — komşular hep farklı, çeşitli görünür.
+const AV = ["#F2795F", "#33C293", "#6B8CF0", "#E7A93F", "#A78BFA", "#F472B6"];
 
 export function Avatars({
   names,
@@ -31,8 +26,8 @@ export function Avatars({
           className="flex items-center justify-center rounded-full font-bold"
           style={{
             ...S,
-            background: color(n),
-            color: "#161616",
+            background: AV[i % AV.length],
+            color: "#0F0F0F",
             marginLeft: i === 0 ? 0 : -size * 0.31,
             border: `2px solid ${ring}`,
             zIndex: shown.length - i,

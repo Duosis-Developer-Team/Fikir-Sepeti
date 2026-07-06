@@ -15,6 +15,8 @@ export function SocialBasket({ basket: initial, voter, accent }: { basket: Baske
   const { basket, ideas, myVotes, connected, vote } = useRealtimeVotes(initial.id, voter);
   const b = basket ?? initial;
   const isRaffle = b.resolve_method === "raffle";
+  const owner = b.created_by ?? "Sepeti açan";
+  const isOwner = Boolean(voter) && voter === b.created_by;
 
   const winner = useMemo(() => ideas.find((i) => i.id === b.winner_idea_id) ?? null, [ideas, b.winner_idea_id]);
   const totalVotes = useMemo(() => ideas.reduce((s, i) => s + i.vote_count, 0), [ideas]);
@@ -36,9 +38,9 @@ export function SocialBasket({ basket: initial, voter, accent }: { basket: Baske
   return (
     <div className="flex flex-col gap-7">
       {/* özet şeridi */}
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl px-5 py-4" style={{ background: "#272727", border: "1px solid rgba(255,255,255,0.08)" }}>
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl px-5 py-4" style={{ background: "#242424", border: "1px solid rgba(255,255,255,0.08)" }}>
         <div className="flex items-center gap-4">
-          <Avatars names={authors} size={30} ring="#272727" />
+          <Avatars names={authors} size={30} ring="#242424" />
           <span className="tnum text-[0.95rem]" style={{ color: "#9A9A9A" }}>
             <span className="font-bold" style={{ color: "#EDEDED" }}>{ideas.length}</span> {isRaffle ? "aday" : "fikir"}
             {!isRaffle && <> · <span className="font-bold" style={{ color: "#EDEDED" }}>{totalVotes}</span> oy</>}
@@ -50,20 +52,35 @@ export function SocialBasket({ basket: initial, voter, accent }: { basket: Baske
         </span>
       </div>
 
+      {/* mantık açıklaması */}
+      <p className="-mt-2 text-[0.9rem] leading-relaxed" style={{ color: "#9A9A9A" }}>
+        {isRaffle ? (
+          <>Oy yok — herkes aday ekler, <span className="font-semibold" style={{ color: "#EDEDED" }}>{owner}</span> kurayı çeker ve kazananı <span className="font-semibold" style={{ color: accent.base }}>şans</span> belirler.</>
+        ) : (
+          <>Herkes oy verir; sonucu <span className="font-semibold" style={{ color: "#EDEDED" }}>{owner}</span> çeker, <span className="font-semibold" style={{ color: accent.base }}>en çok oyu alan</span> kazanır.</>
+        )}
+      </p>
+
       {isRaffle ? (
-        <RaffleReveal basket={b} ideas={ideas} voter={voter} accent={accent} onWinner={(w) => resolveBasket(b.id, w.id)} />
+        <RaffleReveal basket={b} ideas={ideas} voter={voter} accent={accent} isOwner={isOwner} onWinner={(w) => resolveBasket(b.id, w.id)} />
       ) : (
         <>
           <IdeaInput accent={accent} onAdd={async (text, tag) => { await addIdea({ basket_id: b.id, text, tag, created_by: voter }); }} />
           <LiveVotePanel ideas={ideas} phase="ideas" myVoteId={myVotes["ideas"]} onVote={vote} accent={accent} />
           {ideas.length > 0 && (
-            <button
-              onClick={resolveByVote}
-              className="w-full rounded-full py-[17px] text-[1.02rem] font-bold transition hover:-translate-y-[2px]"
-              style={{ background: accent.base, color: "#161616", boxShadow: `0 18px 44px -18px ${soft(accent, 0.85)}` }}
-            >
-              Sonucu çek — en çok oyu alan kazansın
-            </button>
+            isOwner ? (
+              <button
+                onClick={resolveByVote}
+                className="w-full rounded-full py-[17px] text-[1.02rem] font-bold transition hover:-translate-y-[2px]"
+                style={{ background: accent.base, color: "#0F0F0F", boxShadow: `0 18px 44px -18px ${soft(accent, 0.85)}` }}
+              >
+                Oylamayı bitir — en çok oyu alan kazansın
+              </button>
+            ) : (
+              <div className="rounded-full py-[15px] text-center text-[0.92rem]" style={{ background: "#242424", border: "1px solid rgba(255,255,255,0.08)", color: "#9A9A9A" }}>
+                Oyunu ver — sonucu <span className="font-semibold" style={{ color: "#EDEDED" }}>{owner}</span> çekecek.
+              </div>
+            )
           )}
         </>
       )}

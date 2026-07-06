@@ -6,10 +6,10 @@
    ============================================================ */
 
 :root {
-  --bg: #1e1e1e;
-  --card: #272727;
-  --black: #161616;        /* featured / sahne / sonuç */
-  --surface-2: #2e2e2e;    /* input / elevated */
+  --bg: #181818;
+  --card: #242424;
+  --black: #0f0f0f;        /* featured / sahne / sonuç */
+  --surface-2: #2a2a2a;    /* input / elevated */
   --line: rgba(255, 255, 255, 0.09);
   --line-strong: rgba(255, 255, 255, 0.14);
   --track: rgba(255, 255, 255, 0.07);
@@ -63,7 +63,7 @@ html {
 
 body {
   min-height: 100%;
-  background: var(--bg);
+  background: var(--bg); /* nötr gri, düz */
   color: var(--text);
   font-family: var(--font-body), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -89,7 +89,7 @@ body {
 }
 
 .presenter-stage {
-  background: var(--black);
+  background: #1a1a1a; /* düz mono gri */
   color: var(--text);
 }
 
