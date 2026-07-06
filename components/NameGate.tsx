@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { getStoredName, storeName } from "@/lib/name";
 
@@ -14,11 +14,15 @@ export function useNameContext() {
 }
 
 export default function NameGate({ children }: { children: React.ReactNode }) {
-  // localStorage senkron okunur (client component) — ilk render'da doğru isim.
-  const [name, setNameState] = useState<string>(() =>
-    typeof window === "undefined" ? "" : getStoredName()
-  );
+  // SSR ile hidrasyon uyumu için: ilk render boş, localStorage effect'te okunur.
+  const [name, setNameState] = useState<string>("");
+  const [mounted, setMounted] = useState(false);
   const [draft, setDraft] = useState("");
+
+  useEffect(() => {
+    setNameState(getStoredName());
+    setMounted(true);
+  }, []);
 
   const commit = () => {
     const clean = draft.trim();
@@ -31,7 +35,7 @@ export default function NameGate({ children }: { children: React.ReactNode }) {
     <NameContext.Provider value={{ name, setName: setNameState }}>
       {children}
       <AnimatePresence>
-        {!name && (
+        {mounted && !name && (
           <motion.div
             className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--bg)]/85 px-6 backdrop-blur-sm"
             initial={{ opacity: 0 }}
