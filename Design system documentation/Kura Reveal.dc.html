@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Plus+Jakarta+Sans:wght@400..700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: #1E1E1E; color: #EDEDED; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  a { color: #F2795F; text-decoration: none; }
+  a:hover { color: #F5A98F; }
+  .disp { font-family: 'Bricolage Grotesque', system-ui, sans-serif; letter-spacing: -0.02em; }
+  .tnum { font-variant-numeric: tabular-nums; }
+  input { font-family: inherit; }
+  input::placeholder { color: #6E6E6E; }
+  input:focus { outline: none; border-color: rgba(242,121,95,0.6) !important; }
+  @keyframes fs-livedot { 0%,100% { box-shadow: 0 0 0 0 rgba(242,121,95,0.5); } 50% { box-shadow: 0 0 0 5px rgba(242,121,95,0); } }
+  @keyframes fs-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #1E1E1E;">
+
+  <header style="position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between; padding: 16px clamp(24px, 5vw, 56px); border-bottom: 1px solid rgba(255,255,255,0.08); background: rgba(30,30,30,0.82); backdrop-filter: blur(14px);">
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <span style="display: inline-flex; align-items: flex-end; gap: 2px; height: 18px;">
+        <span style="width: 4px; height: 9px; border-radius: 1px; background: #F2795F;"></span>
+        <span style="width: 4px; height: 16px; border-radius: 1px; background: #E7A93F;"></span>
+        <span style="width: 4px; height: 12px; border-radius: 1px; background: #33C293;"></span>
+      </span>
+      <span style="font-size: 0.82rem; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: #EDEDED;">Fikir Sepeti</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 9px;">
+      <span style="width: 28px; height: 28px; border-radius: 999px; background: linear-gradient(135deg, #E7A93F, #F2795F); color: #161616; font-weight: 700; font-size: 0.78rem; display: grid; place-items: center;">A</span>
+      <span style="font-size: 0.92rem; color: #C4C4C4;">Arca</span>
+    </div>
+  </header>
+
+  <main style="max-width: 760px; margin: 0 auto; padding: clamp(32px, 5vw, 56px) clamp(24px, 5vw, 40px) 90px;">
+    <a href="Ana Ekran.dc.html" style="font-size: 0.95rem; color: #9A9A9A;">← sepetler</a>
+
+    <div style="display: flex; align-items: center; gap: 9px; margin-top: 30px;">
+      <span style="width: 7px; height: 7px; border-radius: 999px; background: #F2795F; animation: fs-livedot 2s ease-in-out infinite;"></span>
+      <span style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: #F2795F;">Sosyal · Kura</span>
+    </div>
+    <h1 class="disp" style="margin: 14px 0 0; font-weight: 600; font-size: clamp(2.2rem, 5vw, 3.5rem); line-height: 1.0; color: #EDEDED;">Cuma öğle yemeği nereye?</h1>
+
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 28px; background: #272727; border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 16px 20px;">
+      <div style="display: flex; align-items: center; gap: 16px;">
+        <span style="display: inline-flex;">
+          <span style="width: 30px; height: 30px; border-radius: 999px; background: #33C293; border: 2px solid #272727; color: #161616; font-size: 0.72rem; font-weight: 700; display: grid; place-items: center;">B</span>
+          <span style="width: 30px; height: 30px; border-radius: 999px; background: #6B8CF0; border: 2px solid #272727; color: #161616; font-size: 0.72rem; font-weight: 700; display: grid; place-items: center; margin-left: -9px;">D</span>
+          <span style="width: 30px; height: 30px; border-radius: 999px; background: #E7A93F; border: 2px solid #272727; color: #161616; font-size: 0.72rem; font-weight: 700; display: grid; place-items: center; margin-left: -9px;">E</span>
+        </span>
+        <span class="tnum" style="font-size: 0.95rem; color: #9A9A9A; white-space: nowrap;"><span style="color: #EDEDED; font-weight: 700;">{{ ideaCount }}</span> aday</span>
+      </div>
+      <span style="display: inline-flex; align-items: center; gap: 7px; background: rgba(242,121,95,0.12); color: #F2795F; font-size: 0.78rem; font-weight: 600; padding: 6px 13px; border-radius: 999px;"><span style="width: 6px; height: 6px; border-radius: 999px; background: #F2795F;"></span>kura</span>
+    </div>
+
+    <div style="display: flex; gap: 10px; margin-top: 26px;">
+      <input value="{{ draft }}" onInput="{{ onDraft }}" onKeyDown="{{ onKey }}" placeholder="Yeni aday ekle…" style="flex: 1; background: #272727; border: 1px solid rgba(255,255,255,0.10); border-radius: 14px; padding: 15px 18px; font-size: 1rem; color: #EDEDED; transition: border-color 180ms ease;">
+      <button onClick="{{ onAdd }}" style="flex: 0 0 auto; border: none; cursor: pointer; font-family: inherit; background: rgba(242,121,95,0.14); color: #F2795F; font-weight: 600; font-size: 0.95rem; padding: 0 24px; border-radius: 14px; transition: background 180ms ease;" style-hover="background: rgba(242,121,95,0.24);">Ekle</button>
+    </div>
+
+    <div style="font-size: 0.72rem; font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase; color: #6E6E6E; margin: 28px 0 14px;">Adaylar</div>
+    <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+      <sc-for list="{{ ideas }}" as="idea" hint-placeholder-count="5">
+        <span style="display: inline-flex; align-items: center; gap: 10px; background: #272727; border: 1px solid rgba(255,255,255,0.10); border-radius: 999px; padding: 11px 8px 11px 18px; font-size: 0.98rem; color: #EDEDED;">
+          {{ idea.name }}
+          <button onClick="{{ idea.onRemove }}" style="border: none; cursor: pointer; background: rgba(255,255,255,0.06); color: #9A9A9A; width: 22px; height: 22px; border-radius: 999px; font-size: 0.9rem; line-height: 1; display: grid; place-items: center; transition: background 160ms ease, color 160ms ease;" style-hover="background: rgba(242,121,95,0.2); color: #F2795F;">×</button>
+        </span>
+      </sc-for>
+    </div>
+
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 14px; margin-top: 44px;">
+      <span style="font-size: 0.92rem; color: #9A9A9A;">Karar çıkmadı mı? Bırak kura seçsin.</span>
+      <button onClick="{{ onPull }}" style="border: none; cursor: pointer; font-family: inherit; display: inline-flex; align-items: center; gap: 11px; background: #F2795F; color: #161616; font-weight: 700; font-size: 1.05rem; padding: 17px 44px; border-radius: 999px; box-shadow: 0 18px 44px -18px rgba(242,121,95,0.85); transition: transform 220ms cubic-bezier(.2,.8,.2,1), background 200ms ease, box-shadow 220ms ease; animation: fs-float 4s ease-in-out infinite;" style-hover="background: #F5A98F; transform: translateY(-3px); box-shadow: 0 26px 56px -18px rgba(242,121,95,0.9);">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" style="display: block;"><rect x="3" y="3" width="18" height="18" rx="5" stroke="#161616" stroke-width="2.2"></rect><circle cx="8.5" cy="8.5" r="1.7" fill="#161616"></circle><circle cx="12" cy="12" r="1.7" fill="#161616"></circle><circle cx="15.5" cy="15.5" r="1.7" fill="#161616"></circle></svg>
+        Kura çek
+      </button>
+    </div>
+  </main>
+
+  <sc-if value="{{ showStage }}" hint-placeholder-val="{{ false }}">
+    <div style="position: fixed; inset: 0; z-index: 50; background: #161616; overflow: hidden;">
+      <div style="position: absolute; inset: 0; background: radial-gradient(120% 90% at 50% 42%, transparent 40%, rgba(0,0,0,0.6) 100%); pointer-events: none; z-index: 1;"></div>
+      <div style="{{ bloomStyle }}"></div>
+      <canvas ref="{{ canvasRef }}" style="position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 6;"></canvas>
+
+      <button onClick="{{ onClose }}" style="{{ chromeStyle }}; position: absolute; top: 28px; right: 30px; z-index: 8; border: none; cursor: pointer; font-family: inherit; background: rgba(255,255,255,0.06); color: #9A9A9A; font-size: 0.9rem; padding: 9px 16px; border-radius: 999px; transition: opacity 400ms ease, background 160ms ease;" style-hover="background: rgba(255,255,255,0.12);">Kapat ✕</button>
+
+      <div style="position: relative; z-index: 3; height: 100%; display: flex; flex-direction: column; padding: 40px clamp(24px, 5vw, 72px) 56px;">
+        <div style="{{ chromeStyle }}; display: flex; align-items: center; gap: 10px; transition: opacity 400ms ease;">
+          <span style="width: 8px; height: 8px; border-radius: 999px; background: #F2795F;"></span>
+          <span style="font-size: 0.72rem; font-weight: 600; letter-spacing: 0.26em; text-transform: uppercase; color: #F2795F;">Kura çekiliyor</span>
+        </div>
+        <h2 class="disp" style="{{ chromeStyle }}; margin: 12px 0 0; font-size: clamp(1.6rem, 3.4vw, 2.6rem); font-weight: 600; line-height: 1.05; color: #EDEDED; max-width: 16ch; transition: opacity 400ms ease;">Cuma öğle yemeği nereye?</h2>
+
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; text-align: center;">
+          <span style="{{ kazananStyle }}; font-size: 0.82rem; font-weight: 600; letter-spacing: 0.34em; text-transform: uppercase; color: #F2795F; transition: opacity 500ms ease 240ms;">Kazanan</span>
+          <div class="disp" style="{{ nameStyle }}">{{ name }}</div>
+          <span style="{{ metaStyle }}; font-size: 1.05rem; color: #9A9A9A; transition: opacity 600ms ease 340ms;">{{ metaText }}</span>
+          <button onClick="{{ onAgain }}" style="{{ againStyle }}; margin-top: 12px; border: 1px solid rgba(242,121,95,0.4); cursor: pointer; font-family: inherit; background: transparent; color: #F2795F; font-weight: 600; font-size: 0.95rem; padding: 12px 26px; border-radius: 999px; transition: opacity 500ms ease 440ms, background 160ms ease;" style-hover="background: rgba(242,121,95,0.12);">Tekrar çek</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;: {&quot;width&quot;: 760, &quot;height&quot;: 900}}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      phase: 'idle',
+      name: '',
+      draft: '',
+      ideas: ['Köfteci Yusuf', 'Burgerci Baba', 'Sushi Bar', 'Mantı Evi', 'Dürümcü Emin']
+    };
+    this.canvasRef = React.createRef();
+    this.particles = [];
+    this.drawCount = 0;
+  }
+
+  reduced() {
+    return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+  componentWillUnmount() {
+    cancelAnimationFrame(this.raf);
+    clearTimeout(this.rollT);
+    window.removeEventListener('resize', this.setupCanvas);
+  }
+
+  onDraft = (e) => this.setState({ draft: e.target.value });
+  onAdd = () => {
+    const v = (this.state.draft || '').trim();
+    if (!v) return;
+    this.setState(s => ({ ideas: [...s.ideas, v], draft: '' }));
+  };
+  onKey = (e) => { if (e.key === 'Enter') this.onAdd(); };
+  removeIdea = (i) => this.setState(s => ({ ideas: s.ideas.filter((_, k) => k !== i) }));
+
+  setupCanvas = () => {
+    const c = this.canvasRef.current;
+    if (!c) return;
+    const dpr = window.devicePixelRatio || 1;
+    c.width = window.innerWidth * dpr;
+    c.height = window.innerHeight * dpr;
+    this.ctx = c.getContext('2d');
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  };
+
+  onClose = () => {
+    cancelAnimationFrame(this.raf);
+    clearTimeout(this.rollT);
+    this.particles = [];
+    this.setState({ phase: 'idle', name: '' });
+  };
+  onAgain = () => { this.setState({ phase: 'idle', name: '' }); setTimeout(this.onPull, 60); };
+
+  onPull = () => {
+    const ideas = this.state.ideas;
+    if (this.state.phase === 'rolling' || ideas.length < 2) return;
+    this.drawCount = ideas.length;
+    this.winner = ideas[Math.floor(Math.random() * ideas.length)];
+    if (this.reduced()) {
+      this.setState({ phase: 'revealed', name: this.winner });
+      requestAnimationFrame(() => { this.setupCanvas(); this.burst(); });
+      return;
+    }
+    this.setState({ phase: 'rolling', name: ideas[0] });
+    this.roll(1, 60);
+  };
+
+  roll = (i, delay) => {
+    const ideas = this.state.ideas;
+    this.setState({ name: ideas[i % ideas.length] });
+    const next = delay * 1.15;
+    if (delay < 330) {
+      this.rollT = setTimeout(() => this.roll(i + 1, next), delay);
+    } else {
+      this.rollT = setTimeout(() => {
+        this.setState({ phase: 'revealed', name: this.winner });
+        this.setupCanvas();
+        this.burst();
+      }, delay);
+    }
+  };
+
+  burst() {
+    if (!this.ctx) this.setupCanvas();
+    if (!this.ctx) return;
+    window.addEventListener('resize', this.setupCanvas);
+    const cx = window.innerWidth / 2, cy = window.innerHeight * 0.5;
+    const cols = ['#F2795F', '#F5A98F', '#EDEDED', '#E7A93F', '#D9634F'];
+    this.particles = [];
+    for (let k = 0; k < 150; k++) {
+      const a = Math.random() * Math.PI * 2, sp = 5 + Math.random() * 12;
+      this.particles.push({
+        x: cx + (Math.random() - 0.5) * 300, y: cy + (Math.random() - 0.5) * 70,
+        vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 5,
+        g: 0.2 + Math.random() * 0.12, r: Math.random() * Math.PI, vr: (Math.random() - 0.5) * 0.32,
+        w: 5 + Math.random() * 6, h: 3 + Math.random() * 5, col: cols[k % cols.length],
+        life: 1, shape: Math.random() < 0.28 ? 'c' : 'r'
+      });
+    }
+    cancelAnimationFrame(this.raf);
+    this.loop();
+  }
+
+  loop = () => {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    const W = window.innerWidth, H = window.innerHeight;
+    ctx.clearRect(0, 0, W, H);
+    let alive = false;
+    for (const p of this.particles) {
+      p.vy += p.g; p.vx *= 0.99; p.x += p.vx; p.y += p.vy; p.r += p.vr; p.life -= 0.0065;
+      if (p.life > 0 && p.y < H + 50) {
+        alive = true;
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, Math.min(1, p.life));
+        ctx.translate(p.x, p.y); ctx.rotate(p.r); ctx.fillStyle = p.col;
+        if (p.shape === 'c') { ctx.beginPath(); ctx.arc(0, 0, p.w / 2, 0, 7); ctx.fill(); }
+        else ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+        ctx.restore();
+      }
+    }
+    if (alive) this.raf = requestAnimationFrame(this.loop);
+    else ctx.clearRect(0, 0, W, H);
+  };
+
+  renderVals() {
+    const phase = this.state.phase;
+    const isRolling = phase === 'rolling';
+    const isRevealed = phase === 'revealed';
+    const showStage = isRolling || isRevealed;
+
+    const chromeStyle = { opacity: showStage ? 0.28 : 1 };
+    const nameStyle = {
+      fontWeight: 700, letterSpacing: '-0.035em', lineHeight: 0.95,
+      fontSize: 'clamp(3rem, 11vw, 9rem)',
+      color: isRevealed ? '#F2795F' : '#7A7A7A',
+      transform: isRevealed ? 'scale(1)' : 'scale(0.9)',
+      filter: isRevealed ? 'none' : 'blur(0.4px)',
+      textShadow: isRevealed ? '0 20px 80px rgba(242,121,95,0.35)' : 'none',
+      transition: 'color 220ms ease, transform 520ms cubic-bezier(.16,1.1,.3,1), filter 300ms ease'
+    };
+    const bloomStyle = {
+      position: 'absolute', left: '50%', bottom: '-8%', width: '90vw', maxWidth: '1100px', height: '80vh',
+      transform: isRevealed ? 'translateX(-50%) scale(1)' : 'translateX(-50%) scale(0.7)',
+      background: 'radial-gradient(50% 55% at 50% 60%, rgba(242,121,95,0.5) 0%, rgba(242,121,95,0.14) 42%, transparent 70%)',
+      filter: 'blur(18px)', opacity: isRevealed ? 1 : 0,
+      transition: 'opacity 620ms ease, transform 720ms cubic-bezier(.16,1.05,.3,1)', pointerEvents: 'none', zIndex: 2
+    };
+
+    const ideas = this.state.ideas.map((n, i) => ({ name: n, onRemove: () => this.removeIdea(i) }));
+
+    return {
+      ideaCount: this.state.ideas.length,
+      ideas,
+      draft: this.state.draft,
+      onDraft: this.onDraft, onAdd: this.onAdd, onKey: this.onKey, onPull: this.onPull,
+      showStage, name: this.state.name,
+      chromeStyle, nameStyle, bloomStyle,
+      kazananStyle: { opacity: isRevealed ? 1 : 0 },
+      metaStyle: { opacity: isRevealed ? 1 : 0 },
+      againStyle: { opacity: isRevealed ? 1 : 0 },
+      metaText: this.drawCount + ' aday arasından çekildi',
+      canvasRef: this.canvasRef,
+      onClose: this.onClose, onAgain: this.onAgain
+    };
+  }
+}
+</script>
+</body>
+</html>

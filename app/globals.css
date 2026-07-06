@@ -1,34 +1,60 @@
 @import "tailwindcss";
 
+/* ============================================================
+   Fikir Sepeti — onaylı tasarım (Design system documentation)
+   Nötr koyu #1E1E1E · 4 renkli aksan (her sepete bir renk).
+   ============================================================ */
+
 :root {
-  --bg: #fafaf9;
-  --surface: #ffffff;
-  --surface-2: #f5f4f2;
-  --border: #eae8e3;
-  --text: #1c1c1a;
-  --text-muted: #6b6a66;
-  --accent-social: #1d9e75; /* yeşil — sosyal mod */
-  --accent-social-soft: #e6f4ee;
-  --accent-build: #534ab7; /* mor — build mod + presenter */
-  --accent-build-soft: #ecebf7;
-  --danger: #c0503f;
-  --radius: 12px;
+  --bg: #1e1e1e;
+  --card: #272727;
+  --black: #161616;        /* featured / sahne / sonuç */
+  --surface-2: #2e2e2e;    /* input / elevated */
+  --line: rgba(255, 255, 255, 0.09);
+  --line-strong: rgba(255, 255, 255, 0.14);
+  --track: rgba(255, 255, 255, 0.07);
+  --text: #ededed;
+  --text-2: #c4c4c4;
+  --text-3: #b0b0b0;
+  --text-muted: #9a9a9a;
+  --text-faint: #6e6e6e;
+
+  /* 4 aksan */
+  --coral: #f2795f;
+  --gold: #e7a93f;
+  --green: #33c293;
+  --blue: #6b8cf0;
+
+  --danger: #f2795f;
+  --radius: 22px;
+
+  /* varsayılan semantik + geriye dönük isimler */
+  --social: var(--coral);
+  --build: var(--gold);
+  --accent-social: var(--coral);
+  --accent-build: var(--gold);
+  --paper: var(--bg);
+  --ink: var(--text);
+  --ink-soft: var(--text-muted);
+  --surface: var(--card);
+  --border: var(--line);
+  --border-strong: var(--line-strong);
 }
 
 @theme inline {
   --color-bg: var(--bg);
+  --color-card: var(--card);
+  --color-black: var(--black);
   --color-surface: var(--surface);
-  --color-surface-2: var(--surface-2);
-  --color-border: var(--border);
   --color-text: var(--text);
   --color-text-muted: var(--text-muted);
-  --color-social: var(--accent-social);
-  --color-social-soft: var(--accent-social-soft);
-  --color-build: var(--accent-build);
-  --color-build-soft: var(--accent-build-soft);
-  --color-danger: var(--danger);
+  --color-coral: var(--coral);
+  --color-gold: var(--gold);
+  --color-green: var(--green);
+  --color-blue: var(--blue);
   --radius-card: var(--radius);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
 }
 
 html {
@@ -39,22 +65,39 @@ body {
   min-height: 100%;
   background: var(--bg);
   color: var(--text);
-  font-family: var(--font-sans), system-ui, sans-serif;
+  font-family: var(--font-body), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
-  font-weight: 400;
 }
 
-/* Presenter modu koyu sahne */
+.font-display {
+  font-family: var(--font-display), var(--font-body), sans-serif;
+  letter-spacing: -0.02em;
+}
+
+.tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+@keyframes fs-livedot {
+  0%, 100% { box-shadow: 0 0 0 0 var(--dot-glow, rgba(231, 169, 63, 0.5)); }
+  50% { box-shadow: 0 0 0 5px transparent; }
+}
+@keyframes fs-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
 .presenter-stage {
-  background: #0e0d16;
-  color: #f4f3fb;
+  background: var(--black);
+  color: var(--text);
 }
 
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
-    animation-duration: 0.01ms !important;
+    animation: none !important;
     transition-duration: 0.01ms !important;
   }
 }

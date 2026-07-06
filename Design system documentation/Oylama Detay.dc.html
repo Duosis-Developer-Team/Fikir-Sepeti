@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Plus+Jakarta+Sans:wght@400..700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: #1E1E1E; color: #EDEDED; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  a { color: #E7A93F; text-decoration: none; }
+  a:hover { color: #EEC078; }
+  .disp { font-family: 'Bricolage Grotesque', system-ui, sans-serif; letter-spacing: -0.02em; }
+  .tnum { font-variant-numeric: tabular-nums; }
+  @keyframes fs-livedot { 0%,100% { box-shadow: 0 0 0 0 rgba(231,169,63,0.5); } 50% { box-shadow: 0 0 0 5px rgba(231,169,63,0); } }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #1E1E1E;">
+
+  <header style="position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between; padding: 16px clamp(24px, 5vw, 56px); border-bottom: 1px solid rgba(255,255,255,0.08); background: rgba(30,30,30,0.82); backdrop-filter: blur(14px);">
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <span style="display: inline-flex; align-items: flex-end; gap: 2px; height: 18px;">
+        <span style="width: 4px; height: 9px; border-radius: 1px; background: #F2795F;"></span>
+        <span style="width: 4px; height: 16px; border-radius: 1px; background: #E7A93F;"></span>
+        <span style="width: 4px; height: 12px; border-radius: 1px; background: #33C293;"></span>
+      </span>
+      <span style="font-size: 0.82rem; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: #EDEDED;">Fikir Sepeti</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 9px;">
+      <span style="width: 28px; height: 28px; border-radius: 999px; background: linear-gradient(135deg, #E7A93F, #F2795F); color: #161616; font-weight: 700; font-size: 0.78rem; display: grid; place-items: center;">A</span>
+      <span style="font-size: 0.92rem; color: #C4C4C4;">Arca</span>
+    </div>
+  </header>
+
+  <main style="max-width: 880px; margin: 0 auto; padding: clamp(32px, 5vw, 56px) clamp(24px, 5vw, 40px) 90px;">
+
+    <a href="Ana Ekran.dc.html" style="font-size: 0.95rem; color: #9A9A9A;">← sepetler</a>
+
+    <div style="display: flex; align-items: center; gap: 9px; margin-top: 30px;">
+      <span style="width: 7px; height: 7px; border-radius: 999px; background: #E7A93F; animation: fs-livedot 2s ease-in-out infinite;"></span>
+      <span style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: #E7A93F;">Build · İç Hackathon</span>
+    </div>
+    <h1 class="disp" style="margin: 14px 0 0; font-weight: 600; font-size: clamp(2.2rem, 5vw, 3.5rem); line-height: 1.0; color: #EDEDED;">İç Hackathon — Q3</h1>
+
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 28px; background: #272727; border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 16px 20px;">
+      <div style="display: flex; align-items: center; gap: 16px;">
+        <span style="display: inline-flex;">
+          <span style="width: 30px; height: 30px; border-radius: 999px; background: #F2795F; border: 2px solid #272727; color: #161616; font-size: 0.72rem; font-weight: 700; display: grid; place-items: center;">A</span>
+          <span style="width: 30px; height: 30px; border-radius: 999px; background: #33C293; border: 2px solid #272727; color: #161616; font-size: 0.72rem; font-weight: 700; display: grid; place-items: center; margin-left: -9px;">S</span>
+          <span style="width: 30px; height: 30px; border-radius: 999px; background: #6B8CF0; border: 2px solid #272727; color: #161616; font-size: 0.72rem; font-weight: 700; display: grid; place-items: center; margin-left: -9px;">E</span>
+          <span style="width: 30px; height: 30px; border-radius: 999px; background: #E7A93F; border: 2px solid #272727; color: #161616; font-size: 0.72rem; font-weight: 700; display: grid; place-items: center; margin-left: -9px;">C</span>
+        </span>
+        <span class="tnum" style="font-size: 0.95rem; color: #9A9A9A; white-space: nowrap;"><span style="color: #EDEDED; font-weight: 700;">5</span> fikir · <span style="color: #EDEDED; font-weight: 700;">30</span> oy</span>
+      </div>
+      <span style="display: inline-flex; align-items: center; gap: 7px; background: rgba(231,169,63,0.12); color: #E7A93F; font-size: 0.78rem; font-weight: 600; padding: 6px 13px; border-radius: 999px;"><span style="width: 6px; height: 6px; border-radius: 999px; background: #E7A93F; animation: fs-livedot 2s ease-in-out infinite;"></span>canlı</span>
+    </div>
+
+    <div style="display: flex; gap: 10px; margin-top: 30px;">
+      <div style="flex: 1; display: flex; flex-direction: column; gap: 9px;"><span style="height: 4px; border-radius: 999px; background: #E7A93F;"></span><span style="font-size: 0.85rem; color: #9A9A9A; text-align: center;">Fikir</span></div>
+      <div style="flex: 1; display: flex; flex-direction: column; gap: 9px;"><span style="height: 4px; border-radius: 999px; background: #E7A93F;"></span><span style="font-size: 0.85rem; color: #9A9A9A; text-align: center;">Finalist</span></div>
+      <div style="flex: 1; display: flex; flex-direction: column; gap: 9px;"><span style="height: 4px; border-radius: 999px; background: #E7A93F;"></span><span style="font-size: 0.85rem; color: #9A9A9A; text-align: center;">Demo</span></div>
+      <div style="flex: 1; display: flex; flex-direction: column; gap: 9px;"><span style="height: 4px; border-radius: 999px; background: #E7A93F; box-shadow: 0 0 16px rgba(231,169,63,0.5);"></span><span style="font-size: 0.85rem; font-weight: 600; color: #E7A93F; text-align: center;">Oylama</span></div>
+      <div style="flex: 1; display: flex; flex-direction: column; gap: 9px;"><span style="height: 4px; border-radius: 999px; background: rgba(255,255,255,0.12);"></span><span style="font-size: 0.85rem; color: #6E6E6E; text-align: center;">Squad</span></div>
+    </div>
+
+    <button class="fs-presenter" style="width: 100%; border: none; cursor: pointer; font-family: inherit; margin-top: 30px; background: #EDEDED; color: #161616; font-weight: 600; font-size: 1.05rem; padding: 19px; border-radius: 16px; transition: transform 200ms ease, box-shadow 200ms ease;" style-hover="transform: translateY(-2px); box-shadow: 0 20px 44px -20px rgba(255,255,255,0.35);">Presenter modunu aç ↗</button>
+    <p style="text-align: center; margin: 14px 0 0; font-size: 0.92rem; color: #9A9A9A;">Sahnedeki demoya telefonundan oy ver.</p>
+
+    <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 28px;">
+      <sc-for list="{{ rows }}" as="row" hint-placeholder-count="3">
+        <div style="{{ row.rowStyle }}; position: relative; overflow: hidden; border-radius: 18px; background: #272727;">
+          <div style="{{ row.fillStyle }}"></div>
+          <div style="position: relative; z-index: 1; display: flex; align-items: center; gap: 18px; padding: 20px 22px;">
+            <span class="disp tnum" style="flex: 0 0 auto; width: 20px; font-size: 1.05rem; color: #6E6E6E;">{{ row.rank }}</span>
+            <div style="flex: 1; min-width: 0;">
+              <div class="disp" style="font-weight: 600; font-size: 1.2rem; color: #EDEDED; line-height: 1.15;">{{ row.title }}</div>
+              <div style="margin-top: 3px; font-size: 0.85rem; color: #9A9A9A;">{{ row.author }}</div>
+            </div>
+            <span class="disp tnum" style="{{ row.countStyle }}; flex: 0 0 auto; width: 46px; text-align: right; font-weight: 700; font-size: 1.7rem;">{{ row.count }}</span>
+            <button onClick="{{ row.onVote }}" style="{{ row.pillStyle }}; flex: 0 0 auto; border: none; cursor: pointer; font-family: inherit; font-weight: 600; font-size: 0.9rem; padding: 10px 18px; border-radius: 999px; transition: background 200ms ease, transform 160ms ease;">{{ row.pillText }}</button>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+
+    <button class="fs-finish" style="width: 100%; margin-top: 12px; cursor: pointer; font-family: inherit; background: transparent; color: #E7A93F; border: 1px solid rgba(231,169,63,0.4); font-weight: 600; font-size: 1rem; padding: 18px; border-radius: 999px; transition: background 200ms ease, border-color 200ms ease;" style-hover="background: rgba(231,169,63,0.1); border-color: rgba(231,169,63,0.7);">Oylamayı bitir → squad</button>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;: {&quot;width&quot;: 880, &quot;height&quot;: 1000}}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.opts = [
+      { id: 'pr', title: 'Otomatik PR özetleyici', author: 'backend · Cem' },
+      { id: 'commit', title: 'AI commit mesajı üreteci', author: 'AI · Deniz' },
+      { id: 'mobil', title: 'Mobil onay uygulaması', author: 'mobil · Ece' }
+    ];
+    this.state = {
+      votes: { pr: 11, commit: 8, mobil: 6 },
+      disp: { pr: 11, commit: 8, mobil: 6 },
+      myVote: null
+    };
+  }
+
+  vote = (id) => {
+    this.setState(s => {
+      if (s.myVote === id) return null;
+      const votes = { ...s.votes };
+      if (s.myVote) votes[s.myVote] = Math.max(0, votes[s.myVote] - 1);
+      votes[id] = votes[id] + 1;
+      return { votes, myVote: id };
+    }, () => this.tween());
+  };
+
+  tween = () => {
+    cancelAnimationFrame(this.raf);
+    const step = () => {
+      const disp = { ...this.state.disp };
+      let done = true;
+      for (const k in this.state.votes) {
+        const t = this.state.votes[k];
+        const d = disp[k] + (t - disp[k]) * 0.16;
+        if (Math.abs(t - d) > 0.02) { disp[k] = d; done = false; }
+        else disp[k] = t;
+      }
+      this.setState({ disp });
+      if (!done) this.raf = requestAnimationFrame(step);
+    };
+    this.raf = requestAnimationFrame(step);
+  };
+
+  componentWillUnmount() { cancelAnimationFrame(this.raf); }
+
+  renderVals() {
+    const { votes, disp, myVote } = this.state;
+    const maxT = Math.max.apply(null, Object.values(votes));
+    const rows = this.opts.map((o, i) => {
+      const lead = votes[o.id] === maxT;
+      const voted = myVote === o.id;
+      return {
+        title: o.title,
+        author: o.author,
+        rank: String(i + 1),
+        count: Math.round(disp[o.id]),
+        fillStyle: {
+          position: 'absolute', top: 0, bottom: 0, left: 0,
+          width: (disp[o.id] / maxT * 100) + '%',
+          background: lead ? 'rgba(231,169,63,0.20)' : 'rgba(231,169,63,0.09)'
+        },
+        rowStyle: { border: '1px solid ' + (lead ? 'rgba(231,169,63,0.5)' : 'rgba(255,255,255,0.09)') },
+        countStyle: { color: lead ? '#E7A93F' : '#EDEDED' },
+        onVote: () => this.vote(o.id),
+        pillStyle: voted ? { background: '#E7A93F', color: '#161616' } : { background: '#EDEDED', color: '#161616' },
+        pillText: voted ? 'oyun ✓' : 'oy ver'
+      };
+    });
+    return { rows };
+  }
+}
+</script>
+</body>
+</html>

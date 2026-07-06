@@ -13,6 +13,27 @@ export async function listBaskets(): Promise<Basket[]> {
   return (data as Basket[]) ?? [];
 }
 
+/** Ana ekran için zengin veri: sepetler + her sepetin fikirleri (canlı bar + katılımcı için). */
+export async function loadHome(): Promise<{
+  baskets: Basket[];
+  ideasByBasket: Record<string, Idea[]>;
+}> {
+  const baskets = await listBaskets();
+  const ids = baskets.map((b) => b.id);
+  const ideasByBasket: Record<string, Idea[]> = {};
+  if (ids.length) {
+    const { data } = await supabase
+      .from("ideas")
+      .select("*")
+      .in("basket_id", ids)
+      .order("vote_count", { ascending: false });
+    for (const idea of (data as Idea[]) ?? []) {
+      (ideasByBasket[idea.basket_id] ??= []).push(idea);
+    }
+  }
+  return { baskets, ideasByBasket };
+}
+
 export async function createBasket(input: {
   title: string;
   type: BasketType;
@@ -66,6 +87,10 @@ export async function addIdea(input: {
     .select()
     .single();
   return (data as Idea) ?? null;
+}
+
+export async function deleteIdea(ideaId: string) {
+  await supabase.from("ideas").delete().eq("id", ideaId);
 }
 
 export async function setFinalists(basketId: string, finalistIds: string[]) {

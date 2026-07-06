@@ -1,5 +1,6 @@
 "use client";
 
+import { soft, type Accent } from "@/lib/accent";
 import type { Phase } from "@/lib/types";
 
 const STEPS: { key: Phase; label: string }[] = [
@@ -10,28 +11,25 @@ const STEPS: { key: Phase; label: string }[] = [
   { key: "squad", label: "Squad" },
 ];
 
-export function PhaseBar({ phase }: { phase: Phase }) {
+export function PhaseBar({ phase, accent }: { phase: Phase; accent: Accent }) {
   const activeIdx = STEPS.findIndex((s) => s.key === phase);
   const idx = phase === "resolved" ? STEPS.length : activeIdx;
-
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex gap-[10px]">
       {STEPS.map((s, i) => {
         const done = i < idx;
         const active = i === idx;
         return (
-          <div key={s.key} className="flex flex-1 flex-col items-center gap-1.5">
-            <div
-              className="h-1 w-full rounded-full transition-colors"
+          <div key={s.key} className="flex flex-1 flex-col items-center gap-[9px]">
+            <span
+              className="h-1 w-full rounded-full"
               style={{
-                background: done || active ? "var(--accent-build)" : "var(--border)",
-                opacity: active ? 1 : done ? 0.55 : 1,
+                background: done || active ? accent.base : "rgba(255,255,255,0.12)",
+                opacity: done ? 0.55 : 1,
+                boxShadow: active ? `0 0 16px ${soft(accent, 0.5)}` : "none",
               }}
             />
-            <span
-              className="text-[11px]"
-              style={{ color: active ? "var(--accent-build)" : "var(--text-muted)" }}
-            >
+            <span className="text-[0.85rem]" style={{ color: active ? accent.base : "#6E6E6E", fontWeight: active ? 600 : 400 }}>
               {s.label}
             </span>
           </div>

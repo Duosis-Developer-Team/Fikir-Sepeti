@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# design import (büyük binary)
+Design system documentation.zip
+.DS_Store

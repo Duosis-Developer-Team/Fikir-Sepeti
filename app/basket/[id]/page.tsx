@@ -7,6 +7,7 @@ import { useNameContext } from "@/components/NameGate";
 import { SocialBasket } from "@/components/social/SocialBasket";
 import { BuildBasket } from "@/components/build/BuildBasket";
 import { supabase } from "@/lib/supabase";
+import { accentFor } from "@/lib/accent";
 import type { Basket } from "@/lib/types";
 
 export default function BasketDetail() {
@@ -23,30 +24,42 @@ export default function BasketDetail() {
     })();
   }, [id]);
 
+  const a = basket ? accentFor(basket) : null;
+  const eyebrow = basket
+    ? basket.type === "build"
+      ? "Build · İç Hackathon"
+      : basket.resolve_method === "raffle"
+        ? "Sosyal · Kura"
+        : "Sosyal · Oylama"
+    : "";
+
   return (
-    <main className="mx-auto max-w-2xl px-5 py-6">
-      <Link href="/" className="text-sm text-[var(--text-muted)] transition hover:text-[var(--text)]">
-        ← sepetler
-      </Link>
+    <main className="mx-auto max-w-[880px] px-[clamp(24px,5vw,40px)] pb-[90px] pt-[clamp(32px,5vw,56px)]">
+      <Link href="/" className="text-[0.95rem]" style={{ color: "#9A9A9A" }}>← sepetler</Link>
 
-      <h1 className="mt-3 text-xl font-medium">{basket?.title ?? "…"}</h1>
+      {basket && a && (
+        <>
+          <div className="mt-[30px] flex items-center gap-[9px]">
+            <span className="h-[7px] w-[7px] rounded-full" style={{ background: a.base }} />
+            <span className="text-[0.72rem] font-bold uppercase tracking-[0.22em]" style={{ color: a.base }}>{eyebrow}</span>
+          </div>
+          <h1 className="font-display mt-[14px] text-[clamp(2.2rem,5vw,3.5rem)] font-semibold leading-[1]" style={{ color: "#EDEDED" }}>
+            {basket.title}
+          </h1>
+        </>
+      )}
 
-      <div className="mt-6">
+      <div className="mt-7">
         {notFound ? (
-          <p className="text-sm text-[var(--text-muted)]">Sepet bulunamadı.</p>
-        ) : !basket ? (
-          <div className="mx-auto max-w-md space-y-2.5">
-            {[0, 1, 2].map((i) => (
-              <div
-                key={i}
-                className="h-14 animate-pulse rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface-2)]"
-              />
-            ))}
+          <p className="text-sm" style={{ color: "#9A9A9A" }}>Sepet bulunamadı.</p>
+        ) : !basket || !a ? (
+          <div className="flex flex-col gap-3">
+            {[0, 1, 2].map((i) => <div key={i} className="h-16 animate-pulse rounded-[18px]" style={{ background: "#272727" }} />)}
           </div>
         ) : basket.type === "build" ? (
-          <BuildBasket basket={basket} voter={name} />
+          <BuildBasket basket={basket} voter={name} accent={a} />
         ) : (
-          <SocialBasket basket={basket} voter={name} />
+          <SocialBasket basket={basket} voter={name} accent={a} />
         )}
       </div>
     </main>

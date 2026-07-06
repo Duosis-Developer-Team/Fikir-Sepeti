@@ -48,8 +48,8 @@ export default function NameGate({ children }: { children: React.ReactNode }) {
               animate={{ scale: 1, y: 0 }}
               transition={{ type: "spring", stiffness: 400, damping: 30 }}
             >
-              <h1 className="text-lg font-medium">Fikir Sepeti</h1>
-              <p className="mt-1 text-sm text-[var(--text-muted)]">
+              <h1 className="font-display text-xl font-bold tracking-tight">Fikir Sepeti</h1>
+              <p className="mt-1.5 text-sm text-[var(--text-muted)]">
                 Başlamak için adını yaz. Oyların ve fikirlerin buna bağlanır.
               </p>
               <input
@@ -58,12 +58,13 @@ export default function NameGate({ children }: { children: React.ReactNode }) {
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && commit()}
                 placeholder="Adın"
-                className="mt-4 w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2.5 text-sm outline-none focus:border-[var(--accent-social)]"
+                className="mt-4 w-full rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2.5 text-sm outline-none focus:border-[var(--accent-social)]"
               />
               <button
                 onClick={commit}
                 disabled={draft.trim().length < 2}
-                className="mt-3 w-full rounded-lg bg-[var(--text)] py-2.5 text-sm font-medium text-white transition disabled:opacity-40"
+                className="mt-3 w-full rounded-full py-3 text-sm font-semibold transition disabled:opacity-40"
+                style={{ background: "#EDEDED", color: "#161616" }}
               >
                 Devam
               </button>

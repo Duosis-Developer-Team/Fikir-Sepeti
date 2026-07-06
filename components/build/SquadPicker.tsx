@@ -2,17 +2,21 @@
 
 import { useEffect, useState } from "react";
 import { addSquadMember, listSquad } from "@/lib/db";
+import { Avatars } from "@/components/shared/Avatars";
+import { soft, type Accent } from "@/lib/accent";
 import type { Idea } from "@/lib/types";
 
 export function SquadPicker({
   basketId,
   winner,
   voter,
+  accent,
   onResolve,
 }: {
   basketId: string;
   winner: Idea | null;
   voter: string;
+  accent: Accent;
   onResolve: () => void;
 }) {
   const [members, setMembers] = useState<string[]>([]);
@@ -33,59 +37,36 @@ export function SquadPicker({
   };
 
   return (
-    <div className="mx-auto max-w-md space-y-4">
-      <div className="rounded-[var(--radius)] border border-[var(--accent-build)] bg-[var(--accent-build-soft)] p-4 text-center">
-        <p className="text-xs uppercase tracking-wide text-[var(--text-muted)]">Kazanan proje</p>
-        <p className="mt-1 text-lg font-medium" style={{ color: "var(--accent-build)" }}>
-          {winner?.text ?? "—"}
-        </p>
+    <div className="flex flex-col gap-5">
+      <div className="rounded-2xl p-5 text-center" style={{ background: soft(accent, 0.1), border: `1px solid ${soft(accent, 0.3)}` }}>
+        <p className="text-[0.72rem] font-semibold uppercase tracking-[0.2em]" style={{ color: "#9A9A9A" }}>Kazanan proje</p>
+        <p className="font-display mt-1 text-[1.6rem] font-semibold" style={{ color: accent.base }}>{winner?.text ?? "—"}</p>
       </div>
 
       <div>
-        <p className="text-sm font-medium">Squad&apos;a katıl</p>
-        <p className="text-xs text-[var(--text-muted)]">Kim bu projede çalışmak istiyor?</p>
+        <p className="text-sm font-semibold" style={{ color: "#EDEDED" }}>Squad&apos;a katıl</p>
+        <p className="text-[0.85rem]" style={{ color: "#9A9A9A" }}>Kim bu projede çalışmak istiyor?</p>
         <div className="mt-2 flex gap-2">
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && join(name)}
             placeholder="İsim"
-            className="min-w-0 flex-1 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2.5 text-sm outline-none focus:border-[var(--accent-build)]"
+            className="min-w-0 flex-1 rounded-[14px] px-[18px] py-[13px] text-sm outline-none"
+            style={{ background: "#272727", border: "1px solid rgba(255,255,255,0.10)", color: "#EDEDED" }}
           />
-          <button
-            onClick={() => join(voter)}
-            className="shrink-0 rounded-lg px-3 py-2.5 text-sm font-medium text-white"
-            style={{ background: "var(--accent-build)" }}
-          >
-            Ben varım
-          </button>
+          <button onClick={() => join(voter)} className="shrink-0 rounded-[14px] px-5 text-sm font-bold" style={{ background: accent.base, color: "#161616" }}>Ben varım</button>
         </div>
-        {name.trim().length >= 2 && (
-          <button onClick={() => join(name)} className="mt-2 text-xs text-[var(--accent-build)]">
-            “{name.trim()}” ekle
-          </button>
-        )}
       </div>
 
       {members.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {members.map((m) => (
-            <span
-              key={m}
-              className="rounded-full px-3 py-1 text-sm"
-              style={{ background: "var(--accent-build-soft)", color: "var(--accent-build)" }}
-            >
-              {m}
-            </span>
-          ))}
+        <div className="flex items-center gap-3">
+          <Avatars names={members} max={8} />
+          <span className="text-sm" style={{ color: "#9A9A9A" }}>{members.join(" · ")}</span>
         </div>
       )}
 
-      <button
-        onClick={onResolve}
-        className="w-full rounded-lg py-3 text-sm font-medium text-white"
-        style={{ background: "var(--accent-build)" }}
-      >
+      <button onClick={onResolve} className="w-full rounded-full py-[17px] text-[1.02rem] font-bold transition hover:-translate-y-[2px]" style={{ background: accent.base, color: "#161616", boxShadow: `0 18px 44px -18px ${soft(accent, 0.85)}` }}>
         Sonuçlandır
       </button>
     </div>

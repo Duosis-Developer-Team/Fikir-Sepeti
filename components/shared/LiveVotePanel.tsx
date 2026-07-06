@@ -2,109 +2,75 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import type { Idea, Phase } from "@/lib/types";
+import { soft, type Accent } from "@/lib/accent";
+import { AnimatedNumber } from "./AnimatedNumber";
 
-type Accent = "social" | "build";
-
-/**
- * ★ Realtime oylama primitifinin TEK görsel component'i.
- * Sosyal oy, build finalist seçimi ve presenter oyu — üçü de bunu render eder.
- * Fark sadece boyut/stil: presenter'da dev, oy butonsuz; diğerlerinde interaktif.
- */
+/** Oylama Detay'a göre canlı oy satırları — aksan renkli. */
 export function LiveVotePanel({
   ideas,
   phase,
   myVoteId,
   onVote,
-  accent = "social",
-  size = "normal",
-  leaderOnly = false,
+  accent,
 }: {
   ideas: Idea[];
   phase: Phase;
   myVoteId?: string;
   onVote?: (ideaId: string, phase: Phase) => void;
-  accent?: Accent;
-  size?: "normal" | "presenter";
-  leaderOnly?: boolean; // presenter: sadece lider bar renkli
+  accent: Accent;
 }) {
-  const accentVar = accent === "build" ? "var(--accent-build)" : "var(--accent-social)";
-  const softVar = accent === "build" ? "var(--accent-build-soft)" : "var(--accent-social-soft)";
-  const max = Math.max(1, ...ideas.map((i) => i.vote_count));
-  const leaderCount = Math.max(0, ...ideas.map((i) => i.vote_count));
-  const isPresenter = size === "presenter";
-  const voted = Boolean(myVoteId);
+  const sorted = [...ideas].sort((a, b) => b.vote_count - a.vote_count);
+  const max = Math.max(1, ...sorted.map((i) => i.vote_count));
+  const leaderCount = Math.max(0, ...sorted.map((i) => i.vote_count));
 
   return (
-    <div className={isPresenter ? "space-y-4" : "space-y-2.5"}>
+    <div className="flex flex-col gap-3">
       <AnimatePresence initial={false}>
-        {ideas.map((idea) => {
+        {sorted.map((idea, rank) => {
           const pct = (idea.vote_count / max) * 100;
           const mine = myVoteId === idea.id;
-          const isLeader = idea.vote_count === leaderCount && leaderCount > 0;
-          const colored = leaderOnly ? isLeader : true;
+          const lead = idea.vote_count === leaderCount && leaderCount > 0;
           return (
             <motion.div
               key={idea.id}
               layout
-              initial={{ opacity: 0, y: 6 }}
+              initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={{ type: "spring", stiffness: 400, damping: 30 }}
-              className={`relative overflow-hidden rounded-[var(--radius)] border ${
-                isPresenter ? "border-white/10 bg-white/5" : "border-[var(--border)] bg-[var(--surface)]"
-              }`}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ type: "spring", stiffness: 380, damping: 32 }}
+              className="relative overflow-hidden rounded-[18px]"
+              style={{
+                background: "#272727",
+                border: `1px solid ${lead ? soft(accent, 0.5) : "rgba(255,255,255,0.09)"}`,
+              }}
             >
-              {/* dolum barı */}
-              <motion.div
-                className="absolute inset-y-0 left-0"
-                style={{ background: colored ? softVar : "rgba(120,120,120,0.12)" }}
-                initial={false}
-                animate={{ width: `${pct}%` }}
-                transition={{ type: "spring", stiffness: 260, damping: 30 }}
-              />
               <div
-                className={`relative flex items-center justify-between gap-3 ${
-                  isPresenter ? "px-6 py-5" : "px-3.5 py-3"
-                }`}
-              >
-                <div className="min-w-0">
-                  <p
-                    className={`truncate font-medium ${
-                      isPresenter ? "text-2xl" : "text-sm"
-                    } ${isPresenter ? "text-white" : "text-[var(--text)]"}`}
-                  >
-                    {idea.text}
-                  </p>
-                  {idea.presenter && (
-                    <p className={`truncate text-[var(--text-muted)] ${isPresenter ? "text-base" : "text-xs"}`}>
-                      {idea.presenter}
-                      {idea.live_at ? ` · ${idea.live_at}` : ""}
-                    </p>
+                className="absolute inset-y-0 left-0"
+                style={{ width: `${pct}%`, background: soft(accent, lead ? 0.2 : 0.09), transition: "width 600ms cubic-bezier(.2,.8,.2,1)" }}
+              />
+              <div className="relative z-[1] flex items-center gap-[18px] px-[22px] py-5">
+                <span className="font-display tnum w-5 shrink-0 text-[1.05rem]" style={{ color: "#6E6E6E" }}>{rank + 1}</span>
+                <div className="min-w-0 flex-1">
+                  <div className="font-display text-[1.2rem] font-semibold leading-[1.15]" style={{ color: "#EDEDED" }}>{idea.text}</div>
+                  {(idea.tag || idea.created_by) && (
+                    <div className="mt-[3px] text-[0.85rem]" style={{ color: "#9A9A9A" }}>
+                      {idea.tag ? `${idea.tag} · ` : ""}{idea.created_by ?? ""}
+                    </div>
                   )}
                 </div>
-
-                <div className="flex shrink-0 items-center gap-3">
-                  <span
-                    className={`tabular-nums font-medium ${isPresenter ? "text-3xl" : "text-sm"}`}
-                    style={{ color: colored ? accentVar : undefined }}
+                <span className="font-display tnum w-[46px] shrink-0 text-right text-[1.7rem] font-bold" style={{ color: lead ? accent.base : "#EDEDED" }}>
+                  <AnimatedNumber value={idea.vote_count} />
+                </span>
+                {onVote && (
+                  <button
+                    onClick={() => onVote(idea.id, phase)}
+                    disabled={mine}
+                    className="shrink-0 rounded-full px-[18px] py-[10px] text-[0.9rem] font-semibold transition"
+                    style={mine ? { background: accent.base, color: "#161616" } : { background: "#EDEDED", color: "#161616" }}
                   >
-                    {idea.vote_count}
-                  </span>
-                  {!isPresenter && onVote && (
-                    <button
-                      onClick={() => onVote(idea.id, phase)}
-                      disabled={voted}
-                      className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition disabled:opacity-45"
-                      style={
-                        mine
-                          ? { background: accentVar, color: "#fff" }
-                          : { background: "var(--surface-2)", color: "var(--text)" }
-                      }
-                    >
-                      {mine ? "oyun ✓" : voted ? "—" : "oy ver"}
-                    </button>
-                  )}
-                </div>
+                    {mine ? "oyun ✓" : "oy ver"}
+                  </button>
+                )}
               </div>
             </motion.div>
           );
