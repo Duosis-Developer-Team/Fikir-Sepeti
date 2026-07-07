@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useNameContext } from "@/components/AuthGate";
@@ -248,12 +249,16 @@ function Featured({ basket, ideas }: { basket: Basket; ideas: Idea[] }) {
 
 function Wordmark() {
   return (
-    <div className="flex items-center gap-2.5">
-      <span className="font-display grid h-[30px] w-[30px] place-items-center rounded-[9px] text-[1.05rem] font-extrabold" style={{ background: "linear-gradient(140deg,#F2795F,#E7A93F)", color: "#0F0F0F" }}>
-        F
-      </span>
-      <span className="font-display text-[1.02rem] font-bold tracking-tight" style={{ color: T.text }}>Fikir Sepeti</span>
-    </div>
+    <Link href="/" className="flex shrink-0 items-center" aria-label="FikirSepeti ana sayfa">
+      <Image
+        src="/brand/fikirsepeti-logo.png"
+        alt="FikirSepeti"
+        width={958}
+        height={220}
+        priority
+        className="h-8 w-auto object-contain sm:h-9"
+      />
+    </Link>
   );
 }
 
