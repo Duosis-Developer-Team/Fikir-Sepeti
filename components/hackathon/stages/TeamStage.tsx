@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { motion } from "motion/react";
-import { rebuildTeams, partition, startHackathonTimer } from "@/lib/hackathon";
+import { rebuildTeams, partition, startHackathonTimer, renameTeam } from "@/lib/hackathon";
 import { setBasketPhase } from "@/lib/db";
 import type { StageContext } from "../contract";
 import { GOLD, dim } from "../contract";
-import { Card, GoldButton, Avatar, StageHeadline } from "../ui";
+import { GoldButton, Avatar, StageHeadline } from "../ui";
 
 export function TeamStage(ctx: StageContext) {
   const { data, config, isAdmin, refresh } = ctx;
@@ -39,9 +39,18 @@ export function TeamStage(ctx: StageContext) {
     }
   };
 
-  // manuel atama (sadece groups + manual)
-  const [assign, setAssign] = useState<Record<string, number>>({});
+  // takım ismi düzenleme (kurulmuş takımlarda)
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const saveRename = async () => {
+    if (editingId) { await renameTeam(editingId, editName); setEditingId(null); refresh(); }
+  };
+
+  // manuel atama (sadece groups + manual) — sürükle-bırak
+  const [assign, setAssign] = useState<Record<string, number | undefined>>({});
+  const [overIdx, setOverIdx] = useState<number | null>(null);
   const count = config.groups?.count ?? 3;
+  const assignTo = (uid: string, ti: number | undefined) => setAssign((a) => ({ ...a, [uid]: ti }));
   const saveManual = async () => {
     const buckets = Array.from({ length: count }, () => [] as string[]);
     participants.forEach((p) => {
@@ -69,9 +78,30 @@ export function TeamStage(ctx: StageContext) {
                 className="rounded-[22px] p-6"
                 style={{ background: "var(--card)", border: "1px solid rgba(var(--border-rgb),0.09)", boxShadow: "var(--card-shadow)" }}
               >
-                <div className="flex items-center justify-between">
-                  <h3 className="font-display text-[1.2rem] font-bold" style={{ color: GOLD }}>{t.name}</h3>
-                  <span className="tnum text-[0.82rem]" style={{ color: dim(0.45) }}>{mem.length} kişi</span>
+                <div className="flex items-center justify-between gap-2">
+                  {isAdmin && editingId === t.id ? (
+                    <input
+                      autoFocus
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      onBlur={saveRename}
+                      onKeyDown={(e) => { if (e.key === "Enter") saveRename(); if (e.key === "Escape") setEditingId(null); }}
+                      className="font-display w-full rounded-lg px-2 py-1 text-[1.2rem] font-bold outline-none"
+                      style={{ background: "var(--surface-2)", border: `1px solid ${GOLD}`, color: GOLD }}
+                    />
+                  ) : (
+                    <button
+                      onClick={() => { if (isAdmin) { setEditingId(t.id); setEditName(t.name); } }}
+                      className="group inline-flex items-center gap-1.5"
+                      style={{ cursor: isAdmin ? "text" : "default" }}
+                    >
+                      <span className="font-display text-[1.2rem] font-bold" style={{ color: GOLD }}>{t.name}</span>
+                      {isAdmin && (
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-0 transition-opacity group-hover:opacity-60" aria-hidden><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+                      )}
+                    </button>
+                  )}
+                  <span className="tnum shrink-0 text-[0.82rem]" style={{ color: dim(0.45) }}>{mem.length} kişi</span>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-1.5">
                   {mem.map((m) => <Avatar key={m.id} name={nameOf(m.user_id)} size={34} ring="var(--card)" />)}
@@ -101,27 +131,58 @@ export function TeamStage(ctx: StageContext) {
   }
 
   if (mode === "groups" && config.groups?.assignment === "manual") {
+    const inTeam = (ti: number) => participants.filter((p) => assign[p.user_id] === ti);
+    const unassigned = participants.filter((p) => assign[p.user_id] == null);
+    const dropTo = (ti: number | undefined) => (e: React.DragEvent) => {
+      e.preventDefault();
+      const uid = e.dataTransfer.getData("text/plain");
+      if (uid) assignTo(uid, ti);
+      setOverIdx(null);
+    };
+    const Chip = ({ uid }: { uid: string }) => (
+      <div
+        draggable
+        onDragStart={(e) => e.dataTransfer.setData("text/plain", uid)}
+        className="flex cursor-grab items-center gap-2 rounded-full py-1 pl-1 pr-3 transition active:cursor-grabbing"
+        style={{ background: "var(--surface-2)", border: "1px solid rgba(var(--border-rgb),0.1)" }}
+      >
+        <Avatar name={nameOf(uid)} size={26} />
+        <span className="text-[0.9rem]" style={{ color: "var(--text)" }}>{nameOf(uid)}</span>
+      </div>
+    );
     return (
-      <div className="mx-auto max-w-[760px]">
-        <StageHeadline pre="Elle takım" accent="ata" sub="Her kişiye bir takım seç." />
-        <Card>
-          <div className="flex flex-col gap-2.5">
-            {participants.map((p) => (
-              <div key={p.id} className="flex items-center gap-3 rounded-2xl px-4 py-2.5" style={{ background: "var(--surface-2)", border: "1px solid rgba(var(--border-rgb),0.08)" }}>
-                <span className="flex-1 text-[0.95rem]" style={{ color: "var(--text)" }}>{nameOf(p.user_id)}</span>
-                <div className="flex gap-1.5">
-                  {Array.from({ length: count }, (_, i) => {
-                    const on = assign[p.user_id] === i;
-                    return (
-                      <button key={i} onClick={() => setAssign((a) => ({ ...a, [p.user_id]: i }))} className="h-8 w-8 rounded-lg text-[0.85rem] font-bold transition" style={{ background: on ? GOLD : "var(--surface-2)", color: on ? "#17150F" : "var(--text)" }}>{i + 1}</button>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
+      <div className="mx-auto max-w-[980px]">
+        <StageHeadline pre="Elle takım" accent="ata" sub="Kişileri sürükleyip takımlara bırak." />
+        {/* atanmamış havuz */}
+        <div onDragOver={(e) => e.preventDefault()} onDrop={dropTo(undefined)} className="mb-5 rounded-2xl p-4" style={{ background: "var(--card)", border: "1px dashed rgba(var(--border-rgb),0.2)" }}>
+          <span className="text-[0.7rem] font-semibold uppercase tracking-[0.2em]" style={{ color: dim(0.5) }}>Atanmamış · {unassigned.length}</span>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {unassigned.map((p) => <Chip key={p.id} uid={p.user_id} />)}
+            {!unassigned.length && <span className="text-[0.85rem]" style={{ color: dim(0.35) }}>hepsi atandı ✓</span>}
           </div>
-          <div className="mt-5"><GoldButton onClick={saveManual}>Takımları kaydet →</GoldButton></div>
-        </Card>
+        </div>
+        {/* takım kutuları */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: count }, (_, ti) => (
+            <div
+              key={ti}
+              onDragOver={(e) => { e.preventDefault(); setOverIdx(ti); }}
+              onDragLeave={() => setOverIdx((o) => (o === ti ? null : o))}
+              onDrop={dropTo(ti)}
+              className="min-h-[132px] rounded-2xl p-4 transition"
+              style={{ background: "var(--card)", border: `1px solid ${overIdx === ti ? GOLD : "rgba(var(--border-rgb),0.09)"}`, boxShadow: "var(--card-shadow)" }}
+            >
+              <span className="font-display block text-[1.05rem] font-bold" style={{ color: GOLD }}>Takım {ti + 1}</span>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {inTeam(ti).map((p) => <Chip key={p.id} uid={p.user_id} />)}
+                {!inTeam(ti).length && <span className="text-[0.82rem]" style={{ color: dim(0.32) }}>buraya sürükle</span>}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-8 flex justify-center">
+          <GoldButton onClick={saveManual} disabled={unassigned.length > 0}>Takımları kaydet →</GoldButton>
+        </div>
       </div>
     );
   }

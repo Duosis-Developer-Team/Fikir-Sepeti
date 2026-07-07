@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useNameContext } from "@/components/AuthGate";
+import { useNameContext, useSession } from "@/components/AuthGate";
 import { BrandIcon } from "@/components/BrandIcon";
 import { Avatars } from "@/components/shared/Avatars";
 import { loadHome } from "@/lib/db";
@@ -57,6 +57,7 @@ function MineCard({ basket, ideas }: { basket: Basket; ideas: Idea[] }) {
 
 export default function ProfilePage() {
   const { name } = useNameContext();
+  const { signOut } = useSession();
   const [baskets, setBaskets] = useState<Basket[]>([]);
   const [ideasBy, setIdeasBy] = useState<Record<string, Idea[]>>({});
   const [loading, setLoading] = useState(true);
@@ -81,16 +82,26 @@ export default function ProfilePage() {
 
   return (
     <main className="mx-auto max-w-[980px] px-[clamp(24px,5vw,40px)] pb-[90px] pt-[clamp(32px,5vw,56px)]">
-      <div className="flex items-center gap-4">
-        <span className="grid h-14 w-14 place-items-center rounded-2xl text-[1.4rem] font-bold" style={{ background: "linear-gradient(135deg,#E7A93F,#F2795F)", color: "#0F0F0F" }}>
-          {(name || "?").charAt(0).toLocaleUpperCase("tr")}
-        </span>
-        <div>
-          <h1 className="font-display text-[2rem] font-bold leading-none" style={{ color: "var(--text)" }}>{name || "…"}</h1>
-          <p className="mt-1.5 text-[0.92rem]" style={{ color: "var(--text-muted)" }}>
-            <span className="font-semibold" style={{ color: "var(--text)" }}>{mine.length}</span> sepet açtın · <span className="font-semibold" style={{ color: "var(--text)" }}>{openCount}</span> aktif
-          </p>
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <span className="grid h-14 w-14 place-items-center rounded-2xl text-[1.4rem] font-bold" style={{ background: "linear-gradient(135deg,#E7A93F,#F2795F)", color: "#0F0F0F" }}>
+            {(name || "?").charAt(0).toLocaleUpperCase("tr")}
+          </span>
+          <div>
+            <h1 className="font-display text-[2rem] font-bold leading-none" style={{ color: "var(--text)" }}>{name || "…"}</h1>
+            <p className="mt-1.5 text-[0.92rem]" style={{ color: "var(--text-muted)" }}>
+              <span className="font-semibold" style={{ color: "var(--text)" }}>{mine.length}</span> sepet açtın · <span className="font-semibold" style={{ color: "var(--text)" }}>{openCount}</span> aktif
+            </p>
+          </div>
         </div>
+        <button
+          onClick={signOut}
+          className="inline-flex items-center gap-2 rounded-full border px-5 py-2.5 text-[0.9rem] font-semibold transition hover:border-[rgba(242,121,95,0.5)]"
+          style={{ borderColor: "rgba(var(--border-rgb),0.14)", color: "var(--text-2)" }}
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" /></svg>
+          Çıkış yap
+        </button>
       </div>
 
       <div className="mt-9 flex items-center gap-4">

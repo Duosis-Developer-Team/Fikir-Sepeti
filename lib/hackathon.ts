@@ -63,6 +63,10 @@ export async function setSelectedIdea(basketId: string, ideaId: string | null) {
 
 // ---- Takımlar ----
 
+export async function renameTeam(teamId: string, name: string) {
+  await supabase.from("teams").update({ name: name.trim() || "Takım" }).eq("id", teamId);
+}
+
 export async function listTeams(basketId: string): Promise<Team[]> {
   const { data } = await supabase
     .from("teams")
