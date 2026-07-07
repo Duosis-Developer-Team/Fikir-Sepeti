@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useNameContext } from "@/components/NameGate";
+import { useNameContext } from "@/components/AuthGate";
 import { NewBasketModal } from "@/components/NewBasketModal";
 import { Avatars } from "@/components/shared/Avatars";
 import { createBasket, loadHome } from "@/lib/db";
@@ -83,7 +83,7 @@ function authorsOf(basket: Basket, ideas: Idea[]): string[] {
 // Canlı = build oylama fazında VEYA sosyal oylama (aktif, oy almış).
 function isLiveBasket(b: Basket, ideas: Idea[]): boolean {
   if (b.status === "resolved") return false;
-  if (b.type === "build") return b.phase === "voting";
+  if (b.type === "hackathon") return b.phase === "demo";
   return b.resolve_method === "vote" && ideas.reduce((s, i) => s + i.vote_count, 0) > 0;
 }
 
@@ -119,7 +119,7 @@ function MiniBars({ ideas, accent }: { ideas: Idea[]; accent: Accent }) {
 
 function RichCard({ basket, ideas }: { basket: Basket; ideas: Idea[] }) {
   const a = accentFor(basket);
-  const raffle = basket.resolve_method === "raffle" && basket.type !== "build";
+  const raffle = basket.resolve_method === "raffle" && basket.type !== "hackathon";
   const total = ideas.reduce((s, i) => s + i.vote_count, 0);
   const authors = authorsOf(basket, ideas);
   const live = isLiveBasket(basket, ideas);
@@ -148,7 +148,7 @@ function RichCard({ basket, ideas }: { basket: Basket; ideas: Idea[] }) {
       <div className="flex items-center justify-between">
         <span className="inline-flex items-center gap-[7px] text-[0.68rem] font-bold uppercase tracking-[0.2em]" style={{ color: a.base }}>
           <span className="h-1.5 w-1.5 rounded-full" style={{ background: a.base }} />
-          {basket.type === "build" ? "build" : "sosyal"}
+          {basket.type === "hackathon" ? "hackathon" : "etkinlik"}
         </span>
         <span className="flex items-center gap-1.5 text-[0.76rem]" style={{ color: live ? a.base : T.muted }}>
           {live && <span className="h-1.5 w-1.5 rounded-full" style={{ background: a.base, animation: "fs-livedot 2s ease-in-out infinite" }} />}

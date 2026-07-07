@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useNameContext } from "@/components/NameGate";
+import { useNameContext } from "@/components/AuthGate";
 import { Avatars } from "@/components/shared/Avatars";
 import { loadHome } from "@/lib/db";
 import { accentFor, soft } from "@/lib/accent";
@@ -11,16 +11,19 @@ import type { Basket, Idea } from "@/lib/types";
 
 const PHASE_LABEL: Record<string, string> = {
   ideas: "fikir topluyor",
-  finalists: "finalist oylaması",
-  demos: "demo hazırlığı",
-  voting: "canlı oylama",
-  squad: "squad kuruluyor",
+  lobby: "lobide bekliyor",
+  idea: "fikir belirleniyor",
+  team: "takımlar kuruluyor",
+  demo: "canlı demo",
+  feedback: "geri bildirim",
+  production: "üretimde",
+  done: "tamamlandı",
   resolved: "sonuçlandı",
 };
 
 function MineCard({ basket, ideas }: { basket: Basket; ideas: Idea[] }) {
   const a = accentFor(basket);
-  const raffle = basket.resolve_method === "raffle" && basket.type !== "build";
+  const raffle = basket.resolve_method === "raffle" && basket.type !== "hackathon";
   const total = ideas.reduce((s, i) => s + i.vote_count, 0);
   const resolved = basket.status === "resolved";
   const status = resolved ? "sonuçlandı" : raffle ? "kura havuzu" : PHASE_LABEL[basket.phase] ?? basket.phase;
@@ -36,7 +39,7 @@ function MineCard({ basket, ideas }: { basket: Basket; ideas: Idea[] }) {
       <div className="flex items-center justify-between">
         <span className="inline-flex items-center gap-[7px] text-[0.68rem] font-bold uppercase tracking-[0.2em]" style={{ color: a.base }}>
           <span className="h-1.5 w-1.5 rounded-full" style={{ background: a.base }} />
-          {basket.type === "build" ? "build" : "sosyal"}
+          {basket.type === "hackathon" ? "hackathon" : "etkinlik"}
         </span>
         <span className="text-[0.76rem]" style={{ color: "#9A9A9A" }}>{status}</span>
       </div>

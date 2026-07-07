@@ -21,27 +21,27 @@ export function NewBasketModal({
   onCreate: (input: { title: string; type: BasketType; resolve_method: ResolveMethod }) => Promise<void>;
 }) {
   const [title, setTitle] = useState("");
-  const [type, setType] = useState<BasketType>("social");
+  const [type, setType] = useState<BasketType>("etkinlik");
   const [method, setMethod] = useState<ResolveMethod>("vote");
   const [busy, setBusy] = useState(false);
 
-  const accent = type === "build" ? GOLD : CORAL;
+  const accent = type === "hackathon" ? GOLD : CORAL;
   const ready = title.trim().length >= 2 && !busy;
 
   const submit = async () => {
     if (!ready) return;
     setBusy(true);
-    await onCreate({ title: title.trim(), type, resolve_method: type === "build" ? "vote" : method });
+    await onCreate({ title: title.trim(), type, resolve_method: type === "hackathon" ? "vote" : method });
     setBusy(false);
     setTitle("");
-    setType("social");
+    setType("etkinlik");
     setMethod("vote");
     onClose();
   };
 
   const TypeCard = ({ v, label, desc }: { v: BasketType; label: string; desc: string }) => {
     const on = type === v;
-    const c = v === "build" ? GOLD : CORAL;
+    const c = v === "hackathon" ? GOLD : CORAL;
     return (
       <button
         onClick={() => setType(v)}
@@ -103,12 +103,12 @@ export function NewBasketModal({
             />
 
             <div className="mt-4 grid grid-cols-2 gap-3">
-              <TypeCard v="social" label="Sosyal" desc="fikir at, oy ver / kura" />
-              <TypeCard v="build" label="Build" desc="iç hackathon akışı" />
+              <TypeCard v="etkinlik" label="Etkinlik" desc="fikir at, oy ver / kura" />
+              <TypeCard v="hackathon" label="Hackathon" desc="lobi · takım · demo (lobide kurulur)" />
             </div>
 
             <AnimatePresence initial={false}>
-              {type === "social" && (
+              {type === "etkinlik" && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}

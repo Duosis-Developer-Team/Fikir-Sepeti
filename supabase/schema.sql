@@ -3,18 +3,20 @@
 create table if not exists baskets (
   id uuid primary key default gen_random_uuid(),
   title text not null,
-  type text not null default 'social',            -- 'social' | 'build'
-  resolve_method text not null default 'vote',    -- sosyal: 'vote' | 'raffle'
+  type text not null default 'etkinlik',          -- 'etkinlik' | 'hackathon'
+  resolve_method text not null default 'vote',    -- etkinlik: 'vote' | 'raffle'
   phase text not null default 'ideas',            -- ortak faz alanı
   status text not null default 'active',           -- 'active' | 'resolved'
   winner_idea_id uuid,
+  selected_idea_id uuid,                          -- hackathon: seçilen fikir
+  config jsonb not null default '{}'::jsonb,      -- hackathon config (idea/team modülleri)
   current_demo_idx int default 0,                 -- presenter: kaçıncı demo sahnede
   created_by text,
   created_at timestamptz default now()
 );
 -- phase değerleri:
---   sosyal: 'ideas' -> 'resolved'
---   build:  'ideas' -> 'finalists' -> 'demos' -> 'voting' -> 'squad' -> 'resolved'
+--   etkinlik:  'ideas' -> 'resolved'
+--   hackathon: 'lobby' -> 'idea' -> 'team' -> 'demo' -> 'feedback' -> 'production' -> 'done'
 
 create table if not exists ideas (
   id uuid primary key default gen_random_uuid(),
@@ -48,10 +50,62 @@ create table if not exists squad_members (
   unique (basket_id, member)
 );
 
+-- ── hackathon modüler tabloları ──
+create table if not exists hackathon_participants (
+  id uuid primary key default gen_random_uuid(),
+  basket_id uuid not null references baskets(id) on delete cascade,
+  user_id text not null,                          -- Azure kimliği (e-posta)
+  email text,
+  display_name text,
+  role text not null default 'member',            -- 'admin' | 'member'
+  joined_at timestamptz default now(),
+  unique (basket_id, user_id)
+);
+
+create table if not exists teams (
+  id uuid primary key default gen_random_uuid(),
+  basket_id uuid not null references baskets(id) on delete cascade,
+  name text not null,
+  created_at timestamptz default now()
+);
+
+create table if not exists team_members (
+  id uuid primary key default gen_random_uuid(),
+  team_id uuid not null references teams(id) on delete cascade,
+  basket_id uuid not null references baskets(id) on delete cascade,
+  user_id text not null,
+  unique (team_id, user_id)
+);
+
+create table if not exists team_votes (
+  id uuid primary key default gen_random_uuid(),
+  team_id uuid not null references teams(id) on delete cascade,
+  basket_id uuid not null references baskets(id) on delete cascade,
+  voter text not null,
+  created_at timestamptz default now(),
+  unique (basket_id, voter)                        -- demo fazında kişi başı 1 oy
+);
+
+create table if not exists feedback (
+  id uuid primary key default gen_random_uuid(),
+  basket_id uuid not null references baskets(id) on delete cascade,
+  team_id uuid references teams(id) on delete cascade,
+  idea_id uuid references ideas(id) on delete cascade,
+  author_id text,
+  author_name text,
+  text text not null,
+  created_at timestamptz default now()
+);
+
 alter table baskets disable row level security;
 alter table ideas disable row level security;
 alter table votes disable row level security;
 alter table squad_members disable row level security;
+alter table hackathon_participants disable row level security;
+alter table teams disable row level security;
+alter table team_members disable row level security;
+alter table team_votes disable row level security;
+alter table feedback disable row level security;
 
 -- oy sayacı
 create or replace function bump_vote_count() returns trigger as $$
@@ -75,4 +129,9 @@ begin
   begin execute 'alter publication supabase_realtime add table votes'; exception when duplicate_object then null; end;
   begin execute 'alter publication supabase_realtime add table ideas'; exception when duplicate_object then null; end;
   begin execute 'alter publication supabase_realtime add table baskets'; exception when duplicate_object then null; end;
+  begin execute 'alter publication supabase_realtime add table hackathon_participants'; exception when duplicate_object then null; end;
+  begin execute 'alter publication supabase_realtime add table teams'; exception when duplicate_object then null; end;
+  begin execute 'alter publication supabase_realtime add table team_members'; exception when duplicate_object then null; end;
+  begin execute 'alter publication supabase_realtime add table team_votes'; exception when duplicate_object then null; end;
+  begin execute 'alter publication supabase_realtime add table feedback'; exception when duplicate_object then null; end;
 end $$;

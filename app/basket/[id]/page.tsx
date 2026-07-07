@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useNameContext } from "@/components/NameGate";
+import { useNameContext } from "@/components/AuthGate";
 import { SocialBasket } from "@/components/social/SocialBasket";
-import { BuildBasket } from "@/components/build/BuildBasket";
+import { HackathonRunner } from "@/components/hackathon/HackathonRunner";
 import { supabase } from "@/lib/supabase";
 import { accentFor } from "@/lib/accent";
 import type { Basket } from "@/lib/types";
@@ -25,16 +25,19 @@ export default function BasketDetail() {
   }, [id]);
 
   const a = basket ? accentFor(basket) : null;
+  const isHackathon = basket?.type === "hackathon";
   const eyebrow = basket
-    ? basket.type === "build"
-      ? "Build · Hackathon"
+    ? isHackathon
+      ? "Hackathon"
       : basket.resolve_method === "raffle"
-        ? "Sosyal · Kura"
-        : "Sosyal · Oylama"
+        ? "Etkinlik · Kura"
+        : "Etkinlik · Oylama"
     : "";
 
+  const maxW = isHackathon ? "max-w-[1280px]" : "max-w-[880px]";
+
   return (
-    <main className="mx-auto max-w-[880px] px-[clamp(24px,5vw,40px)] pb-[90px] pt-[clamp(32px,5vw,56px)]">
+    <main className={`mx-auto ${maxW} px-[clamp(24px,5vw,40px)] pb-[90px] pt-[clamp(28px,4vw,48px)]`}>
       <div className="flex justify-center">
         <Link
           href="/"
@@ -56,15 +59,15 @@ export default function BasketDetail() {
         </div>
       )}
 
-      <div className="mt-7">
+      <div className="mt-8">
         {notFound ? (
-          <p className="text-sm" style={{ color: "#9A9A9A" }}>Sepet bulunamadı.</p>
+          <p className="text-center text-sm" style={{ color: "#9A9A9A" }}>Sepet bulunamadı.</p>
         ) : !basket || !a ? (
-          <div className="flex flex-col gap-3">
+          <div className="mx-auto flex max-w-[760px] flex-col gap-3">
             {[0, 1, 2].map((i) => <div key={i} className="h-16 animate-pulse rounded-[18px]" style={{ background: "#242424" }} />)}
           </div>
-        ) : basket.type === "build" ? (
-          <BuildBasket basket={basket} voter={name} accent={a} />
+        ) : isHackathon ? (
+          <HackathonRunner basketId={basket.id} />
         ) : (
           <SocialBasket basket={basket} voter={name} accent={a} />
         )}

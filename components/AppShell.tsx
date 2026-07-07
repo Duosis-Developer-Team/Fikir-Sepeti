@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useNameContext } from "./NameGate";
+import { useNameContext } from "./AuthGate";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();

@@ -19,7 +19,7 @@ function hash(s: string): number {
 }
 
 export function accentFor(basket: { id: string; type: string }): Accent {
-  if (basket.type === "build") return ACCENTS.gold;
+  if (basket.type === "hackathon") return ACCENTS.gold;
   return SOCIAL[hash(basket.id) % SOCIAL.length];
 }
 

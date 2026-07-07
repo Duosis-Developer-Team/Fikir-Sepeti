@@ -40,12 +40,14 @@ export async function createBasket(input: {
   resolve_method: ResolveMethod;
   created_by: string;
 }): Promise<Basket | null> {
+  const isHackathon = input.type === "hackathon";
   const { data } = await supabase
     .from("baskets")
     .insert({
       title: input.title,
       type: input.type,
-      resolve_method: input.type === "social" ? input.resolve_method : "vote",
+      resolve_method: isHackathon ? "vote" : input.resolve_method,
+      phase: isHackathon ? "lobby" : "ideas",
       created_by: input.created_by,
     })
     .select()

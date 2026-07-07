@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useParams } from "next/navigation";
 import QRCode from "qrcode";
-import { useNameContext } from "@/components/NameGate";
+import { useNameContext } from "@/components/AuthGate";
 import { useRealtimeVotes } from "@/lib/useRealtimeVotes";
 import { setCurrentDemoIdx } from "@/lib/db";
 import { AnimatedNumber } from "@/components/shared/AnimatedNumber";

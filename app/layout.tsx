@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Bricolage_Grotesque, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
-import NameGate from "@/components/NameGate";
+import AuthGate from "@/components/AuthGate";
 import { AppShell } from "@/components/AppShell";
 
 const display = Bricolage_Grotesque({
@@ -29,9 +29,9 @@ export default function RootLayout({
   return (
     <html lang="tr" className={`${display.variable} ${body.variable} h-full antialiased`}>
       <body className="min-h-full">
-        <NameGate>
+        <AuthGate>
           <AppShell>{children}</AppShell>
-        </NameGate>
+        </AuthGate>
       </body>
     </html>
   );
