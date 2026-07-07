@@ -1,0 +1,28 @@
+name: Deploy to Vercel (production)
+
+# main'e her push (kim pushlarsa) -> fikir-sepeti-duosis production deploy.
+# Vercel'in GitHub App'i (org owner onayı) gerekmez; Vercel CLI + repo secret'ları kullanır.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: vercel-prod
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Vercel CLI
+        run: npm install -g vercel@latest
+      - name: Deploy to production
+        run: vercel deploy --prod --yes --token="${{ secrets.VERCEL_TOKEN }}"
