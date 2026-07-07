@@ -102,35 +102,37 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
                 İş e-postanla giriş yap. Oyların, fikirlerin ve takımların hesabına bağlanır.
               </p>
 
-              <button
-                onClick={loginAzure}
-                className="mt-6 flex w-full items-center justify-center gap-2.5 rounded-full py-3 text-[0.95rem] font-semibold transition hover:opacity-90"
-                style={{ background: "#EDEDED", color: "#0F0F0F" }}
-              >
-                <MicrosoftMark /> Microsoft ile giriş
-              </button>
-
-              {BYPASS && (
-                <div className="mt-6 border-t pt-5" style={{ borderColor: "rgba(255,255,255,0.09)" }}>
-                  <p className="text-[0.75rem] uppercase tracking-[0.18em]" style={{ color: "#6E6E6E" }}>Geliştirici girişi</p>
+              {BYPASS ? (
+                <>
                   <input
                     autoFocus
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && devLogin()}
-                    placeholder="ad ya da e-posta"
-                    className="mt-2.5 w-full rounded-lg px-3 py-2.5 text-[0.9rem] outline-none"
+                    placeholder="Adın ya da iş e-postan"
+                    className="mt-6 w-full rounded-lg px-3.5 py-3 text-[0.95rem] outline-none"
                     style={{ background: "#2A2A2A", border: "1px solid rgba(255,255,255,0.09)", color: "#EDEDED" }}
                   />
                   <button
                     onClick={devLogin}
                     disabled={draft.trim().length < 2}
-                    className="mt-2.5 w-full rounded-full py-2.5 text-[0.9rem] font-semibold transition disabled:opacity-40"
-                    style={{ background: "#E7A93F", color: "#17150F" }}
+                    className="mt-3 w-full rounded-full py-3 text-[0.95rem] font-semibold transition disabled:opacity-40"
+                    style={{ background: "#EDEDED", color: "#0F0F0F" }}
                   >
-                    Devam (dev)
+                    Devam
                   </button>
-                </div>
+                  <p className="mt-4 flex items-center justify-center gap-2 text-[0.8rem]" style={{ color: "#6E6E6E" }}>
+                    <MicrosoftMark /> Microsoft ile giriş yakında
+                  </p>
+                </>
+              ) : (
+                <button
+                  onClick={loginAzure}
+                  className="mt-6 flex w-full items-center justify-center gap-2.5 rounded-full py-3 text-[0.95rem] font-semibold transition hover:opacity-90"
+                  style={{ background: "#EDEDED", color: "#0F0F0F" }}
+                >
+                  <MicrosoftMark /> Microsoft ile giriş
+                </button>
               )}
             </motion.div>
           </motion.div>
