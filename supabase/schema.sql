@@ -9,7 +9,8 @@ create table if not exists baskets (
   status text not null default 'active',           -- 'active' | 'resolved'
   winner_idea_id uuid,
   selected_idea_id uuid,                          -- hackathon: seçilen fikir
-  config jsonb not null default '{}'::jsonb,      -- hackathon config (idea/team modülleri)
+  config jsonb not null default '{}'::jsonb,      -- hackathon config (idea/team/süre modülleri)
+  hackathon_ends_at timestamptz,                  -- hackathon fazı geri sayım bitişi
   current_demo_idx int default 0,                 -- presenter: kaçıncı demo sahnede
   created_by text,
   created_at timestamptz default now()

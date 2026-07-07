@@ -5,7 +5,7 @@ import type { StageContext } from "../contract";
 import { GOLD, GOLD_SOFT, dim } from "../contract";
 import { Card, GoldButton, Avatar } from "../ui";
 
-export function ProductionStage({ data, isAdmin, refresh }: StageContext) {
+export function ProductionStage({ data, isAdmin }: StageContext) {
   const { basket, teams, members, teamVotes, ideas, participants } = data;
   const selected = ideas.find((i) => i.id === basket.selected_idea_id) ?? null;
   const votesOf = (id: string) => teamVotes.filter((v) => v.team_id === id).length;
@@ -19,7 +19,8 @@ export function ProductionStage({ data, isAdmin, refresh }: StageContext) {
 
   const finalize = async () => {
     await markDone(basket.id, selected?.id ?? null);
-    refresh();
+    // üretime alındı → ana sayfaya dön (tam reload)
+    window.location.href = "/";
   };
 
   return (

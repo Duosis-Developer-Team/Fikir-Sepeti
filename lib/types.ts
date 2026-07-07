@@ -3,7 +3,7 @@ export type ResolveMethod = "vote" | "raffle";
 export type BasketStatus = "active" | "resolved";
 
 // etkinlik:  'ideas' -> 'resolved'
-// hackathon: 'lobby' -> 'idea' -> 'team' -> 'demo' -> 'feedback' -> 'production' -> 'done'
+// hackathon: 'lobby' -> 'idea' -> 'team' -> 'hackathon' -> 'demo' -> 'feedback' -> 'production' -> 'done'
 export type Phase =
   // etkinlik
   | "ideas"
@@ -12,10 +12,13 @@ export type Phase =
   | "lobby"
   | "idea"
   | "team"
+  | "hackathon"
   | "demo"
   | "feedback"
   | "production"
   | "done";
+
+export type DurationUnit = "hour" | "day" | "week";
 
 /** Hackathon config — kod dallanmaz, hangi modülün çalışacağını bu seçer. */
 export type HackathonConfig = {
@@ -26,6 +29,10 @@ export type HackathonConfig = {
     count: number;
     size: number;
     assignment: "random" | "manual";
+  };
+  duration?: {
+    value: number;
+    unit: DurationUnit;
   };
 };
 
@@ -39,6 +46,7 @@ export type Basket = {
   winner_idea_id: string | null;
   selected_idea_id: string | null;
   config: HackathonConfig;
+  hackathon_ends_at: string | null;
   current_demo_idx: number;
   created_by: string | null;
   created_at: string;

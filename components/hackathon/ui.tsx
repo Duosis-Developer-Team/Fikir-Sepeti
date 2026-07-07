@@ -103,6 +103,46 @@ export function StageHeadline({
   );
 }
 
+/** Şık sayı seçici — çirkin native spinner yerine −/+ . */
+export function NumberStepper({
+  value,
+  min = 1,
+  max = 99,
+  onChange,
+  label,
+}: {
+  value: number;
+  min?: number;
+  max?: number;
+  onChange: (n: number) => void;
+  label?: string;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      {label && <span className="text-[0.72rem] font-semibold uppercase tracking-[0.2em]" style={{ color: dim(0.5) }}>{label}</span>}
+      <div className="flex items-center justify-between rounded-2xl p-2" style={{ background: "#2A2A2A", border: "1px solid rgba(255,255,255,0.1)" }}>
+        <StepBtn onClick={() => onChange(Math.max(min, value - 1))} disabled={value <= min}>−</StepBtn>
+        <span className="font-display text-[1.7rem] font-bold tabular-nums" style={{ color: "#EDEDED" }}>{value}</span>
+        <StepBtn onClick={() => onChange(Math.min(max, value + 1))} disabled={value >= max}>+</StepBtn>
+      </div>
+    </div>
+  );
+}
+
+function StepBtn({ children, onClick, disabled }: { children: React.ReactNode; onClick: () => void; disabled?: boolean }) {
+  return (
+    <motion.button
+      whileTap={disabled ? undefined : { scale: 0.88 }}
+      onClick={onClick}
+      disabled={disabled}
+      className="grid h-10 w-10 place-items-center rounded-xl text-[1.4rem] font-bold leading-none transition hover:bg-white/5 disabled:opacity-25"
+      style={{ background: "#333", color: GOLD }}
+    >
+      {children}
+    </motion.button>
+  );
+}
+
 export function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-2.5">

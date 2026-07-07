@@ -1,7 +1,17 @@
 "use client";
 
 import { supabase } from "./supabase";
-import type { Feedback, HackathonConfig, Participant, Team, TeamMember, TeamVote } from "./types";
+import type { DurationUnit, Feedback, HackathonConfig, Participant, Team, TeamMember, TeamVote } from "./types";
+
+const UNIT_MS: Record<DurationUnit, number> = { hour: 3600e3, day: 86400e3, week: 604800e3 };
+
+/** Hackathon fazına geçerken bitiş zamanını (şimdi + süre) yaz. */
+export async function startHackathonTimer(basketId: string, config: HackathonConfig) {
+  const d = config.duration;
+  const ms = d ? d.value * UNIT_MS[d.unit] : UNIT_MS.day;
+  const endsAt = new Date(Date.now() + ms).toISOString();
+  await supabase.from("baskets").update({ hackathon_ends_at: endsAt }).eq("id", basketId);
+}
 
 // ---- Lobi / katılımcılar ----
 

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { setBasketPhase } from "@/lib/db";
-import { joinLobby, listParticipants, listTeamMembers, listTeamVotes, listTeams } from "@/lib/hackathon";
+import { joinLobby, listParticipants, listTeamMembers, listTeamVotes, listTeams, startHackathonTimer } from "@/lib/hackathon";
 import { useSession } from "@/components/AuthGate";
 import type { Basket, Idea } from "@/lib/types";
 import type { HackData, StageContext, StageDef, StagePhase } from "./contract";
@@ -11,6 +11,7 @@ import { PHASE_ORDER, PHASE_LABEL, GOLD, dim, configReady } from "./contract";
 import { LobbyStage } from "./stages/LobbyStage";
 import { IdeaStage } from "./stages/IdeaStage";
 import { TeamStage } from "./stages/TeamStage";
+import { HackathonStage } from "./stages/HackathonStage";
 import { DemoStage } from "./stages/DemoStage";
 import { FeedbackStage } from "./stages/FeedbackStage";
 import { ProductionStage } from "./stages/ProductionStage";
@@ -20,6 +21,7 @@ const STAGES: Record<StagePhase, StageDef> = {
   lobby: { key: "lobby", Comp: LobbyStage, canAdvance: (c) => configReady(c.config) && c.data.participants.length >= 1 },
   idea: { key: "idea", Comp: IdeaStage, canAdvance: (c) => !!c.data.basket.selected_idea_id },
   team: { key: "team", Comp: TeamStage, canAdvance: (c) => c.data.teams.length > 0 },
+  hackathon: { key: "hackathon", Comp: HackathonStage, canAdvance: () => true },
   demo: { key: "demo", Comp: DemoStage, canAdvance: () => true },
   feedback: { key: "feedback", Comp: FeedbackStage, canAdvance: () => true },
   production: { key: "production", Comp: ProductionStage, canAdvance: () => false },
@@ -88,21 +90,28 @@ export function HackathonRunner({ basketId }: { basketId: string }) {
   const prevPhase = PHASE_ORDER[idx - 1];
   const canAdvance = phase !== "done" && phase !== "production" && def.canAdvance(ctx);
 
-  const advance = () => nextPhase && setBasketPhase(basketId, nextPhase).then(load);
-  const goBack = () => prevPhase && setBasketPhase(basketId, prevPhase).then(load);
+  // faza gir (hackathon'a girerken geri sayımı başlat)
+  const enterPhase = async (p: StagePhase) => {
+    if (p === phase) return;
+    if (p === "hackathon" && !data.basket.hackathon_ends_at) await startHackathonTimer(basketId, ctx.config);
+    await setBasketPhase(basketId, p);
+    load();
+  };
+  const advance = () => { if (nextPhase) void enterPhase(nextPhase); };
+  const goBack = () => { if (prevPhase) void setBasketPhase(basketId, prevPhase).then(load); };
 
   return (
     <div className="pb-40">
-      {/* stepper */}
-      <Stepper phase={phase} />
+      {/* stepper — admin herhangi bir faza atlayabilir */}
+      <Stepper phase={phase} isAdmin={isAdmin} onJump={enterPhase} />
 
       {/* aktif modül */}
       <div className="mt-8">
         <def.Comp {...ctx} />
       </div>
 
-      {/* admin faz çubuğu — geri + ileri (lobi kendi navigasyonunu yönetir) */}
-      {isAdmin && phase !== "done" && phase !== "lobby" && (
+      {/* admin faz çubuğu — geri + ileri (lobi ve hackathon kendi navigasyonunu yönetir) */}
+      {isAdmin && phase !== "done" && phase !== "lobby" && phase !== "hackathon" && (
         <div className="fixed inset-x-0 bottom-0 z-30 flex justify-center px-4 pb-5">
           <div className="flex items-center gap-3 rounded-full px-3 py-2.5" style={{ background: "#242424", border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 20px 50px -24px rgba(0,0,0,0.7)" }}>
             <button
@@ -133,19 +142,26 @@ export function HackathonRunner({ basketId }: { basketId: string }) {
   );
 }
 
-function Stepper({ phase }: { phase: StagePhase }) {
+function Stepper({ phase, isAdmin, onJump }: { phase: StagePhase; isAdmin: boolean; onJump: (p: StagePhase) => void }) {
   const steps = PHASE_ORDER.filter((p) => p !== "done");
   const active = PHASE_ORDER.indexOf(phase);
   return (
-    <div className="mx-auto flex max-w-[900px] items-center gap-2 px-2">
+    <div className="mx-auto flex max-w-[1000px] items-center gap-2 px-2">
       {steps.map((p, i) => {
         const done = i < active;
         const on = i === active;
-        return (
-          <div key={p} className="flex flex-1 flex-col items-center gap-1.5">
-            <span className="h-[3px] w-full rounded-full" style={{ background: done ? "rgba(231,169,63,0.5)" : on ? GOLD : "rgba(255,255,255,0.1)" }} />
-            <span className="text-[0.78rem] font-semibold" style={{ color: on ? GOLD : done ? dim(0.55) : dim(0.35) }}>{PHASE_LABEL[p]}</span>
-          </div>
+        const inner = (
+          <>
+            <span className="h-[3px] w-full rounded-full transition-colors" style={{ background: done ? "rgba(231,169,63,0.5)" : on ? GOLD : "rgba(255,255,255,0.1)" }} />
+            <span className="text-[0.78rem] font-semibold transition-colors" style={{ color: on ? GOLD : done ? dim(0.55) : dim(0.35) }}>{PHASE_LABEL[p]}</span>
+          </>
+        );
+        return isAdmin ? (
+          <button key={p} onClick={() => onJump(p)} title={`${PHASE_LABEL[p]}'e geç`} className="flex flex-1 flex-col items-center gap-1.5 rounded-md py-1 transition hover:bg-white/[0.03]">
+            {inner}
+          </button>
+        ) : (
+          <div key={p} className="flex flex-1 flex-col items-center gap-1.5 py-1">{inner}</div>
         );
       })}
     </div>

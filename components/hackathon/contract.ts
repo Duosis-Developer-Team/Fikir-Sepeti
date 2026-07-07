@@ -3,14 +3,15 @@ import type { Basket, HackathonConfig, Idea, Participant, Team, TeamMember, Team
 import type { SessionUser } from "@/components/AuthGate";
 
 /** Hackathon faz makinesi — sabit iskelet. */
-export type StagePhase = "lobby" | "idea" | "team" | "demo" | "feedback" | "production" | "done";
+export type StagePhase = "lobby" | "idea" | "team" | "hackathon" | "demo" | "feedback" | "production" | "done";
 
-export const PHASE_ORDER: StagePhase[] = ["lobby", "idea", "team", "demo", "feedback", "production", "done"];
+export const PHASE_ORDER: StagePhase[] = ["lobby", "idea", "team", "hackathon", "demo", "feedback", "production", "done"];
 
 export const PHASE_LABEL: Record<StagePhase, string> = {
   lobby: "Lobi",
   idea: "Fikir",
   team: "Takım",
+  hackathon: "Hackathon",
   demo: "Demo",
   feedback: "Feedback",
   production: "Production",

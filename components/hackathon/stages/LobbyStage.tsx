@@ -7,10 +7,16 @@ import { setConfig } from "@/lib/hackathon";
 import { setBasketPhase } from "@/lib/db";
 import type { StageContext } from "../contract";
 import { GOLD, GOLD_SOFT, dim } from "../contract";
-import { Card, GoldButton, StageHeadline } from "../ui";
+import { Card, GoldButton, StageHeadline, NumberStepper } from "../ui";
 import { InvitePanel } from "../InvitePanel";
 
-type Sub = "invite" | "ideaSource" | "poolSelect" | "teamMode" | "groups" | "ready";
+type Sub = "invite" | "ideaSource" | "poolSelect" | "teamMode" | "groups" | "duration" | "ready";
+
+const UNITS: { v: "hour" | "day" | "week"; label: string }[] = [
+  { v: "hour", label: "Saat" },
+  { v: "day", label: "Gün" },
+  { v: "week", label: "Hafta" },
+];
 
 export function LobbyStage({ data, config, isAdmin, refresh }: StageContext) {
   const { basket, participants } = data;
@@ -20,6 +26,8 @@ export function LobbyStage({ data, config, isAdmin, refresh }: StageContext) {
   const patch = (p: Partial<HackathonConfig>) => write({ ...config, ...p });
   const patchGroups = (g: Partial<NonNullable<HackathonConfig["groups"]>>) =>
     patch({ groups: { count: 3, size: 4, assignment: "random", ...config.groups, ...g } });
+  const patchDuration = (d: Partial<NonNullable<HackathonConfig["duration"]>>) =>
+    patch({ duration: { value: 1, unit: "day", ...config.duration, ...d } });
 
   const prevOf = (s: Sub): Sub | null => {
     switch (s) {
@@ -27,7 +35,8 @@ export function LobbyStage({ data, config, isAdmin, refresh }: StageContext) {
       case "poolSelect": return "ideaSource";
       case "teamMode": return config.ideaSource === "pool" ? "poolSelect" : "ideaSource";
       case "groups": return "teamMode";
-      case "ready": return config.teamMode === "groups" ? "groups" : "teamMode";
+      case "duration": return config.teamMode === "groups" ? "groups" : "teamMode";
+      case "ready": return "duration";
       default: return null;
     }
   };
@@ -97,7 +106,7 @@ export function LobbyStage({ data, config, isAdmin, refresh }: StageContext) {
           <StageHeadline pre="Kim" accent="kiminle?" />
           <Choice
             value={config.teamMode}
-            onChange={(v) => { patch({ teamMode: v }); setSub(v === "groups" ? "groups" : "ready"); }}
+            onChange={(v) => { patch({ teamMode: v }); setSub(v === "groups" ? "groups" : "duration"); }}
             options={[
               { v: "solo", label: "Herkes tek", hint: "solo" },
               { v: "groups", label: "Gruplar", hint: "N takım" },
@@ -111,14 +120,38 @@ export function LobbyStage({ data, config, isAdmin, refresh }: StageContext) {
         <>
           <StageHeadline pre="Grupları" accent="ayarla" />
           <div className="mx-auto grid w-full max-w-[560px] grid-cols-2 gap-4 sm:grid-cols-3">
-            <NumField label="Kaç takım" value={config.groups?.count ?? 3} min={2} onChange={(n) => patchGroups({ count: n })} />
-            <NumField label="Kişi/takım" value={config.groups?.size ?? 4} min={1} onChange={(n) => patchGroups({ size: n })} />
+            <NumberStepper label="Kaç takım" value={config.groups?.count ?? 3} min={2} onChange={(n) => patchGroups({ count: n })} />
+            <NumberStepper label="Kişi/takım" value={config.groups?.size ?? 4} min={1} onChange={(n) => patchGroups({ size: n })} />
             <div className="flex flex-col gap-2">
               <span className="text-[0.72rem] font-semibold uppercase tracking-[0.2em]" style={{ color: dim(0.5) }}>Atama</span>
               <div className="flex gap-2">
                 {(["random", "manual"] as const).map((a) => {
                   const on = config.groups?.assignment === a;
                   return <button key={a} onClick={() => patchGroups({ assignment: a })} className="flex-1 rounded-xl py-2.5 text-[0.9rem] font-semibold transition" style={{ background: on ? "rgba(231,169,63,0.14)" : "#2A2A2A", border: `1px solid ${on ? GOLD : "rgba(255,255,255,0.09)"}`, color: on ? GOLD : "#EDEDED" }}>{a === "random" ? "Random" : "Elle"}</button>;
+                })}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {sub === "duration" && (
+        <>
+          <StageHeadline pre="Ne kadar" accent="sürecek?" sub="Hackathon süresini seç — sonra geri sayım başlar." />
+          <div className="mx-auto flex max-w-[560px] items-stretch justify-center gap-5">
+            <div className="w-[170px]">
+              <NumberStepper value={config.duration?.value ?? 1} min={1} max={99} onChange={(n) => patchDuration({ value: n })} />
+            </div>
+            <div className="flex flex-col gap-2">
+              <span className="text-[0.72rem] font-semibold uppercase tracking-[0.2em]" style={{ color: dim(0.5) }}>Birim</span>
+              <div className="flex gap-2">
+                {UNITS.map((u) => {
+                  const on = (config.duration?.unit ?? "day") === u.v;
+                  return (
+                    <button key={u.v} onClick={() => patchDuration({ unit: u.v })} className="rounded-xl px-5 py-3 text-[1rem] font-semibold transition" style={{ background: on ? "rgba(231,169,63,0.14)" : "#2A2A2A", border: `1px solid ${on ? GOLD : "rgba(255,255,255,0.09)"}`, color: on ? GOLD : "#EDEDED" }}>
+                      {u.label}
+                    </button>
+                  );
                 })}
               </div>
             </div>
@@ -142,7 +175,8 @@ export function LobbyStage({ data, config, isAdmin, refresh }: StageContext) {
           <button onClick={() => setSub(back)} className="rounded-full border px-6 py-3 text-[0.95rem] transition hover:bg-white/10" style={{ borderColor: "rgba(255,255,255,0.2)", color: dim(0.85) }}>← Geri</button>
         )}
         {sub === "invite" && <GoldButton onClick={() => setSub("ideaSource")}>Kuruluma geç →</GoldButton>}
-        {sub === "groups" && <GoldButton onClick={() => setSub("ready")}>Devam →</GoldButton>}
+        {sub === "groups" && <GoldButton onClick={() => setSub("duration")}>Devam →</GoldButton>}
+        {sub === "duration" && <GoldButton onClick={() => setSub("ready")}>Devam →</GoldButton>}
         {sub === "ready" && <GoldButton onClick={start}>Başlat →</GoldButton>}
       </div>
     </div>
@@ -179,15 +213,6 @@ function Choice<T extends string>({ value, options, onChange }: { value?: T; opt
   );
 }
 
-function NumField({ label, value, min, onChange }: { label: string; value: number; min: number; onChange: (n: number) => void }) {
-  return (
-    <div className="flex flex-col gap-2">
-      <span className="text-[0.72rem] font-semibold uppercase tracking-[0.2em]" style={{ color: dim(0.5) }}>{label}</span>
-      <input type="number" min={min} value={value} onChange={(e) => onChange(Math.max(min, +e.target.value))} className="w-full rounded-xl px-3 py-3 text-center font-display text-[1.3rem] font-bold outline-none" style={{ background: "#2A2A2A", border: "1px solid rgba(255,255,255,0.09)", color: "#EDEDED" }} />
-    </div>
-  );
-}
-
 const EASE = [0.22, 0.85, 0.25, 1] as const;
 
 const IDEA_LABEL: Record<string, string> = { static: "Fikir var", pool: "Brainstorming" };
@@ -200,6 +225,7 @@ function Summary({ config }: { config: HackathonConfig }) {
     config.poolSelect && `Seçim: ${POOL_LABEL[config.poolSelect]}`,
     config.teamMode && `Takım: ${TEAM_LABEL[config.teamMode]}`,
     config.teamMode === "groups" && config.groups && `${config.groups.count} takım · ${config.groups.assignment === "random" ? "random" : "elle"}`,
+    config.duration && `Süre: ${config.duration.value} ${UNITS.find((u) => u.v === config.duration!.unit)?.label ?? ""}`,
   ].filter(Boolean) as string[];
   return (
     <div className="mt-2 flex flex-wrap justify-center gap-2">
