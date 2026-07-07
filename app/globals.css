@@ -147,9 +147,16 @@ body {
   mix-blend-mode: overlay;
 }
 
-/* açık temada açık-renkli yatay logo okunmaz → siyah silüet */
-:root[data-theme="light"] .brand-mark {
-  filter: brightness(0);
+/* Header brand: mobilde kare icon; sm+ yatay logo (tema ile değişir).
+   Koyu tema → beyaz-yazılı logo, açık tema → koyu-yazılı logo. */
+.fs-logo { display: none; }
+.fs-logo-icon { display: block; }
+@media (min-width: 640px) {
+  .fs-logo-icon { display: none; }
+  .fs-logo--dark { display: block; }
+  .fs-logo--light { display: none; }
+  :root[data-theme="light"] .fs-logo--dark { display: none; }
+  :root[data-theme="light"] .fs-logo--light { display: block; }
 }
 
 /* presenter = projeksiyon sahnesi — temadan bağımsız hep koyu */

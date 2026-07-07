@@ -19,14 +19,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         style={{ borderBottom: "1px solid rgba(var(--border-rgb),0.08)", background: "var(--bg)" }}
       >
         <Link href="/" className="flex shrink-0 items-center" aria-label="FikirSepeti ana sayfa">
-          {/* Desktop: yatay logo · Mobil: kare icon (dar alanda taşmayı önler) */}
+          {/* Desktop: yatay logo (tema-duyarlı) · Mobil: kare icon */}
           <Image
             src="/brand/fikirsepeti-logo.png"
             alt="FikirSepeti"
             width={958}
             height={220}
             priority
-            className="brand-mark hidden h-9 w-auto object-contain sm:block"
+            className="fs-logo fs-logo--dark h-9 w-auto object-contain"
+          />
+          <Image
+            src="/brand/fikirsepeti-logo-light.png"
+            alt="FikirSepeti"
+            width={947}
+            height={220}
+            priority
+            className="fs-logo fs-logo--light h-9 w-auto object-contain"
           />
           <Image
             src="/brand/fikirsepeti-icon.png"
@@ -34,7 +42,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             width={512}
             height={512}
             priority
-            className="h-9 w-9 object-contain sm:hidden"
+            className="fs-logo-icon h-9 w-9 object-contain"
           />
         </Link>
         <div className="flex items-center gap-3">
