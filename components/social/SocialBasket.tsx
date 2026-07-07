@@ -38,12 +38,12 @@ export function SocialBasket({ basket: initial, voter, accent }: { basket: Baske
   return (
     <div className="flex flex-col gap-7">
       {/* özet şeridi */}
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl px-5 py-4" style={{ background: "#242424", border: "1px solid rgba(255,255,255,0.08)" }}>
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl px-5 py-4" style={{ background: "var(--card)", border: "1px solid rgba(var(--border-rgb),0.08)" }}>
         <div className="flex items-center gap-4">
-          <Avatars names={authors} size={30} ring="#242424" />
-          <span className="tnum text-[0.95rem]" style={{ color: "#9A9A9A" }}>
-            <span className="font-bold" style={{ color: "#EDEDED" }}>{ideas.length}</span> {isRaffle ? "aday" : "fikir"}
-            {!isRaffle && <> · <span className="font-bold" style={{ color: "#EDEDED" }}>{totalVotes}</span> oy</>}
+          <Avatars names={authors} size={30} ring="var(--card)" />
+          <span className="tnum text-[0.95rem]" style={{ color: "var(--text-muted)" }}>
+            <span className="font-bold" style={{ color: "var(--text)" }}>{ideas.length}</span> {isRaffle ? "aday" : "fikir"}
+            {!isRaffle && <> · <span className="font-bold" style={{ color: "var(--text)" }}>{totalVotes}</span> oy</>}
           </span>
         </div>
         <span className="inline-flex items-center gap-[7px] rounded-full px-[13px] py-[6px] text-[0.78rem] font-semibold" style={{ background: soft(accent, 0.12), color: accent.base }}>
@@ -53,11 +53,11 @@ export function SocialBasket({ basket: initial, voter, accent }: { basket: Baske
       </div>
 
       {/* mantık açıklaması */}
-      <p className="-mt-2 text-[0.9rem] leading-relaxed" style={{ color: "#9A9A9A" }}>
+      <p className="-mt-2 text-[0.9rem] leading-relaxed" style={{ color: "var(--text-muted)" }}>
         {isRaffle ? (
-          <>Oy yok — herkes aday ekler, <span className="font-semibold" style={{ color: "#EDEDED" }}>{owner}</span> kurayı çeker ve kazananı <span className="font-semibold" style={{ color: accent.base }}>şans</span> belirler.</>
+          <>Oy yok — herkes aday ekler, <span className="font-semibold" style={{ color: "var(--text)" }}>{owner}</span> kurayı çeker ve kazananı <span className="font-semibold" style={{ color: accent.base }}>şans</span> belirler.</>
         ) : (
-          <>Herkes oy verir; sonucu <span className="font-semibold" style={{ color: "#EDEDED" }}>{owner}</span> çeker, <span className="font-semibold" style={{ color: accent.base }}>en çok oyu alan</span> kazanır.</>
+          <>Herkes oy verir; sonucu <span className="font-semibold" style={{ color: "var(--text)" }}>{owner}</span> çeker, <span className="font-semibold" style={{ color: accent.base }}>en çok oyu alan</span> kazanır.</>
         )}
       </p>
 
@@ -77,8 +77,8 @@ export function SocialBasket({ basket: initial, voter, accent }: { basket: Baske
                 Oylamayı bitir — en çok oyu alan kazansın
               </button>
             ) : (
-              <div className="rounded-full py-[15px] text-center text-[0.92rem]" style={{ background: "#242424", border: "1px solid rgba(255,255,255,0.08)", color: "#9A9A9A" }}>
-                Oyunu ver — sonucu <span className="font-semibold" style={{ color: "#EDEDED" }}>{owner}</span> çekecek.
+              <div className="rounded-full py-[15px] text-center text-[0.92rem]" style={{ background: "var(--card)", border: "1px solid rgba(var(--border-rgb),0.08)", color: "var(--text-muted)" }}>
+                Oyunu ver — sonucu <span className="font-semibold" style={{ color: "var(--text)" }}>{owner}</span> çekecek.
               </div>
             )
           )}

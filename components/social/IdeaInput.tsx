@@ -36,9 +36,9 @@ export function IdeaInput({
           onKeyDown={(e) => e.key === "Enter" && submit()}
           placeholder={placeholder}
           className="min-w-0 flex-1 rounded-[14px] px-[18px] py-[15px] text-[1rem] outline-none"
-          style={{ background: "#242424", border: "1px solid rgba(255,255,255,0.10)", color: "#EDEDED" }}
+          style={{ background: "var(--card)", border: "1px solid rgba(var(--border-rgb),0.10)", color: "var(--text)" }}
           onFocus={(e) => (e.currentTarget.style.borderColor = soft(accent, 0.6))}
-          onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.10)")}
+          onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(var(--border-rgb),0.10)")}
         />
         <button
           onClick={submit}
@@ -59,9 +59,9 @@ export function IdeaInput({
                 onClick={() => setTag(active ? "" : t)}
                 className="rounded-full px-[13px] py-[7px] text-[0.84rem] transition"
                 style={{
-                  background: active ? soft(accent, 0.16) : "#242424",
-                  border: `1px solid ${active ? soft(accent, 0.5) : "rgba(255,255,255,0.10)"}`,
-                  color: active ? accent.base : "#9A9A9A",
+                  background: active ? soft(accent, 0.16) : "var(--card)",
+                  border: `1px solid ${active ? soft(accent, 0.5) : "rgba(var(--border-rgb),0.10)"}`,
+                  color: active ? accent.base : "var(--text-muted)",
                 }}
               >
                 {t}

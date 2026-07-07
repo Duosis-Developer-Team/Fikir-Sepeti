@@ -32,7 +32,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="tr" className={`${display.variable} ${body.variable} h-full antialiased`}>
+    <html lang="tr" className={`${display.variable} ${body.variable} h-full antialiased`} suppressHydrationWarning>
+      <head>
+        {/* flash'sız tema — boyamadan önce data-theme'i ayarla */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('fikirsepeti:theme');if(!t){t=window.matchMedia&&window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';}document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','dark');}})();`,
+          }}
+        />
+      </head>
       <body className="min-h-full">
         <AuthGate>
           <AppShell>{children}</AppShell>

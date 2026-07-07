@@ -46,10 +46,10 @@ export function NewBasketModal({
       <button
         onClick={() => setType(v)}
         className="rounded-2xl px-[18px] py-4 text-left transition"
-        style={{ background: on ? rgba(c, 0.1) : "#242424", border: `1px solid ${on ? c : "rgba(255,255,255,0.08)"}` }}
+        style={{ background: on ? rgba(c, 0.1) : "var(--card)", border: `1px solid ${on ? c : "rgba(var(--border-rgb),0.08)"}` }}
       >
-        <span className="block font-display text-[1.05rem] font-semibold" style={{ color: on ? c : "#EDEDED" }}>{label}</span>
-        <span className="mt-0.5 block text-[0.82rem]" style={{ color: "#9A9A9A" }}>{desc}</span>
+        <span className="block font-display text-[1.05rem] font-semibold" style={{ color: on ? c : "var(--text)" }}>{label}</span>
+        <span className="mt-0.5 block text-[0.82rem]" style={{ color: "var(--text-muted)" }}>{desc}</span>
       </button>
     );
   };
@@ -60,7 +60,7 @@ export function NewBasketModal({
       <button
         onClick={() => setMethod(v)}
         className="flex-1 rounded-xl py-[11px] text-[0.92rem] font-semibold transition"
-        style={{ background: on ? rgba(CORAL, 0.12) : "#242424", border: `1px solid ${on ? CORAL : "rgba(255,255,255,0.08)"}`, color: on ? CORAL : "#9A9A9A" }}
+        style={{ background: on ? rgba(CORAL, 0.12) : "var(--card)", border: `1px solid ${on ? CORAL : "rgba(var(--border-rgb),0.08)"}`, color: on ? CORAL : "var(--text-muted)" }}
       >
         {label}
       </button>
@@ -80,15 +80,15 @@ export function NewBasketModal({
         >
           <motion.div
             className="w-full max-w-[440px] rounded-[24px] p-7"
-            style={{ background: "#1C1C1C", border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 40px 100px -40px rgba(0,0,0,0.9)" }}
+            style={{ background: "var(--card)", border: "1px solid rgba(var(--border-rgb),0.1)", boxShadow: "0 40px 100px -40px rgba(0,0,0,0.9)" }}
             initial={{ scale: 0.96, y: 16 }}
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.96, y: 16 }}
             transition={{ type: "spring", stiffness: 400, damping: 30 }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="font-display text-[1.4rem] font-bold" style={{ color: "#EDEDED" }}>Yeni sepet</h2>
-            <p className="mt-1 text-[0.9rem]" style={{ color: "#9A9A9A" }}>Ekibe bir karar sor.</p>
+            <h2 className="font-display text-[1.4rem] font-bold" style={{ color: "var(--text)" }}>Yeni sepet</h2>
+            <p className="mt-1 text-[0.9rem]" style={{ color: "var(--text-muted)" }}>Ekibe bir karar sor.</p>
 
             <input
               autoFocus
@@ -97,9 +97,9 @@ export function NewBasketModal({
               onKeyDown={(e) => e.key === "Enter" && submit()}
               placeholder="Ne konuşuyoruz? (ör. akşam nereye gidelim)"
               className="mt-5 w-full rounded-[14px] px-[18px] py-[14px] text-[0.98rem] outline-none"
-              style={{ background: "#242424", border: "1px solid rgba(255,255,255,0.1)", color: "#EDEDED" }}
+              style={{ background: "var(--card)", border: "1px solid rgba(var(--border-rgb),0.1)", color: "var(--text)" }}
               onFocus={(e) => (e.currentTarget.style.borderColor = rgba(accent, 0.6))}
-              onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)")}
+              onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(var(--border-rgb),0.1)")}
             />
 
             <div className="mt-4 grid grid-cols-2 gap-3">
@@ -124,14 +124,14 @@ export function NewBasketModal({
             </AnimatePresence>
 
             <div className="mt-7 flex items-center justify-end gap-2">
-              <button onClick={onClose} className="rounded-full px-5 py-[11px] text-[0.92rem] font-semibold transition hover:bg-white/5" style={{ color: "#9A9A9A" }}>
+              <button onClick={onClose} className="rounded-full px-5 py-[11px] text-[0.92rem] font-semibold transition hover:bg-[rgba(var(--border-rgb),0.05)]" style={{ color: "var(--text-muted)" }}>
                 Vazgeç
               </button>
               <button
                 onClick={submit}
                 disabled={!ready}
                 className="rounded-full px-6 py-[11px] text-[0.92rem] font-bold transition hover:-translate-y-px disabled:translate-y-0"
-                style={{ background: ready ? accent : "#2A2A2A", color: ready ? "#0F0F0F" : "#6E6E6E" }}
+                style={{ background: ready ? accent : "var(--surface-2)", color: ready ? "#0F0F0F" : "var(--text-faint)" }}
               >
                 {busy ? "Oluşturuluyor…" : "Oluştur"}
               </button>

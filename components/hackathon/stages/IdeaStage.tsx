@@ -72,7 +72,7 @@ export function IdeaStage(ctx: StageContext) {
         <StageHeadline pre="Fikri" accent="koy" sub={isAdmin ? "Üzerinde çalışacağınız tek fikir." : undefined} />
         {isAdmin ? (
           <Card>
-            <textarea value={draft} onChange={(e) => setDraft(e.target.value)} rows={3} placeholder="Örn: PR'ları otomatik özetleyen bot" className="w-full resize-none rounded-xl px-4 py-3 text-[1.1rem] outline-none" style={{ background: "#2A2A2A", border: "1px solid rgba(255,255,255,0.09)", color: "#EDEDED" }} />
+            <textarea value={draft} onChange={(e) => setDraft(e.target.value)} rows={3} placeholder="Örn: PR'ları otomatik özetleyen bot" className="w-full resize-none rounded-xl px-4 py-3 text-[1.1rem] outline-none" style={{ background: "var(--surface-2)", border: "1px solid rgba(var(--border-rgb),0.09)", color: "var(--text)" }} />
             <div className="mt-4 flex justify-center"><GoldButton onClick={submitIdea} disabled={draft.trim().length < 2}>Fikri belirle →</GoldButton></div>
           </Card>
         ) : (
@@ -97,7 +97,7 @@ export function IdeaStage(ctx: StageContext) {
           onKeyDown={(e) => e.key === "Enter" && submitIdea()}
           placeholder="Fikrini yaz…"
           className="flex-1 rounded-2xl px-6 py-5 text-[1.2rem] outline-none transition focus:border-[rgba(231,169,63,0.5)]"
-          style={{ background: "#2A2A2A", border: "1px solid rgba(255,255,255,0.1)", color: "#EDEDED" }}
+          style={{ background: "var(--surface-2)", border: "1px solid rgba(var(--border-rgb),0.1)", color: "var(--text)" }}
         />
         <GoldButton onClick={submitIdea} disabled={draft.trim().length < 2}>Ekle</GoldButton>
       </div>
@@ -116,11 +116,11 @@ export function IdeaStage(ctx: StageContext) {
                 exit={{ opacity: 0, scale: 0.97 }}
                 transition={{ type: "spring", stiffness: 320, damping: 30 }}
                 className="flex items-center gap-4 rounded-[20px] px-5 py-4"
-                style={{ background: mine ? "rgba(231,169,63,0.1)" : "#242424", border: `1px solid ${mine ? GOLD : "rgba(255,255,255,0.08)"}` }}
+                style={{ background: mine ? "rgba(231,169,63,0.1)" : "var(--card)", border: `1px solid ${mine ? GOLD : "rgba(var(--border-rgb),0.08)"}` }}
               >
                 <Avatar name={idea.created_by ?? "?"} size={40} />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[1.18rem] font-semibold" style={{ color: "#EDEDED" }}>{idea.text}</p>
+                  <p className="truncate text-[1.18rem] font-semibold" style={{ color: "var(--text)" }}>{idea.text}</p>
                   {idea.created_by && <p className="truncate text-[0.82rem]" style={{ color: dim(0.42) }}>{idea.created_by}</p>}
                 </div>
                 {isVote && (
@@ -130,7 +130,7 @@ export function IdeaStage(ctx: StageContext) {
                       whileTap={{ scale: 0.94 }}
                       onClick={() => voteFor(idea.id)}
                       className="rounded-full px-5 py-2.5 text-[0.9rem] font-semibold transition"
-                      style={mine ? { background: GOLD, color: "#17150F" } : { border: "1px solid rgba(255,255,255,0.2)", color: dim(0.85) }}
+                      style={mine ? { background: GOLD, color: "#17150F" } : { border: "1px solid rgba(var(--border-rgb),0.2)", color: dim(0.85) }}
                     >
                       {mine ? "✓ oyun" : "oy ver"}
                     </motion.button>

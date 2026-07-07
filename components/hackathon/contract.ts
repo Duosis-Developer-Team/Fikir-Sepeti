@@ -47,7 +47,7 @@ export type StageDef = {
 // paylaşılan renk tokenları (hackathon = altın)
 export const GOLD = "#E7A93F";
 export const GOLD_SOFT = "#EEC078";
-export const dim = (a: number) => `rgba(237,237,237,${a})`;
+export const dim = (a: number) => `rgba(var(--text-rgb), ${a})`;
 
 /** config tamam mı — lobide "başlat" için. */
 export function configReady(c: HackathonConfig): boolean {

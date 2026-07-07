@@ -41,7 +41,7 @@ export default function BasketDetail() {
       <div className="flex justify-center">
         <Link
           href="/"
-          className="inline-flex items-center gap-2 rounded-full border border-[rgba(255,255,255,0.09)] bg-[#242424] px-4 py-2 text-[0.88rem] text-[#B0B0B0] transition hover:border-[rgba(255,255,255,0.2)] hover:text-[#EDEDED]"
+          className="inline-flex items-center gap-2 rounded-full border border-[rgba(var(--border-rgb),0.09)] bg-[var(--card)] px-4 py-2 text-[0.88rem] text-[var(--text-3)] transition hover:border-[rgba(var(--border-rgb),0.2)] hover:text-[var(--text)]"
         >
           <span className="text-base leading-none">←</span> sepetler
         </Link>
@@ -52,7 +52,7 @@ export default function BasketDetail() {
           <div className="mt-7 flex items-center justify-center gap-2.5">
             <span className="h-[7px] w-[7px] rounded-full" style={{ background: a.base, boxShadow: `0 0 0 4px ${a.base}22` }} />
             <span className="text-[0.74rem] font-bold uppercase tracking-[0.22em]" style={{ color: a.base }}>Hackathon</span>
-            <span className="text-[0.74rem] font-semibold" style={{ color: "#9A9A9A" }}>· {basket.title}</span>
+            <span className="text-[0.74rem] font-semibold" style={{ color: "var(--text-muted)" }}>· {basket.title}</span>
           </div>
         ) : (
           <div className="mt-8 text-center">
@@ -60,7 +60,7 @@ export default function BasketDetail() {
               <span className="h-[7px] w-[7px] rounded-full" style={{ background: a.base, boxShadow: `0 0 0 4px ${a.base}22` }} />
               <span className="text-[0.72rem] font-bold uppercase tracking-[0.22em]" style={{ color: a.base }}>{eyebrow}</span>
             </div>
-            <h1 className="font-display mt-3 text-[clamp(2.2rem,5vw,3.5rem)] font-semibold leading-[1.02]" style={{ color: "#EDEDED" }}>
+            <h1 className="font-display mt-3 text-[clamp(2.2rem,5vw,3.5rem)] font-semibold leading-[1.02]" style={{ color: "var(--text)" }}>
               {basket.title}
             </h1>
           </div>
@@ -69,10 +69,10 @@ export default function BasketDetail() {
 
       <div className="mt-8">
         {notFound ? (
-          <p className="text-center text-sm" style={{ color: "#9A9A9A" }}>Sepet bulunamadı.</p>
+          <p className="text-center text-sm" style={{ color: "var(--text-muted)" }}>Sepet bulunamadı.</p>
         ) : !basket || !a ? (
           <div className="mx-auto flex max-w-[760px] flex-col gap-3">
-            {[0, 1, 2].map((i) => <div key={i} className="h-16 animate-pulse rounded-[18px]" style={{ background: "#242424" }} />)}
+            {[0, 1, 2].map((i) => <div key={i} className="h-16 animate-pulse rounded-[18px]" style={{ background: "var(--card)" }} />)}
           </div>
         ) : isHackathon ? (
           <HackathonRunner basketId={basket.id} />

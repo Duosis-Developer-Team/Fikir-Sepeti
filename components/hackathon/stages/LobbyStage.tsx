@@ -127,7 +127,7 @@ export function LobbyStage({ data, config, isAdmin, refresh }: StageContext) {
               <div className="flex gap-2">
                 {(["random", "manual"] as const).map((a) => {
                   const on = config.groups?.assignment === a;
-                  return <button key={a} onClick={() => patchGroups({ assignment: a })} className="flex-1 rounded-xl py-2.5 text-[0.9rem] font-semibold transition" style={{ background: on ? "rgba(231,169,63,0.14)" : "#2A2A2A", border: `1px solid ${on ? GOLD : "rgba(255,255,255,0.09)"}`, color: on ? GOLD : "#EDEDED" }}>{a === "random" ? "Random" : "Elle"}</button>;
+                  return <button key={a} onClick={() => patchGroups({ assignment: a })} className="flex-1 rounded-xl py-2.5 text-[0.9rem] font-semibold transition" style={{ background: on ? "rgba(231,169,63,0.14)" : "var(--surface-2)", border: `1px solid ${on ? GOLD : "rgba(var(--border-rgb),0.09)"}`, color: on ? GOLD : "var(--text)" }}>{a === "random" ? "Random" : "Elle"}</button>;
                 })}
               </div>
             </div>
@@ -148,7 +148,7 @@ export function LobbyStage({ data, config, isAdmin, refresh }: StageContext) {
                 {UNITS.map((u) => {
                   const on = (config.duration?.unit ?? "day") === u.v;
                   return (
-                    <button key={u.v} onClick={() => patchDuration({ unit: u.v })} className="rounded-xl px-5 py-3 text-[1rem] font-semibold transition" style={{ background: on ? "rgba(231,169,63,0.14)" : "#2A2A2A", border: `1px solid ${on ? GOLD : "rgba(255,255,255,0.09)"}`, color: on ? GOLD : "#EDEDED" }}>
+                    <button key={u.v} onClick={() => patchDuration({ unit: u.v })} className="rounded-xl px-5 py-3 text-[1rem] font-semibold transition" style={{ background: on ? "rgba(231,169,63,0.14)" : "var(--surface-2)", border: `1px solid ${on ? GOLD : "rgba(var(--border-rgb),0.09)"}`, color: on ? GOLD : "var(--text)" }}>
                       {u.label}
                     </button>
                   );
@@ -172,7 +172,7 @@ export function LobbyStage({ data, config, isAdmin, refresh }: StageContext) {
       {/* nav — geri her zaman, ileri adıma göre */}
       <div className="mt-12 flex items-center justify-center gap-3">
         {back && (
-          <button onClick={() => setSub(back)} className="rounded-full border px-6 py-3 text-[0.95rem] transition hover:bg-white/10" style={{ borderColor: "rgba(255,255,255,0.2)", color: dim(0.85) }}>← Geri</button>
+          <button onClick={() => setSub(back)} className="rounded-full border px-6 py-3 text-[0.95rem] transition hover:bg-[rgba(var(--border-rgb),0.08)]" style={{ borderColor: "rgba(var(--border-rgb),0.2)", color: dim(0.85) }}>← Geri</button>
         )}
         {sub === "invite" && <GoldButton onClick={() => setSub("ideaSource")}>Kuruluma geç →</GoldButton>}
         {sub === "groups" && <GoldButton onClick={() => setSub("duration")}>Devam →</GoldButton>}
@@ -199,12 +199,12 @@ function Choice<T extends string>({ value, options, onChange }: { value?: T; opt
             onClick={() => onChange(o.v)}
             className="min-w-[210px] rounded-[24px] px-10 py-9 text-center"
             style={{
-              background: on ? "rgba(231,169,63,0.12)" : "#242424",
-              border: `1px solid ${on ? GOLD : "rgba(255,255,255,0.09)"}`,
+              background: on ? "rgba(231,169,63,0.12)" : "var(--card)",
+              border: `1px solid ${on ? GOLD : "rgba(var(--border-rgb),0.09)"}`,
               boxShadow: on ? "0 20px 50px -28px rgba(231,169,63,0.65)" : "none",
             }}
           >
-            <span className="font-display block text-[1.75rem] font-bold" style={{ color: on ? GOLD : "#EDEDED" }}>{o.label}</span>
+            <span className="font-display block text-[1.75rem] font-bold" style={{ color: on ? GOLD : "var(--text)" }}>{o.label}</span>
             {o.hint && <span className="mt-1.5 block text-[1rem]" style={{ color: dim(0.5) }}>{o.hint}</span>}
           </motion.button>
         );

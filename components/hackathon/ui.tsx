@@ -47,12 +47,12 @@ export function Seg<T extends string>({
             onClick={() => onChange(o.v)}
             className="rounded-2xl px-4 py-3 text-left transition"
             style={{
-              background: on ? "rgba(231,169,63,0.12)" : "#2A2A2A",
-              border: `1px solid ${on ? GOLD : "rgba(255,255,255,0.09)"}`,
+              background: on ? "rgba(231,169,63,0.12)" : "var(--surface-2)",
+              border: `1px solid ${on ? GOLD : "rgba(var(--border-rgb),0.09)"}`,
               minWidth: 132,
             }}
           >
-            <span className="block text-[0.98rem] font-semibold" style={{ color: on ? GOLD : "#EDEDED" }}>{o.label}</span>
+            <span className="block text-[0.98rem] font-semibold" style={{ color: on ? GOLD : "var(--text)" }}>{o.label}</span>
             {o.hint && <span className="mt-0.5 block text-[0.78rem]" style={{ color: dim(0.5) }}>{o.hint}</span>}
           </button>
         );
@@ -82,7 +82,7 @@ export function StageHeadline({
         animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
         transition={{ duration: 0.55, ease: EASE }}
         className="font-display text-[clamp(2.8rem,5.4vw,4.6rem)] font-extrabold leading-[0.98] tracking-tight"
-        style={{ color: "#EDEDED" }}
+        style={{ color: "var(--text)" }}
       >
         {pre ? `${pre} ` : ""}
         <span style={{ color }}>{accent}</span>
@@ -120,9 +120,9 @@ export function NumberStepper({
   return (
     <div className="flex flex-col gap-2">
       {label && <span className="text-[0.72rem] font-semibold uppercase tracking-[0.2em]" style={{ color: dim(0.5) }}>{label}</span>}
-      <div className="flex items-center justify-between rounded-2xl p-2" style={{ background: "#2A2A2A", border: "1px solid rgba(255,255,255,0.1)" }}>
+      <div className="flex items-center justify-between rounded-2xl p-2" style={{ background: "var(--surface-2)", border: "1px solid rgba(var(--border-rgb),0.1)" }}>
         <StepBtn onClick={() => onChange(Math.max(min, value - 1))} disabled={value <= min}>−</StepBtn>
-        <span className="font-display text-[1.7rem] font-bold tabular-nums" style={{ color: "#EDEDED" }}>{value}</span>
+        <span className="font-display text-[1.7rem] font-bold tabular-nums" style={{ color: "var(--text)" }}>{value}</span>
         <StepBtn onClick={() => onChange(Math.min(max, value + 1))} disabled={value >= max}>+</StepBtn>
       </div>
     </div>
@@ -135,8 +135,8 @@ function StepBtn({ children, onClick, disabled }: { children: React.ReactNode; o
       whileTap={disabled ? undefined : { scale: 0.88 }}
       onClick={onClick}
       disabled={disabled}
-      className="grid h-10 w-10 place-items-center rounded-xl text-[1.4rem] font-bold leading-none transition hover:bg-white/5 disabled:opacity-25"
-      style={{ background: "#333", color: GOLD }}
+      className="grid h-10 w-10 place-items-center rounded-xl text-[1.4rem] font-bold leading-none transition hover:bg-[rgba(var(--border-rgb),0.05)] disabled:opacity-25"
+      style={{ background: "var(--surface-2)", color: GOLD }}
     >
       {children}
     </motion.button>
@@ -156,7 +156,7 @@ export function Card({ children, className = "" }: { children: React.ReactNode; 
   return (
     <div
       className={`rounded-[22px] p-6 ${className}`}
-      style={{ background: "#242424", border: "1px solid rgba(255,255,255,0.09)" }}
+      style={{ background: "var(--card)", border: "1px solid rgba(var(--border-rgb),0.09)" }}
     >
       {children}
     </div>

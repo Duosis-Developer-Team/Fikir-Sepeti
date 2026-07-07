@@ -32,11 +32,11 @@ export function ProductionStage({ data, isAdmin }: StageContext) {
 
         {winner ? (
           <>
-            <h2 className="font-display mt-4 text-[clamp(2rem,4vw,3rem)] font-extrabold" style={{ color: "#EDEDED" }}>🏆 {winner.name}</h2>
+            <h2 className="font-display mt-4 text-[clamp(2rem,4vw,3rem)] font-extrabold" style={{ color: "var(--text)" }}>🏆 {winner.name}</h2>
             <p className="mt-1 tnum text-[1rem]" style={{ color: GOLD_SOFT }}>{votesOf(winner.id)} oy</p>
             <div className="mt-4 flex flex-wrap justify-center gap-1.5">
               {winnerMembers.map((m) => (
-                <span key={m.id} className="inline-flex items-center gap-2 rounded-full py-1 pl-1 pr-3 text-[0.9rem]" style={{ background: "rgba(255,255,255,0.05)", color: "#EDEDED" }}>
+                <span key={m.id} className="inline-flex items-center gap-2 rounded-full py-1 pl-1 pr-3 text-[0.9rem]" style={{ background: "rgba(var(--border-rgb),0.05)", color: "var(--text)" }}>
                   <Avatar name={nameOf(m.user_id)} size={26} />
                   {nameOf(m.user_id)}
                 </span>
@@ -44,7 +44,7 @@ export function ProductionStage({ data, isAdmin }: StageContext) {
             </div>
           </>
         ) : (
-          <h2 className="font-display mt-4 text-[1.6rem] font-bold" style={{ color: "#EDEDED" }}>Kazanan yok</h2>
+          <h2 className="font-display mt-4 text-[1.6rem] font-bold" style={{ color: "var(--text)" }}>Kazanan yok</h2>
         )}
 
         {teams.length > 0 && (
@@ -54,9 +54,9 @@ export function ProductionStage({ data, isAdmin }: StageContext) {
               const mem = members.filter((m) => m.team_id === t.id);
               const win = winner?.id === t.id;
               return (
-                <div key={t.id} className="flex items-center gap-3 rounded-xl px-4 py-2.5" style={{ background: win ? "rgba(231,169,63,0.1)" : "#2A2A2A", border: `1px solid ${win ? GOLD : "rgba(255,255,255,0.07)"}` }}>
+                <div key={t.id} className="flex items-center gap-3 rounded-xl px-4 py-2.5" style={{ background: win ? "rgba(231,169,63,0.1)" : "var(--surface-2)", border: `1px solid ${win ? GOLD : "rgba(var(--border-rgb),0.07)"}` }}>
                   <span className="tnum font-display w-5 font-bold" style={{ color: win ? GOLD_SOFT : dim(0.4) }}>{rank + 1}</span>
-                  <span className="flex-1 truncate font-semibold" style={{ color: "#EDEDED" }}>{t.name}</span>
+                  <span className="flex-1 truncate font-semibold" style={{ color: "var(--text)" }}>{t.name}</span>
                   <div className="flex gap-1">{mem.map((m) => <Avatar key={m.id} name={nameOf(m.user_id)} size={22} />)}</div>
                   <span className="tnum font-display text-[1.1rem] font-bold" style={{ color: win ? GOLD : dim(0.7) }}>{votesOf(t.id)}</span>
                 </div>
@@ -67,7 +67,7 @@ export function ProductionStage({ data, isAdmin }: StageContext) {
 
         {selected && (
           <p className="mt-5 text-[0.95rem]" style={{ color: dim(0.55) }}>
-            Fikir: <span style={{ color: "#EDEDED" }}>{selected.text}</span>
+            Fikir: <span style={{ color: "var(--text)" }}>{selected.text}</span>
           </p>
         )}
 

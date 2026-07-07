@@ -78,7 +78,7 @@ export function HackathonRunner({ basketId }: { basketId: string }) {
   }, [user, data, basketId, load]);
 
   if (!user || !data) {
-    return <div className="mx-auto mt-20 h-40 max-w-[760px] animate-pulse rounded-[22px]" style={{ background: "#242424" }} />;
+    return <div className="mx-auto mt-20 h-40 max-w-[760px] animate-pulse rounded-[22px]" style={{ background: "var(--card)" }} />;
   }
 
   const phase = (PHASE_ORDER.includes(data.basket.phase as StagePhase) ? data.basket.phase : "lobby") as StagePhase;
@@ -113,12 +113,12 @@ export function HackathonRunner({ basketId }: { basketId: string }) {
       {/* admin faz çubuğu — geri + ileri (lobi ve hackathon kendi navigasyonunu yönetir) */}
       {isAdmin && phase !== "done" && phase !== "lobby" && phase !== "hackathon" && (
         <div className="fixed inset-x-0 bottom-0 z-30 flex justify-center px-4 pb-5">
-          <div className="flex items-center gap-3 rounded-full px-3 py-2.5" style={{ background: "#242424", border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 20px 50px -24px rgba(0,0,0,0.7)" }}>
+          <div className="flex items-center gap-3 rounded-full px-3 py-2.5" style={{ background: "var(--card)", border: "1px solid rgba(var(--border-rgb),0.1)", boxShadow: "0 20px 50px -24px rgba(0,0,0,0.7)" }}>
             <button
               onClick={goBack}
               disabled={!prevPhase}
-              className="rounded-full border px-5 py-2.5 text-[0.9rem] transition hover:bg-white/10 disabled:opacity-25"
-              style={{ borderColor: "rgba(255,255,255,0.2)", color: dim(0.85) }}
+              className="rounded-full border px-5 py-2.5 text-[0.9rem] transition hover:bg-[rgba(var(--border-rgb),0.08)] disabled:opacity-25"
+              style={{ borderColor: "rgba(var(--border-rgb),0.2)", color: dim(0.85) }}
             >
               ← {prevPhase ? PHASE_LABEL[prevPhase] : "Geri"}
             </button>
@@ -152,12 +152,12 @@ function Stepper({ phase, isAdmin, onJump }: { phase: StagePhase; isAdmin: boole
         const on = i === active;
         const inner = (
           <>
-            <span className="h-[3px] w-full rounded-full transition-colors" style={{ background: done ? "rgba(231,169,63,0.5)" : on ? GOLD : "rgba(255,255,255,0.1)" }} />
+            <span className="h-[3px] w-full rounded-full transition-colors" style={{ background: done ? "rgba(231,169,63,0.5)" : on ? GOLD : "rgba(var(--border-rgb),0.1)" }} />
             <span className="text-[0.78rem] font-semibold transition-colors" style={{ color: on ? GOLD : done ? dim(0.55) : dim(0.35) }}>{PHASE_LABEL[p]}</span>
           </>
         );
         return isAdmin ? (
-          <button key={p} onClick={() => onJump(p)} title={`${PHASE_LABEL[p]}'e geç`} className="flex flex-1 flex-col items-center gap-1.5 rounded-md py-1 transition hover:bg-white/[0.03]">
+          <button key={p} onClick={() => onJump(p)} title={`${PHASE_LABEL[p]}'e geç`} className="flex flex-1 flex-col items-center gap-1.5 rounded-md py-1 transition hover:bg-[rgba(var(--border-rgb),0.04)]">
             {inner}
           </button>
         ) : (

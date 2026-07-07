@@ -21,7 +21,7 @@ export function ResultScreen({
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: "spring", stiffness: 320, damping: 26 }}
       className="relative overflow-hidden rounded-[26px] p-10 text-center md:p-14"
-      style={{ background: "#0F0F0F", color: "#EDEDED", boxShadow: `0 30px 90px -50px ${soft(accent, 0.5)}` }}
+      style={{ background: "#0F0F0F", color: "var(--text)", boxShadow: `0 30px 90px -50px ${soft(accent, 0.5)}` }}
     >
       {/* sade bloom — konfeti yerine */}
       <motion.span
@@ -42,13 +42,13 @@ export function ResultScreen({
       >
         {winner?.text ?? "—"}
       </motion.h2>
-      {winner?.vote_count ? <p className="relative mt-3 text-sm" style={{ color: "#9A9A9A" }}>{winner.vote_count} oy ile</p> : null}
+      {winner?.vote_count ? <p className="relative mt-3 text-sm" style={{ color: "var(--text-muted)" }}>{winner.vote_count} oy ile</p> : null}
 
       {squad && squad.length > 0 && (
-        <div className="relative mt-8 flex flex-col items-center gap-3 border-t pt-7" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
-          <p className="text-[0.72rem] font-semibold uppercase tracking-[0.25em]" style={{ color: "#9A9A9A" }}>Squad</p>
+        <div className="relative mt-8 flex flex-col items-center gap-3 border-t pt-7" style={{ borderColor: "rgba(var(--border-rgb),0.1)" }}>
+          <p className="text-[0.72rem] font-semibold uppercase tracking-[0.25em]" style={{ color: "var(--text-muted)" }}>Squad</p>
           <Avatars names={squad} max={8} ring="#0F0F0F" />
-          <p className="text-sm" style={{ color: "#9A9A9A" }}>{squad.join(" · ")}</p>
+          <p className="text-sm" style={{ color: "var(--text-muted)" }}>{squad.join(" · ")}</p>
         </div>
       )}
     </motion.div>

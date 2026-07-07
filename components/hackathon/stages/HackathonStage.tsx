@@ -45,7 +45,7 @@ export function HackathonStage({ data, isAdmin, refresh }: StageContext) {
 
       {isAdmin && (
         <div className="mt-12 flex items-center justify-center gap-3">
-          <button onClick={back} className="rounded-full border px-6 py-3 text-[0.95rem] transition hover:bg-white/10" style={{ borderColor: "rgba(255,255,255,0.2)", color: dim(0.85) }}>← Takım</button>
+          <button onClick={back} className="rounded-full border px-6 py-3 text-[0.95rem] transition hover:bg-[rgba(var(--border-rgb),0.08)]" style={{ borderColor: "rgba(var(--border-rgb),0.2)", color: dim(0.85) }}>← Takım</button>
           <GoldButton onClick={finish}>Hackathon&apos;u bitir → Demo</GoldButton>
         </div>
       )}

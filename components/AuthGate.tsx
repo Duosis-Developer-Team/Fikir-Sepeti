@@ -92,14 +92,14 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
           >
             <motion.div
               className="w-full max-w-sm rounded-[22px] p-8"
-              style={{ background: "#242424", border: "1px solid rgba(255,255,255,0.09)" }}
+              style={{ background: "var(--card)", border: "1px solid rgba(var(--border-rgb),0.09)" }}
               initial={{ scale: 0.96, y: 10 }}
               animate={{ scale: 1, y: 0 }}
               transition={{ type: "spring", stiffness: 400, damping: 30 }}
             >
               <BrandIcon size="md" priority />
-              <h1 className="font-display mt-5 text-[1.5rem] font-bold tracking-tight" style={{ color: "#EDEDED" }}>Fikir Sepeti</h1>
-              <p className="mt-1.5 text-[0.92rem]" style={{ color: "#9A9A9A" }}>
+              <h1 className="font-display mt-5 text-[1.5rem] font-bold tracking-tight" style={{ color: "var(--text)" }}>Fikir Sepeti</h1>
+              <p className="mt-1.5 text-[0.92rem]" style={{ color: "var(--text-muted)" }}>
                 İş e-postanla giriş yap. Oyların, fikirlerin ve takımların hesabına bağlanır.
               </p>
 
@@ -112,17 +112,17 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
                     onKeyDown={(e) => e.key === "Enter" && devLogin()}
                     placeholder="Adın ya da iş e-postan"
                     className="mt-6 w-full rounded-lg px-3.5 py-3 text-[0.95rem] outline-none"
-                    style={{ background: "#2A2A2A", border: "1px solid rgba(255,255,255,0.09)", color: "#EDEDED" }}
+                    style={{ background: "var(--surface-2)", border: "1px solid rgba(var(--border-rgb),0.09)", color: "var(--text)" }}
                   />
                   <button
                     onClick={devLogin}
                     disabled={draft.trim().length < 2}
                     className="mt-3 w-full rounded-full py-3 text-[0.95rem] font-semibold transition disabled:opacity-40"
-                    style={{ background: "#EDEDED", color: "#0F0F0F" }}
+                    style={{ background: "var(--text)", color: "var(--bg)" }}
                   >
                     Devam
                   </button>
-                  <p className="mt-4 flex items-center justify-center gap-2 text-[0.8rem]" style={{ color: "#6E6E6E" }}>
+                  <p className="mt-4 flex items-center justify-center gap-2 text-[0.8rem]" style={{ color: "var(--text-faint)" }}>
                     <MicrosoftMark /> Microsoft ile giriş yakında
                   </p>
                 </>
@@ -130,7 +130,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
                 <button
                   onClick={loginAzure}
                   className="mt-6 flex w-full items-center justify-center gap-2.5 rounded-full py-3 text-[0.95rem] font-semibold transition hover:opacity-90"
-                  style={{ background: "#EDEDED", color: "#0F0F0F" }}
+                  style={{ background: "var(--text)", color: "var(--bg)" }}
                 >
                   <MicrosoftMark /> Microsoft ile giriş
                 </button>

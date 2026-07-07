@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useNameContext } from "@/components/AuthGate";
 import { BrandIcon } from "@/components/BrandIcon";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { NewBasketModal } from "@/components/NewBasketModal";
 import { Avatars } from "@/components/shared/Avatars";
 import { createBasket, loadHome } from "@/lib/db";
@@ -14,16 +15,16 @@ import { accentFor, soft, type Accent } from "@/lib/accent";
 import type { Basket, BasketType, Idea, ResolveMethod } from "@/lib/types";
 
 const T = {
-  bg: "#181818",
-  card: "#242424",
-  black: "#0F0F0F",
-  text: "#EDEDED",
-  t2: "#C4C4C4",
-  t3: "#B0B0B0",
-  muted: "#9A9A9A",
-  faint: "#6E6E6E",
-  line: "rgba(255,255,255,0.09)",
-  track: "rgba(255,255,255,0.07)",
+  bg: "var(--bg)",
+  card: "var(--card)",
+  black: "var(--black)",
+  text: "var(--text)",
+  t2: "var(--text-2)",
+  t3: "var(--text-3)",
+  muted: "var(--text-muted)",
+  faint: "var(--text-faint)",
+  line: "rgba(var(--border-rgb),0.09)",
+  track: "rgba(var(--border-rgb),0.07)",
 };
 
 const WORDS = [
@@ -235,7 +236,7 @@ function Featured({ basket, ideas }: { basket: Basket; ideas: Idea[] }) {
       </div>
 
       {/* footer — tam genişlik, CTA sağ-alt */}
-      <div className="mt-7 flex items-center justify-between gap-4 border-t pt-5" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
+      <div className="mt-7 flex items-center justify-between gap-4 border-t pt-5" style={{ borderColor: "rgba(var(--border-rgb),0.08)" }}>
         <div className="flex items-center gap-[14px]">
           <Avatars names={authors} size={30} ring={T.black} />
           <span className="tnum text-[0.92rem]" style={{ color: T.muted }}>
@@ -258,7 +259,7 @@ function Wordmark() {
         width={958}
         height={220}
         priority
-        className="hidden h-9 w-auto object-contain sm:block"
+        className="brand-mark hidden h-9 w-auto object-contain sm:block"
       />
       <Image
         src="/brand/fikirsepeti-icon.png"
@@ -312,14 +313,15 @@ export default function Home() {
       <header className="sticky top-0 z-20 flex items-center justify-between px-[clamp(24px,5vw,56px)] py-[14px]" style={{ borderBottom: `1px solid ${T.line}`, background: T.bg }}>
         <Wordmark />
         {/* Yeni sepet — ortada */}
-        <button onClick={() => setModal(true)} className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1.5 rounded-full px-[18px] py-[10px] text-[0.9rem] font-semibold transition hover:-translate-y-px sm:inline-flex" style={{ background: T.text, color: "#0F0F0F" }}>
+        <button onClick={() => setModal(true)} className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1.5 rounded-full px-[18px] py-[10px] text-[0.9rem] font-semibold transition hover:-translate-y-px sm:inline-flex" style={{ background: T.text, color: "var(--bg)" }}>
           <span className="text-[1.05rem] leading-none">+</span> Yeni sepet
         </button>
         {/* profil — en sağ */}
         <div className="flex items-center gap-3">
-          <button onClick={() => setModal(true)} className="inline-flex items-center gap-1 rounded-full px-4 py-2 text-[0.9rem] font-semibold sm:hidden" style={{ background: T.text, color: "#0F0F0F" }}>+ Yeni</button>
+          <ThemeToggle />
+          <button onClick={() => setModal(true)} className="inline-flex items-center gap-1 rounded-full px-4 py-2 text-[0.9rem] font-semibold sm:hidden" style={{ background: T.text, color: "var(--bg)" }}>+ Yeni</button>
           {name && (
-            <Link href="/profil" className="flex items-center gap-[9px] rounded-full border py-1 pl-1 pr-[14px] transition hover:border-[rgba(255,255,255,0.2)]" style={{ borderColor: T.line, background: T.card }}>
+            <Link href="/profil" className="flex items-center gap-[9px] rounded-full border py-1 pl-1 pr-[14px] transition hover:border-[rgba(var(--border-rgb),0.2)]" style={{ borderColor: T.line, background: T.card }}>
               <span className="grid h-7 w-7 place-items-center rounded-full text-[0.78rem] font-bold" style={{ background: "linear-gradient(135deg,#E7A93F,#F2795F)", color: "#0F0F0F" }}>
                 {name.charAt(0).toLocaleUpperCase("tr")}
               </span>
@@ -343,7 +345,7 @@ export default function Home() {
 
         {/* sekmeler — segmented pill, ortalı */}
         <div className="mt-[52px] flex justify-center">
-        <div className="inline-flex gap-1 rounded-full p-1" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+        <div className="inline-flex gap-1 rounded-full p-1" style={{ background: "rgba(var(--border-rgb),0.04)", border: "1px solid rgba(var(--border-rgb),0.08)" }}>
           {([["aktif", "Aktif", active.length], ["gecmis", "Geçmiş", resolved.length]] as const).map(([key, label, count]) => {
             const on = tab === key;
             return (
@@ -354,7 +356,7 @@ export default function Home() {
                 style={{ background: on ? T.card : "transparent", color: on ? T.text : T.muted, boxShadow: on ? "0 2px 8px -4px rgba(0,0,0,0.6)" : "none" }}
               >
                 {label}
-                <span className="tnum rounded-full px-[7px] py-0.5 text-[0.7rem]" style={{ background: on ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.04)", color: on ? T.t3 : T.faint }}>{count}</span>
+                <span className="tnum rounded-full px-[7px] py-0.5 text-[0.7rem]" style={{ background: on ? "rgba(var(--border-rgb),0.08)" : "rgba(var(--border-rgb),0.04)", color: on ? T.t3 : T.faint }}>{count}</span>
               </button>
             );
           })}

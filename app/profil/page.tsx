@@ -35,20 +35,20 @@ function MineCard({ basket, ideas }: { basket: Basket; ideas: Idea[] }) {
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       className="flex flex-col gap-4 rounded-[22px] p-6 transition"
-      style={{ background: "#242424", border: `1px solid ${hover ? soft(a, 0.5) : "rgba(255,255,255,0.09)"}`, transform: hover ? "translateY(-3px)" : "none" }}
+      style={{ background: "var(--card)", border: `1px solid ${hover ? soft(a, 0.5) : "rgba(var(--border-rgb),0.09)"}`, transform: hover ? "translateY(-3px)" : "none" }}
     >
       <div className="flex items-center justify-between">
         <span className="inline-flex items-center gap-[7px] text-[0.68rem] font-bold uppercase tracking-[0.2em]" style={{ color: a.base }}>
           <span className="h-1.5 w-1.5 rounded-full" style={{ background: a.base }} />
           {basket.type === "hackathon" ? "hackathon" : "etkinlik"}
         </span>
-        <span className="text-[0.76rem]" style={{ color: "#9A9A9A" }}>{status}</span>
+        <span className="text-[0.76rem]" style={{ color: "var(--text-muted)" }}>{status}</span>
       </div>
-      <h3 className="font-display text-[1.4rem] font-semibold leading-[1.15]" style={{ color: "#EDEDED" }}>{basket.title}</h3>
+      <h3 className="font-display text-[1.4rem] font-semibold leading-[1.15]" style={{ color: "var(--text)" }}>{basket.title}</h3>
       <div className="mt-auto flex items-center justify-between pt-2">
-        <Avatars names={[basket.created_by ?? "", ...ideas.map((i) => i.created_by ?? "")]} ring="#242424" />
-        <span className="tnum text-[0.86rem]" style={{ color: "#9A9A9A" }}>
-          {raffle ? `${ideas.length} aday` : <><span className="font-bold" style={{ color: "#EDEDED" }}>{total}</span> oy</>}
+        <Avatars names={[basket.created_by ?? "", ...ideas.map((i) => i.created_by ?? "")]} ring="var(--card)" />
+        <span className="tnum text-[0.86rem]" style={{ color: "var(--text-muted)" }}>
+          {raffle ? `${ideas.length} aday` : <><span className="font-bold" style={{ color: "var(--text)" }}>{total}</span> oy</>}
         </span>
       </div>
     </Link>
@@ -86,26 +86,26 @@ export default function ProfilePage() {
           {(name || "?").charAt(0).toLocaleUpperCase("tr")}
         </span>
         <div>
-          <h1 className="font-display text-[2rem] font-bold leading-none" style={{ color: "#EDEDED" }}>{name || "…"}</h1>
-          <p className="mt-1.5 text-[0.92rem]" style={{ color: "#9A9A9A" }}>
-            <span className="font-semibold" style={{ color: "#EDEDED" }}>{mine.length}</span> sepet açtın · <span className="font-semibold" style={{ color: "#EDEDED" }}>{openCount}</span> aktif
+          <h1 className="font-display text-[2rem] font-bold leading-none" style={{ color: "var(--text)" }}>{name || "…"}</h1>
+          <p className="mt-1.5 text-[0.92rem]" style={{ color: "var(--text-muted)" }}>
+            <span className="font-semibold" style={{ color: "var(--text)" }}>{mine.length}</span> sepet açtın · <span className="font-semibold" style={{ color: "var(--text)" }}>{openCount}</span> aktif
           </p>
         </div>
       </div>
 
       <div className="mt-9 flex items-center gap-4">
-        <span className="text-[0.72rem] font-semibold uppercase tracking-[0.24em]" style={{ color: "#9A9A9A" }}>Sepetlerim</span>
-        <span className="h-px flex-1" style={{ background: "rgba(255,255,255,0.1)" }} />
+        <span className="text-[0.72rem] font-semibold uppercase tracking-[0.24em]" style={{ color: "var(--text-muted)" }}>Sepetlerim</span>
+        <span className="h-px flex-1" style={{ background: "rgba(var(--border-rgb),0.1)" }} />
       </div>
 
       {loading ? (
         <div className="mt-6 grid gap-5 md:grid-cols-2">
-          {[0, 1].map((i) => <div key={i} className="h-40 animate-pulse rounded-[22px]" style={{ background: "#242424" }} />)}
+          {[0, 1].map((i) => <div key={i} className="h-40 animate-pulse rounded-[22px]" style={{ background: "var(--card)" }} />)}
         </div>
       ) : mine.length === 0 ? (
-        <div className="mt-6 rounded-[22px] py-16 text-center" style={{ background: "#242424" }}>
+        <div className="mt-6 rounded-[22px] py-16 text-center" style={{ background: "var(--card)" }}>
           <BrandIcon size="md" className="mb-4 inline-block opacity-90" />
-          <p style={{ color: "#9A9A9A" }}>Henüz sepet açmadın.</p>
+          <p style={{ color: "var(--text-muted)" }}>Henüz sepet açmadın.</p>
           <Link href="/" className="mt-3 inline-block font-display text-xl font-semibold" style={{ color: "#F2795F" }}>İlk sepetini aç →</Link>
         </div>
       ) : (

@@ -60,14 +60,14 @@ export function TeamStage(ctx: StageContext) {
                 transition={{ duration: 0.42, ease: [0.22, 0.85, 0.25, 1], delay: idx * 0.08 }}
                 whileHover={{ y: -4 }}
                 className="rounded-[22px] p-6"
-                style={{ background: "#242424", border: "1px solid rgba(255,255,255,0.09)" }}
+                style={{ background: "var(--card)", border: "1px solid rgba(var(--border-rgb),0.09)" }}
               >
                 <div className="flex items-center justify-between">
                   <h3 className="font-display text-[1.2rem] font-bold" style={{ color: GOLD }}>{t.name}</h3>
                   <span className="tnum text-[0.82rem]" style={{ color: dim(0.45) }}>{mem.length} kişi</span>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-1.5">
-                  {mem.map((m) => <Avatar key={m.id} name={nameOf(m.user_id)} size={34} ring="#242424" />)}
+                  {mem.map((m) => <Avatar key={m.id} name={nameOf(m.user_id)} size={34} ring="var(--card)" />)}
                   {!mem.length && <span className="text-[0.85rem]" style={{ color: dim(0.4) }}>boş</span>}
                 </div>
               </motion.div>
@@ -76,7 +76,7 @@ export function TeamStage(ctx: StageContext) {
         </div>
         {isAdmin && (
           <div className="mt-6 flex justify-center">
-            <button onClick={() => build([])} className="rounded-full border px-6 py-3 text-[0.9rem] transition hover:bg-white/10" style={{ borderColor: "rgba(255,255,255,0.2)", color: dim(0.8) }}>Takımları sıfırla</button>
+            <button onClick={() => build([])} className="rounded-full border px-6 py-3 text-[0.9rem] transition hover:bg-[rgba(var(--border-rgb),0.08)]" style={{ borderColor: "rgba(var(--border-rgb),0.2)", color: dim(0.8) }}>Takımları sıfırla</button>
           </div>
         )}
       </div>
@@ -99,13 +99,13 @@ export function TeamStage(ctx: StageContext) {
         <Card>
           <div className="flex flex-col gap-2.5">
             {participants.map((p) => (
-              <div key={p.id} className="flex items-center gap-3 rounded-2xl px-4 py-2.5" style={{ background: "#2A2A2A", border: "1px solid rgba(255,255,255,0.08)" }}>
-                <span className="flex-1 text-[0.95rem]" style={{ color: "#EDEDED" }}>{nameOf(p.user_id)}</span>
+              <div key={p.id} className="flex items-center gap-3 rounded-2xl px-4 py-2.5" style={{ background: "var(--surface-2)", border: "1px solid rgba(var(--border-rgb),0.08)" }}>
+                <span className="flex-1 text-[0.95rem]" style={{ color: "var(--text)" }}>{nameOf(p.user_id)}</span>
                 <div className="flex gap-1.5">
                   {Array.from({ length: count }, (_, i) => {
                     const on = assign[p.user_id] === i;
                     return (
-                      <button key={i} onClick={() => setAssign((a) => ({ ...a, [p.user_id]: i }))} className="h-8 w-8 rounded-lg text-[0.85rem] font-bold transition" style={{ background: on ? GOLD : "#3a3a3a", color: on ? "#17150F" : "#EDEDED" }}>{i + 1}</button>
+                      <button key={i} onClick={() => setAssign((a) => ({ ...a, [p.user_id]: i }))} className="h-8 w-8 rounded-lg text-[0.85rem] font-bold transition" style={{ background: on ? GOLD : "var(--surface-2)", color: on ? "#17150F" : "var(--text)" }}>{i + 1}</button>
                     );
                   })}
                 </div>

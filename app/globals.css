@@ -1,25 +1,35 @@
 @import "tailwindcss";
 
 /* ============================================================
-   Fikir Sepeti — onaylı tasarım (Design system documentation)
-   Nötr koyu #1E1E1E · 4 renkli aksan (her sepete bir renk).
+   Fikir Sepeti — tema token sistemi (koyu + açık)
+   Nötr zeminler/metin/çizgi tema-duyarlı; aksanlar (coral/altın/
+   yeşil/mavi) iki temada da aynı. Alpha için *-rgb değişkenleri.
    ============================================================ */
 
 :root {
+  /* koyu (varsayılan) */
   --bg: #181818;
   --card: #242424;
-  --black: #0f0f0f;        /* featured / sahne / sonuç */
+  --black: #0f0f0f;        /* featured / sonuç */
   --surface-2: #2a2a2a;    /* input / elevated */
-  --line: rgba(255, 255, 255, 0.09);
-  --line-strong: rgba(255, 255, 255, 0.14);
-  --track: rgba(255, 255, 255, 0.07);
   --text: #ededed;
   --text-2: #c4c4c4;
   --text-3: #b0b0b0;
   --text-muted: #9a9a9a;
   --text-faint: #6e6e6e;
 
-  /* 4 aksan */
+  /* alpha tabanları — dim() ve çizgiler bunları kullanır */
+  --text-rgb: 237, 237, 237;
+  --border-rgb: 255, 255, 255;
+  --bg-rgb: 24, 24, 24;
+
+  --line: rgba(var(--border-rgb), 0.09);
+  --line-strong: rgba(var(--border-rgb), 0.14);
+  --track: rgba(var(--border-rgb), 0.07);
+
+  --card-shadow: none;
+
+  /* 4 aksan — iki temada da sabit */
   --coral: #f2795f;
   --gold: #e7a93f;
   --green: #33c293;
@@ -28,7 +38,7 @@
   --danger: #f2795f;
   --radius: 22px;
 
-  /* varsayılan semantik + geriye dönük isimler */
+  /* semantik + geriye dönük isimler */
   --social: var(--coral);
   --build: var(--gold);
   --accent-social: var(--coral);
@@ -39,6 +49,25 @@
   --surface: var(--card);
   --border: var(--line);
   --border-strong: var(--line-strong);
+}
+
+/* açık tema */
+:root[data-theme="light"] {
+  --bg: #f3f1ec;           /* sıcak açık zemin */
+  --card: #ffffff;
+  --black: #fbfaf8;
+  --surface-2: #ece9e2;
+  --text: #211d18;         /* sıcak koyu metin */
+  --text-2: #3d372e;
+  --text-3: #524b40;
+  --text-muted: #6f6656;
+  --text-faint: #a69c8b;
+
+  --text-rgb: 33, 29, 24;
+  --border-rgb: 0, 0, 0;
+  --bg-rgb: 243, 241, 236;
+
+  --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px -16px rgba(0, 0, 0, 0.12);
 }
 
 @theme inline {
@@ -63,10 +92,11 @@ html {
 
 body {
   min-height: 100%;
-  background: var(--bg); /* nötr gri, düz */
+  background: var(--bg);
   color: var(--text);
   font-family: var(--font-body), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  transition: background-color 0.35s ease, color 0.35s ease;
 }
 
 .font-display {
@@ -88,9 +118,15 @@ body {
   50% { transform: translateY(-4px); }
 }
 
+/* açık temada açık-renkli yatay logo okunmaz → siyah silüet */
+:root[data-theme="light"] .brand-mark {
+  filter: brightness(0);
+}
+
+/* presenter = projeksiyon sahnesi — temadan bağımsız hep koyu */
 .presenter-stage {
-  background: #1a1a1a; /* düz mono gri */
-  color: var(--text);
+  background: #1a1a1a;
+  color: #ededed;
 }
 
 @media (prefers-reduced-motion: reduce) {

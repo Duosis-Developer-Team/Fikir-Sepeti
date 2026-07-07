@@ -43,7 +43,7 @@ export function Avatars({
           style={{
             ...S,
             marginLeft: -size * 0.31,
-            background: "#323232",
+            background: "var(--surface-2)",
             border: `2px solid ${ring}`,
             color: "var(--text-3)",
           }}

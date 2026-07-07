@@ -40,8 +40,8 @@ export function LiveVotePanel({
               transition={{ type: "spring", stiffness: 380, damping: 32 }}
               className="relative overflow-hidden rounded-[18px]"
               style={{
-                background: "#242424",
-                border: `1px solid ${lead ? soft(accent, 0.5) : "rgba(255,255,255,0.09)"}`,
+                background: "var(--card)",
+                border: `1px solid ${lead ? soft(accent, 0.5) : "rgba(var(--border-rgb),0.09)"}`,
               }}
             >
               <div
@@ -49,16 +49,16 @@ export function LiveVotePanel({
                 style={{ width: `${pct}%`, background: soft(accent, lead ? 0.2 : 0.09), transition: "width 600ms cubic-bezier(.2,.8,.2,1)" }}
               />
               <div className="relative z-[1] flex items-center gap-[18px] px-[22px] py-5">
-                <span className="font-display tnum w-5 shrink-0 text-[1.05rem]" style={{ color: "#6E6E6E" }}>{rank + 1}</span>
+                <span className="font-display tnum w-5 shrink-0 text-[1.05rem]" style={{ color: "var(--text-faint)" }}>{rank + 1}</span>
                 <div className="min-w-0 flex-1">
-                  <div className="font-display text-[1.2rem] font-semibold leading-[1.15]" style={{ color: "#EDEDED" }}>{idea.text}</div>
+                  <div className="font-display text-[1.2rem] font-semibold leading-[1.15]" style={{ color: "var(--text)" }}>{idea.text}</div>
                   {(idea.tag || idea.created_by) && (
-                    <div className="mt-[3px] text-[0.85rem]" style={{ color: "#9A9A9A" }}>
+                    <div className="mt-[3px] text-[0.85rem]" style={{ color: "var(--text-muted)" }}>
                       {idea.tag ? `${idea.tag} · ` : ""}{idea.created_by ?? ""}
                     </div>
                   )}
                 </div>
-                <span className="font-display tnum w-[46px] shrink-0 text-right text-[1.7rem] font-bold" style={{ color: lead ? accent.base : "#EDEDED" }}>
+                <span className="font-display tnum w-[46px] shrink-0 text-right text-[1.7rem] font-bold" style={{ color: lead ? accent.base : "var(--text)" }}>
                   <AnimatedNumber value={idea.vote_count} />
                 </span>
                 {onVote && (
@@ -66,7 +66,7 @@ export function LiveVotePanel({
                     onClick={() => onVote(idea.id, phase)}
                     title={mine ? "oyunu geri al" : "oy ver"}
                     className="shrink-0 rounded-full px-[18px] py-[10px] text-[0.9rem] font-semibold transition hover:opacity-90"
-                    style={mine ? { background: accent.base, color: "#0F0F0F" } : { background: "#EDEDED", color: "#0F0F0F" }}
+                    style={mine ? { background: accent.base, color: "#0F0F0F" } : { background: "var(--text)", color: "#0F0F0F" }}
                   >
                     {mine ? "oyun ✓" : "oy ver"}
                   </button>
