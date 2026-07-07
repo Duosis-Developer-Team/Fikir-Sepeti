@@ -18,13 +18,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         style={{ borderBottom: "1px solid rgba(255,255,255,0.08)", background: "#181818" }}
       >
         <Link href="/" className="flex shrink-0 items-center" aria-label="FikirSepeti ana sayfa">
+          {/* Desktop: yatay logo · Mobil: kare icon (dar alanda taşmayı önler) */}
           <Image
             src="/brand/fikirsepeti-logo.png"
             alt="FikirSepeti"
             width={958}
             height={220}
             priority
-            className="h-8 w-auto object-contain sm:h-9"
+            className="hidden h-9 w-auto object-contain sm:block"
+          />
+          <Image
+            src="/brand/fikirsepeti-icon.png"
+            alt="FikirSepeti"
+            width={512}
+            height={512}
+            priority
+            className="h-9 w-9 object-contain sm:hidden"
           />
         </Link>
         {name && (
