@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { motion } from "motion/react";
-import { rebuildTeams, partition } from "@/lib/hackathon";
+import { rebuildTeams, partition, startHackathonTimer } from "@/lib/hackathon";
+import { setBasketPhase } from "@/lib/db";
 import type { StageContext } from "../contract";
 import { GOLD, dim } from "../contract";
 import { Card, GoldButton, Avatar, StageHeadline } from "../ui";
@@ -10,6 +11,12 @@ import { Card, GoldButton, Avatar, StageHeadline } from "../ui";
 export function TeamStage(ctx: StageContext) {
   const { data, config, isAdmin, refresh } = ctx;
   const { basket, participants, teams, members } = data;
+
+  const startHackathon = async () => {
+    if (!basket.hackathon_ends_at) await startHackathonTimer(basket.id, config);
+    await setBasketPhase(basket.id, "hackathon");
+    refresh();
+  };
   const mode = config.teamMode ?? "solo";
   const built = teams.length > 0;
 
@@ -75,8 +82,9 @@ export function TeamStage(ctx: StageContext) {
           })}
         </div>
         {isAdmin && (
-          <div className="mt-6 flex justify-center">
-            <button onClick={() => build([])} className="rounded-full border px-6 py-3 text-[0.9rem] transition hover:bg-[rgba(var(--border-rgb),0.08)]" style={{ borderColor: "rgba(var(--border-rgb),0.2)", color: dim(0.8) }}>Takımları sıfırla</button>
+          <div className="mt-9 flex flex-col items-center gap-3.5">
+            <GoldButton onClick={startHackathon}>Hackathon&apos;u başlat →</GoldButton>
+            <button onClick={() => build([])} className="text-[0.85rem] transition hover:opacity-70" style={{ color: dim(0.45) }}>takımları yeniden dağıt</button>
           </div>
         )}
       </div>

@@ -124,11 +124,11 @@ export function NumberStepper({
   label?: string;
 }) {
   return (
-    <div className="flex flex-col gap-2">
-      {label && <span className="text-[0.72rem] font-semibold uppercase tracking-[0.2em]" style={{ color: dim(0.5) }}>{label}</span>}
-      <div className="flex items-center justify-between rounded-2xl p-2" style={{ background: "var(--surface-2)", border: "1px solid rgba(var(--border-rgb),0.1)" }}>
+    <div className="flex flex-col gap-2.5">
+      {label && <span className="text-[0.7rem] font-semibold uppercase tracking-[0.2em]" style={{ color: dim(0.5) }}>{label}</span>}
+      <div className="inline-flex items-center gap-1 self-start rounded-full p-1.5" style={{ background: "rgba(var(--border-rgb),0.05)", border: "1px solid rgba(var(--border-rgb),0.09)" }}>
         <StepBtn onClick={() => onChange(Math.max(min, value - 1))} disabled={value <= min}>−</StepBtn>
-        <span className="font-display text-[1.7rem] font-bold tabular-nums" style={{ color: "var(--text)" }}>{value}</span>
+        <span className="font-display min-w-[2ch] text-center text-[1.5rem] font-bold tabular-nums" style={{ color: "var(--text)" }}>{value}</span>
         <StepBtn onClick={() => onChange(Math.min(max, value + 1))} disabled={value >= max}>+</StepBtn>
       </div>
     </div>
@@ -138,14 +138,49 @@ export function NumberStepper({
 function StepBtn({ children, onClick, disabled }: { children: React.ReactNode; onClick: () => void; disabled?: boolean }) {
   return (
     <motion.button
-      whileTap={disabled ? undefined : { scale: 0.88 }}
+      whileTap={disabled ? undefined : { scale: 0.85 }}
       onClick={onClick}
       disabled={disabled}
-      className="grid h-10 w-10 place-items-center rounded-xl text-[1.4rem] font-bold leading-none transition hover:bg-[rgba(var(--border-rgb),0.05)] disabled:opacity-25"
-      style={{ background: "var(--surface-2)", color: GOLD }}
+      className="grid h-9 w-9 place-items-center rounded-full text-[1.35rem] font-bold leading-none transition hover:bg-[rgba(var(--border-rgb),0.08)] disabled:opacity-20"
+      style={{ color: GOLD }}
     >
       {children}
     </motion.button>
+  );
+}
+
+/** Premium segmented kontrol — birim/atama gibi küçük seçimler. */
+export function Segmented<T extends string>({
+  value,
+  options,
+  onChange,
+  label,
+}: {
+  value?: T;
+  options: { v: T; label: string }[];
+  onChange: (v: T) => void;
+  label?: string;
+}) {
+  return (
+    <div className="flex flex-col gap-2.5">
+      {label && <span className="text-[0.7rem] font-semibold uppercase tracking-[0.2em]" style={{ color: dim(0.5) }}>{label}</span>}
+      <div className="inline-flex items-center gap-1 self-start rounded-full p-1.5" style={{ background: "rgba(var(--border-rgb),0.05)", border: "1px solid rgba(var(--border-rgb),0.09)" }}>
+        {options.map((o) => {
+          const on = value === o.v;
+          return (
+            <motion.button
+              key={o.v}
+              whileTap={{ scale: 0.96 }}
+              onClick={() => onChange(o.v)}
+              className="rounded-full px-4 py-2 text-[0.9rem] font-semibold transition-colors"
+              style={on ? { background: GOLD, color: "var(--bg)", boxShadow: `0 5px 14px -6px ${GOLD}` } : { background: "transparent", color: dim(0.55) }}
+            >
+              {o.label}
+            </motion.button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 

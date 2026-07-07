@@ -7,7 +7,7 @@ import { setConfig } from "@/lib/hackathon";
 import { setBasketPhase } from "@/lib/db";
 import type { StageContext } from "../contract";
 import { GOLD, GOLD_SOFT, dim } from "../contract";
-import { Card, GoldButton, StageHeadline, NumberStepper } from "../ui";
+import { Card, GoldButton, StageHeadline, NumberStepper, Segmented } from "../ui";
 import { InvitePanel } from "../InvitePanel";
 
 type Sub = "invite" | "ideaSource" | "poolSelect" | "teamMode" | "groups" | "duration" | "ready";
@@ -106,7 +106,11 @@ export function LobbyStage({ data, config, isAdmin, refresh }: StageContext) {
           <StageHeadline pre="Kim" accent="kiminle?" />
           <Choice
             value={config.teamMode}
-            onChange={(v) => { patch({ teamMode: v }); setSub(v === "groups" ? "groups" : "duration"); }}
+            onChange={(v) => {
+              if (v === "groups") patch({ teamMode: v, groups: { count: 3, size: 4, assignment: "random" } });
+              else patch({ teamMode: v });
+              setSub(v === "groups" ? "groups" : "duration");
+            }}
             options={[
               { v: "solo", label: "Herkes tek", hint: "solo" },
               { v: "groups", label: "Gruplar", hint: "N takım" },
@@ -119,18 +123,10 @@ export function LobbyStage({ data, config, isAdmin, refresh }: StageContext) {
       {sub === "groups" && (
         <>
           <StageHeadline pre="Grupları" accent="ayarla" />
-          <div className="mx-auto grid w-full max-w-[560px] grid-cols-2 gap-4 sm:grid-cols-3">
+          <div className="mx-auto flex w-full max-w-[600px] flex-wrap items-start justify-center gap-x-10 gap-y-6">
             <NumberStepper label="Kaç takım" value={config.groups?.count ?? 3} min={2} onChange={(n) => patchGroups({ count: n })} />
             <NumberStepper label="Kişi/takım" value={config.groups?.size ?? 4} min={1} onChange={(n) => patchGroups({ size: n })} />
-            <div className="flex flex-col gap-2">
-              <span className="text-[0.72rem] font-semibold uppercase tracking-[0.2em]" style={{ color: dim(0.5) }}>Atama</span>
-              <div className="flex gap-2">
-                {(["random", "manual"] as const).map((a) => {
-                  const on = config.groups?.assignment === a;
-                  return <button key={a} onClick={() => patchGroups({ assignment: a })} className="flex-1 rounded-xl py-2.5 text-[0.9rem] font-semibold transition" style={{ background: on ? "rgba(231,169,63,0.14)" : "var(--surface-2)", border: `1px solid ${on ? GOLD : "rgba(var(--border-rgb),0.09)"}`, color: on ? GOLD : "var(--text)" }}>{a === "random" ? "Random" : "Elle"}</button>;
-                })}
-              </div>
-            </div>
+            <Segmented label="Atama" value={config.groups?.assignment} onChange={(v) => patchGroups({ assignment: v })} options={[{ v: "random", label: "Random" }, { v: "manual", label: "Elle" }]} />
           </div>
         </>
       )}
@@ -138,23 +134,9 @@ export function LobbyStage({ data, config, isAdmin, refresh }: StageContext) {
       {sub === "duration" && (
         <>
           <StageHeadline pre="Ne kadar" accent="sürecek?" sub="Hackathon süresini seç — sonra geri sayım başlar." />
-          <div className="mx-auto flex max-w-[560px] items-stretch justify-center gap-5">
-            <div className="w-[170px]">
-              <NumberStepper value={config.duration?.value ?? 1} min={1} max={99} onChange={(n) => patchDuration({ value: n })} />
-            </div>
-            <div className="flex flex-col gap-2">
-              <span className="text-[0.72rem] font-semibold uppercase tracking-[0.2em]" style={{ color: dim(0.5) }}>Birim</span>
-              <div className="flex gap-2">
-                {UNITS.map((u) => {
-                  const on = (config.duration?.unit ?? "day") === u.v;
-                  return (
-                    <button key={u.v} onClick={() => patchDuration({ unit: u.v })} className="rounded-xl px-5 py-3 text-[1rem] font-semibold transition" style={{ background: on ? "rgba(231,169,63,0.14)" : "var(--surface-2)", border: `1px solid ${on ? GOLD : "rgba(var(--border-rgb),0.09)"}`, color: on ? GOLD : "var(--text)" }}>
-                      {u.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+          <div className="mx-auto flex max-w-[560px] flex-wrap items-start justify-center gap-x-10 gap-y-6">
+            <NumberStepper label="Süre" value={config.duration?.value ?? 1} min={1} max={99} onChange={(n) => patchDuration({ value: n })} />
+            <Segmented label="Birim" value={config.duration?.unit ?? "day"} onChange={(v) => patchDuration({ unit: v })} options={UNITS.map((u) => ({ v: u.v, label: u.label }))} />
           </div>
         </>
       )}
