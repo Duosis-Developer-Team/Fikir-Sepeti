@@ -46,6 +46,24 @@ export function ProductionStage({ data, isAdmin, refresh }: StageContext) {
           <h2 className="font-display mt-4 text-[1.6rem] font-bold" style={{ color: "#EDEDED" }}>Kazanan yok</h2>
         )}
 
+        {teams.length > 0 && (
+          <div className="mt-6 flex flex-col gap-2 text-left">
+            <span className="text-[0.7rem] font-semibold uppercase tracking-[0.22em]" style={{ color: dim(0.45) }}>Sıralama</span>
+            {[...teams].sort((a, b) => votesOf(b.id) - votesOf(a.id)).map((t, rank) => {
+              const mem = members.filter((m) => m.team_id === t.id);
+              const win = winner?.id === t.id;
+              return (
+                <div key={t.id} className="flex items-center gap-3 rounded-xl px-4 py-2.5" style={{ background: win ? "rgba(231,169,63,0.1)" : "#2A2A2A", border: `1px solid ${win ? GOLD : "rgba(255,255,255,0.07)"}` }}>
+                  <span className="tnum font-display w-5 font-bold" style={{ color: win ? GOLD_SOFT : dim(0.4) }}>{rank + 1}</span>
+                  <span className="flex-1 truncate font-semibold" style={{ color: "#EDEDED" }}>{t.name}</span>
+                  <div className="flex gap-1">{mem.map((m) => <Avatar key={m.id} name={nameOf(m.user_id)} size={22} />)}</div>
+                  <span className="tnum font-display text-[1.1rem] font-bold" style={{ color: win ? GOLD : dim(0.7) }}>{votesOf(t.id)}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         {selected && (
           <p className="mt-5 text-[0.95rem]" style={{ color: dim(0.55) }}>
             Fikir: <span style={{ color: "#EDEDED" }}>{selected.text}</span>
