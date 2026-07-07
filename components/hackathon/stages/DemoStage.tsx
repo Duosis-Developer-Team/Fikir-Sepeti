@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { voteTeam } from "@/lib/hackathon";
 import type { StageContext } from "../contract";
 import { GOLD, GOLD_SOFT, dim } from "../contract";
-import { Avatar } from "../ui";
+import { Avatar, StageHeadline } from "../ui";
 
 export function DemoStage({ data, user, refresh }: StageContext) {
   const { basket, teams, members, teamVotes, participants, ideas } = data;
@@ -26,13 +26,10 @@ export function DemoStage({ data, user, refresh }: StageContext) {
 
   return (
     <div className="mx-auto max-w-[1100px]">
-      <div className="mb-5 flex items-baseline justify-between px-1">
-        <div>
-          <span className="text-[0.72rem] font-semibold uppercase tracking-[0.28em]" style={{ color: GOLD }}>Canlı demo · en iyi yapımı seç</span>
-          {selected && <p className="mt-1 text-[0.95rem]" style={{ color: dim(0.5) }}>{selected.text}</p>}
-        </div>
+      <StageHeadline pre="En iyi yapımı" accent="seç" sub={selected ? selected.text : "Bir takıma dokun — oyunu ver."} />
+      <div className="mb-4 flex items-baseline justify-end px-1">
         <span className="text-[0.95rem]" style={{ color: dim(0.5) }}>
-          <span className="font-display font-bold" style={{ color: "#EDEDED" }}>{teamVotes.length}</span> oy
+          <span className="font-display font-bold" style={{ color: "#EDEDED" }}>{teamVotes.length}</span> oy verildi
         </span>
       </div>
 

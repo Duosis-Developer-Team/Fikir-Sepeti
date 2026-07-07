@@ -5,8 +5,8 @@ import { addFeedback, listFeedback } from "@/lib/hackathon";
 import { supabase } from "@/lib/supabase";
 import type { Feedback } from "@/lib/types";
 import type { StageContext } from "../contract";
-import { GOLD, dim } from "../contract";
-import { Card, GoldButton, initials } from "../ui";
+import { dim } from "../contract";
+import { Card, GoldButton, StageHeadline, initials } from "../ui";
 
 export function FeedbackStage({ data, user }: StageContext) {
   const { basket } = data;
@@ -36,10 +36,7 @@ export function FeedbackStage({ data, user }: StageContext) {
 
   return (
     <div className="mx-auto max-w-[720px]">
-      <div className="mb-4 px-1">
-        <span className="text-[0.72rem] font-semibold uppercase tracking-[0.28em]" style={{ color: GOLD }}>Feedback</span>
-        <p className="mt-1 text-[0.9rem]" style={{ color: dim(0.5) }}>Eleştiri, öneri, "şunu da ekleyin" — hepsi buraya.</p>
-      </div>
+      <StageHeadline pre="Ne" accent="eksik" post="?" sub="Eleştiri, öneri, 'şunu da ekleyin' — hepsi buraya." />
 
       <Card>
         <div className="flex gap-2.5">

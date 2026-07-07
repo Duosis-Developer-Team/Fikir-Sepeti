@@ -6,7 +6,7 @@ import { setSelectedIdea } from "@/lib/hackathon";
 import { supabase } from "@/lib/supabase";
 import type { StageContext } from "../contract";
 import { GOLD, GOLD_SOFT, dim } from "../contract";
-import { Card, GoldButton } from "../ui";
+import { Card, GoldButton, StageHeadline } from "../ui";
 
 export function IdeaStage(ctx: StageContext) {
   const { data, config, user, isAdmin, refresh } = ctx;
@@ -43,10 +43,9 @@ export function IdeaStage(ctx: StageContext) {
   if (selected) {
     return (
       <div className="mx-auto max-w-[760px]">
+        <StageHeadline pre="Fikir" accent="belli" sub="Sıra takımlarda." />
         <Card className="text-center">
-          <span className="text-[0.75rem] font-semibold uppercase tracking-[0.28em]" style={{ color: GOLD }}>Seçilen fikir</span>
-          <h2 className="font-display mt-3 text-[clamp(2rem,4vw,3rem)] font-extrabold leading-tight" style={{ color: "#EDEDED" }}>{selected.text}</h2>
-          <p className="mt-3 text-[0.9rem]" style={{ color: dim(0.5) }}>Bunun üzerine takımlar kurulacak.</p>
+          <h2 className="font-display text-[clamp(2rem,4vw,3rem)] font-extrabold leading-tight" style={{ color: GOLD }}>{selected.text}</h2>
         </Card>
       </div>
     );
@@ -56,18 +55,15 @@ export function IdeaStage(ctx: StageContext) {
   if (config.ideaSource === "static") {
     return (
       <div className="mx-auto max-w-[640px]">
-        <Card>
-          {isAdmin ? (
-            <>
-              <h2 className="font-display text-[1.3rem] font-bold" style={{ color: "#EDEDED" }}>Fikri gir</h2>
-              <p className="mt-1 text-[0.9rem]" style={{ color: dim(0.5) }}>Üzerinde çalışılacak tek fikri yaz.</p>
-              <textarea value={draft} onChange={(e) => setDraft(e.target.value)} rows={3} placeholder="Örn: PR'ları otomatik özetleyen bot" className="mt-4 w-full resize-none rounded-xl px-4 py-3 text-[1rem] outline-none" style={{ background: "#2A2A2A", border: "1px solid rgba(255,255,255,0.09)", color: "#EDEDED" }} />
-              <div className="mt-4"><GoldButton onClick={submitIdea} disabled={draft.trim().length < 2}>Fikri belirle →</GoldButton></div>
-            </>
-          ) : (
-            <p className="text-center text-[1rem]" style={{ color: dim(0.5) }}>Admin fikri giriyor…</p>
-          )}
-        </Card>
+        <StageHeadline pre="Fikri" accent="koy" sub={isAdmin ? "Üzerinde çalışacağınız tek fikir." : undefined} />
+        {isAdmin ? (
+          <Card>
+            <textarea value={draft} onChange={(e) => setDraft(e.target.value)} rows={3} placeholder="Örn: PR'ları otomatik özetleyen bot" className="w-full resize-none rounded-xl px-4 py-3 text-[1.1rem] outline-none" style={{ background: "#2A2A2A", border: "1px solid rgba(255,255,255,0.09)", color: "#EDEDED" }} />
+            <div className="mt-4 flex justify-center"><GoldButton onClick={submitIdea} disabled={draft.trim().length < 2}>Fikri belirle →</GoldButton></div>
+          </Card>
+        ) : (
+          <p className="text-center text-[1rem]" style={{ color: dim(0.5) }}>Admin fikri giriyor…</p>
+        )}
       </div>
     );
   }
@@ -76,6 +72,7 @@ export function IdeaStage(ctx: StageContext) {
   const sorted = [...ideas].sort((a, b) => b.vote_count - a.vote_count);
   return (
     <div className="mx-auto max-w-[760px]">
+      <StageHeadline pre="Fikirleri" accent="dök" sub={config.poolSelect === "random" ? "Herkes yazsın; birini kura seçecek." : "Herkes yazsın; en çok oyu alan kazanır."} />
       <div className="flex gap-2.5">
         <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submitIdea()} placeholder="Fikrini yaz…" className="flex-1 rounded-xl px-4 py-3 text-[1rem] outline-none" style={{ background: "#2A2A2A", border: "1px solid rgba(255,255,255,0.09)", color: "#EDEDED" }} />
         <GoldButton onClick={submitIdea} disabled={draft.trim().length < 2}>Ekle</GoldButton>

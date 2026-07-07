@@ -4,7 +4,7 @@ import { useState } from "react";
 import { rebuildTeams, partition } from "@/lib/hackathon";
 import type { StageContext } from "../contract";
 import { GOLD, dim } from "../contract";
-import { Card, GoldButton, Avatar } from "../ui";
+import { Card, GoldButton, Avatar, StageHeadline } from "../ui";
 
 export function TeamStage(ctx: StageContext) {
   const { data, config, isAdmin, refresh } = ctx;
@@ -47,6 +47,7 @@ export function TeamStage(ctx: StageContext) {
   if (built) {
     return (
       <div className="mx-auto max-w-[1100px]">
+        <StageHeadline pre="Takımlar" accent="hazır" sub="Yapım başlasın — sonra demo." />
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {teams.map((t) => {
             const mem = members.filter((m) => m.team_id === t.id);
@@ -77,7 +78,7 @@ export function TeamStage(ctx: StageContext) {
   if (!isAdmin) {
     return (
       <div className="mx-auto max-w-[560px]">
-        <Card><p className="text-center text-[1rem]" style={{ color: dim(0.5) }}>Admin takımları kuruyor…</p></Card>
+        <StageHeadline pre="Takımlar" accent="kuruluyor" sub="Admin dağıtıyor — birazdan." />
       </div>
     );
   }
@@ -85,10 +86,9 @@ export function TeamStage(ctx: StageContext) {
   if (mode === "groups" && config.groups?.assignment === "manual") {
     return (
       <div className="mx-auto max-w-[760px]">
+        <StageHeadline pre="Elle takım" accent="ata" sub="Her kişiye bir takım seç." />
         <Card>
-          <h2 className="font-display text-[1.3rem] font-bold" style={{ color: "#EDEDED" }}>Elle takım ata</h2>
-          <p className="mt-1 text-[0.9rem]" style={{ color: dim(0.5) }}>Her kişiye bir takım seç.</p>
-          <div className="mt-4 flex flex-col gap-2.5">
+          <div className="flex flex-col gap-2.5">
             {participants.map((p) => (
               <div key={p.id} className="flex items-center gap-3 rounded-2xl px-4 py-2.5" style={{ background: "#2A2A2A", border: "1px solid rgba(255,255,255,0.08)" }}>
                 <span className="flex-1 text-[0.95rem]" style={{ color: "#EDEDED" }}>{nameOf(p.user_id)}</span>
@@ -111,13 +111,9 @@ export function TeamStage(ctx: StageContext) {
 
   const hint = mode === "solo" ? "Herkes kendi başına — her kişi bir takım." : mode === "one" ? "Herkes tek takım — birlikte." : `${count} takıma rastgele bölünecek.`;
   return (
-    <div className="mx-auto max-w-[560px]">
-      <Card className="text-center">
-        <h2 className="font-display text-[1.3rem] font-bold" style={{ color: "#EDEDED" }}>Takımları kur</h2>
-        <p className="mt-1.5 text-[0.95rem]" style={{ color: dim(0.5) }}>{hint}</p>
-        <p className="mt-1 text-[0.85rem]" style={{ color: dim(0.4) }}>{participants.length} katılımcı</p>
-        <div className="mt-5 flex justify-center"><GoldButton onClick={doAuto}>Oluştur →</GoldButton></div>
-      </Card>
+    <div className="mx-auto max-w-[600px]">
+      <StageHeadline pre="Takımları" accent="kur" sub={`${hint} · ${participants.length} katılımcı`} />
+      <div className="flex justify-center"><GoldButton onClick={doAuto}>Oluştur →</GoldButton></div>
     </div>
   );
 }
