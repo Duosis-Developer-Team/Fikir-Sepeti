@@ -6,6 +6,7 @@ import { setConfig } from "@/lib/hackathon";
 import type { StageContext } from "../contract";
 import { GOLD, dim, configReady } from "../contract";
 import { Seg, Field, Card, initials } from "../ui";
+import { InvitePanel } from "../InvitePanel";
 
 export function LobbyStage({ data, config, isAdmin, refresh }: StageContext) {
   const { basket, participants } = data;
@@ -98,25 +99,28 @@ export function LobbyStage({ data, config, isAdmin, refresh }: StageContext) {
         </Card>
       )}
 
-      {/* katılımcılar */}
-      <Card>
-        <div className="flex items-baseline justify-between">
-          <span className="text-[0.72rem] font-semibold uppercase tracking-[0.22em]" style={{ color: dim(0.5) }}>Katılımcılar</span>
-          <span className="font-display text-[1.1rem] font-bold" style={{ color: "#EDEDED" }}>{participants.length}</span>
-        </div>
-        <div className="mt-4 flex flex-col gap-2.5">
-          {participants.map((p) => (
-            <div key={p.id} className="flex items-center gap-3">
-              <span className="grid h-8 w-8 place-items-center rounded-full text-[0.8rem] font-bold" style={{ background: p.role === "admin" ? GOLD : "#3a3a3a", color: p.role === "admin" ? "#17150F" : "#EDEDED" }}>
-                {initials(p.display_name || p.email || p.user_id)}
-              </span>
-              <span className="text-[0.95rem]" style={{ color: "#EDEDED" }}>{p.display_name || p.email || p.user_id}</span>
-              {p.role === "admin" && <span className="ml-auto text-[0.72rem] font-semibold uppercase tracking-[0.15em]" style={{ color: GOLD }}>admin</span>}
-            </div>
-          ))}
-          {!participants.length && <p className="text-[0.9rem]" style={{ color: dim(0.4) }}>Henüz kimse yok.</p>}
-        </div>
-      </Card>
+      {/* sağ kolon: davet (admin) + katılımcılar */}
+      <div className="flex flex-col gap-6">
+        {isAdmin && <InvitePanel basketId={basket.id} />}
+        <Card>
+          <div className="flex items-baseline justify-between">
+            <span className="text-[0.72rem] font-semibold uppercase tracking-[0.22em]" style={{ color: dim(0.5) }}>Katılımcılar</span>
+            <span className="font-display text-[1.1rem] font-bold" style={{ color: "#EDEDED" }}>{participants.length}</span>
+          </div>
+          <div className="mt-4 flex flex-col gap-2.5">
+            {participants.map((p) => (
+              <div key={p.id} className="flex items-center gap-3">
+                <span className="grid h-8 w-8 place-items-center rounded-full text-[0.8rem] font-bold" style={{ background: p.role === "admin" ? GOLD : "#3a3a3a", color: p.role === "admin" ? "#17150F" : "#EDEDED" }}>
+                  {initials(p.display_name || p.email || p.user_id)}
+                </span>
+                <span className="text-[0.95rem]" style={{ color: "#EDEDED" }}>{p.display_name || p.email || p.user_id}</span>
+                {p.role === "admin" && <span className="ml-auto text-[0.72rem] font-semibold uppercase tracking-[0.15em]" style={{ color: GOLD }}>admin</span>}
+              </div>
+            ))}
+            {!participants.length && <p className="text-[0.9rem]" style={{ color: dim(0.4) }}>Henüz kimse yok.</p>}
+          </div>
+        </Card>
+      </div>
     </div>
   );
 }
