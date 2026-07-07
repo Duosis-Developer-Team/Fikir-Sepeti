@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { motion } from "motion/react";
 import { rebuildTeams, partition } from "@/lib/hackathon";
 import type { StageContext } from "../contract";
 import { GOLD, dim } from "../contract";
@@ -49,10 +50,18 @@ export function TeamStage(ctx: StageContext) {
       <div className="mx-auto max-w-[1100px]">
         <StageHeadline pre="Takımlar" accent="hazır" sub="Yapım başlasın — sonra demo." />
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {teams.map((t) => {
+          {teams.map((t, idx) => {
             const mem = members.filter((m) => m.team_id === t.id);
             return (
-              <Card key={t.id}>
+              <motion.div
+                key={t.id}
+                initial={{ opacity: 0, y: 22 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.42, ease: [0.22, 0.85, 0.25, 1], delay: idx * 0.08 }}
+                whileHover={{ y: -4 }}
+                className="rounded-[22px] p-6"
+                style={{ background: "#242424", border: "1px solid rgba(255,255,255,0.09)" }}
+              >
                 <div className="flex items-center justify-between">
                   <h3 className="font-display text-[1.2rem] font-bold" style={{ color: GOLD }}>{t.name}</h3>
                   <span className="tnum text-[0.82rem]" style={{ color: dim(0.45) }}>{mem.length} kişi</span>
@@ -61,7 +70,7 @@ export function TeamStage(ctx: StageContext) {
                   {mem.map((m) => <Avatar key={m.id} name={nameOf(m.user_id)} size={34} ring="#242424" />)}
                   {!mem.length && <span className="text-[0.85rem]" style={{ color: dim(0.4) }}>boş</span>}
                 </div>
-              </Card>
+              </motion.div>
             );
           })}
         </div>

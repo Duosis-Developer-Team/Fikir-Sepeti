@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import type { HackathonConfig } from "@/lib/types";
 import { setConfig } from "@/lib/hackathon";
 import { setBasketPhase } from "@/lib/db";
@@ -46,7 +47,15 @@ export function LobbyStage({ data, config, isAdmin, refresh }: StageContext) {
   const back = prevOf(sub);
 
   return (
-    <div className="mx-auto flex min-h-[62vh] w-full max-w-[860px] flex-col justify-center">
+    <div className="mx-auto flex min-h-[64vh] w-full max-w-[900px] flex-col justify-center overflow-hidden">
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={sub}
+          initial={{ opacity: 0, x: 30 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -30 }}
+          transition={{ duration: 0.34, ease: EASE }}
+        >
       {sub === "invite" && (
         <>
           <StageHeadline pre="Önce ekibi" accent="topla" sub="Linki paylaş — açan herkes iş e-postasıyla lobiye katılır. Sonra akışı kur." />
@@ -124,6 +133,9 @@ export function LobbyStage({ data, config, isAdmin, refresh }: StageContext) {
         </div>
       )}
 
+        </motion.div>
+      </AnimatePresence>
+
       {/* nav — geri her zaman, ileri adıma göre */}
       <div className="mt-12 flex items-center justify-center gap-3">
         {back && (
@@ -139,14 +151,28 @@ export function LobbyStage({ data, config, isAdmin, refresh }: StageContext) {
 
 function Choice<T extends string>({ value, options, onChange }: { value?: T; options: { v: T; label: string; hint?: string }[]; onChange: (v: T) => void }) {
   return (
-    <div className="flex flex-wrap justify-center gap-4">
-      {options.map((o) => {
+    <div className="flex flex-wrap justify-center gap-5">
+      {options.map((o, i) => {
         const on = value === o.v;
         return (
-          <button key={o.v} onClick={() => onChange(o.v)} className="min-w-[190px] rounded-[22px] px-8 py-7 text-center transition" style={{ background: on ? "rgba(231,169,63,0.12)" : "#242424", border: `1px solid ${on ? GOLD : "rgba(255,255,255,0.09)"}`, transform: on ? "translateY(-2px)" : "none" }}>
-            <span className="font-display block text-[1.5rem] font-bold" style={{ color: on ? GOLD : "#EDEDED" }}>{o.label}</span>
-            {o.hint && <span className="mt-1 block text-[0.92rem]" style={{ color: dim(0.5) }}>{o.hint}</span>}
-          </button>
+          <motion.button
+            key={o.v}
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.42, ease: EASE, delay: 0.08 + i * 0.07 }}
+            whileHover={{ y: -6 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={() => onChange(o.v)}
+            className="min-w-[210px] rounded-[24px] px-10 py-9 text-center"
+            style={{
+              background: on ? "rgba(231,169,63,0.12)" : "#242424",
+              border: `1px solid ${on ? GOLD : "rgba(255,255,255,0.09)"}`,
+              boxShadow: on ? "0 20px 50px -28px rgba(231,169,63,0.65)" : "none",
+            }}
+          >
+            <span className="font-display block text-[1.75rem] font-bold" style={{ color: on ? GOLD : "#EDEDED" }}>{o.label}</span>
+            {o.hint && <span className="mt-1.5 block text-[1rem]" style={{ color: dim(0.5) }}>{o.hint}</span>}
+          </motion.button>
         );
       })}
     </div>
@@ -161,6 +187,8 @@ function NumField({ label, value, min, onChange }: { label: string; value: numbe
     </div>
   );
 }
+
+const EASE = [0.22, 0.85, 0.25, 1] as const;
 
 const IDEA_LABEL: Record<string, string> = { static: "Fikir var", pool: "Brainstorming" };
 const POOL_LABEL: Record<string, string> = { vote: "Oylama", random: "Kura" };

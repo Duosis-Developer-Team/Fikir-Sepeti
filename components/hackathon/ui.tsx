@@ -1,7 +1,11 @@
 "use client";
 
+import { motion } from "motion/react";
 import { GOLD, dim } from "./contract";
 import { avatarColor, initial } from "@/lib/avatar";
+
+// premium, ölçülü easing — yumuşak, zıplamayan
+const EASE = [0.22, 0.85, 0.25, 1] as const;
 
 /** Renkli, kimlik-bazlı baş-harf avatarı — ana sayfayla aynı palet. */
 export function Avatar({ name, size = 28, ring }: { name: string; size?: number; ring?: string }) {
@@ -72,16 +76,28 @@ export function StageHeadline({
   color?: string;
 }) {
   return (
-    <div className="mx-auto mb-10 max-w-[860px] text-center">
-      <h2 className="font-display text-[clamp(2.4rem,4.6vw,3.8rem)] font-extrabold leading-[1.0] tracking-tight" style={{ color: "#EDEDED" }}>
+    <div className="mx-auto mb-11 max-w-[920px] text-center">
+      <motion.h2
+        initial={{ opacity: 0, y: 22, filter: "blur(6px)" }}
+        animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+        transition={{ duration: 0.55, ease: EASE }}
+        className="font-display text-[clamp(2.8rem,5.4vw,4.6rem)] font-extrabold leading-[0.98] tracking-tight"
+        style={{ color: "#EDEDED" }}
+      >
         {pre ? `${pre} ` : ""}
         <span style={{ color }}>{accent}</span>
         {post ?? ""}
-      </h2>
+      </motion.h2>
       {sub && (
-        <p className="mx-auto mt-4 max-w-[520px] text-[1.08rem] leading-snug" style={{ color: dim(0.55) }}>
+        <motion.p
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: EASE, delay: 0.12 }}
+          className="mx-auto mt-5 max-w-[540px] text-[1.12rem] leading-snug"
+          style={{ color: dim(0.55) }}
+        >
           {sub}
-        </p>
+        </motion.p>
       )}
     </div>
   );
@@ -109,14 +125,17 @@ export function Card({ children, className = "" }: { children: React.ReactNode; 
 
 export function GoldButton({ children, onClick, disabled }: { children: React.ReactNode; onClick?: () => void; disabled?: boolean }) {
   return (
-    <button
+    <motion.button
       onClick={onClick}
       disabled={disabled}
-      className="rounded-full px-6 py-3 text-[0.95rem] font-semibold transition hover:opacity-90 disabled:opacity-30"
+      whileHover={disabled ? undefined : { y: -2 }}
+      whileTap={disabled ? undefined : { scale: 0.96 }}
+      transition={{ duration: 0.18, ease: EASE }}
+      className="rounded-full px-7 py-3.5 text-[1rem] font-semibold hover:opacity-90 disabled:opacity-30"
       style={{ background: GOLD, color: "#17150F" }}
     >
       {children}
-    </button>
+    </motion.button>
   );
 }
 
