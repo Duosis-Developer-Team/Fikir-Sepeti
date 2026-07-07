@@ -8,7 +8,7 @@ import { joinLobby, listParticipants, listTeamMembers, listTeamVotes, listTeams,
 import { useSession } from "@/components/AuthGate";
 import type { Basket, Idea } from "@/lib/types";
 import type { HackData, StageContext, StageDef, StagePhase } from "./contract";
-import { PHASE_ORDER, PHASE_LABEL, GOLD, dim, configReady } from "./contract";
+import { PHASE_ORDER, PHASE_LABEL, GOLD, GOLD_SOFT, dim, configReady } from "./contract";
 import { LobbyStage } from "./stages/LobbyStage";
 import { IdeaStage } from "./stages/IdeaStage";
 import { TeamStage } from "./stages/TeamStage";
@@ -151,26 +151,31 @@ export function HackathonRunner({ basketId }: { basketId: string }) {
 
 function Stepper({ phase, isAdmin, onJump }: { phase: StagePhase; isAdmin: boolean; onJump: (p: StagePhase) => void }) {
   const steps = PHASE_ORDER.filter((p) => p !== "done");
-  const active = PHASE_ORDER.indexOf(phase);
+  const active = Math.min(PHASE_ORDER.indexOf(phase), steps.length - 1);
   return (
-    <div className="mx-auto flex max-w-[1000px] items-center gap-2 px-2">
-      {steps.map((p, i) => {
-        const done = i < active;
-        const on = i === active;
-        const inner = (
-          <>
-            <span className="h-[3px] w-full rounded-full transition-colors" style={{ background: done ? "rgba(231,169,63,0.5)" : on ? GOLD : "rgba(var(--border-rgb),0.1)" }} />
-            <span className="text-[0.78rem] font-semibold transition-colors" style={{ color: on ? GOLD : done ? dim(0.55) : dim(0.35) }}>{PHASE_LABEL[p]}</span>
-          </>
-        );
-        return isAdmin ? (
-          <button key={p} onClick={() => onJump(p)} title={`${PHASE_LABEL[p]}'e geç`} className="flex flex-1 flex-col items-center gap-1.5 rounded-md py-1 transition hover:bg-[rgba(var(--border-rgb),0.04)]">
-            {inner}
-          </button>
-        ) : (
-          <div key={p} className="flex flex-1 flex-col items-center gap-1.5 py-1">{inner}</div>
-        );
-      })}
+    <div className="mx-auto max-w-[1080px] px-2">
+      <div
+        className="flex items-center gap-1"
+        style={{ background: "rgba(var(--border-rgb),0.05)", border: "1px solid rgba(var(--border-rgb),0.08)", borderRadius: 999, padding: 5 }}
+      >
+        {steps.map((p, i) => {
+          const done = i < active;
+          const on = i === active;
+          const st = on
+            ? { background: GOLD, color: "var(--bg)", boxShadow: `0 6px 18px -6px ${GOLD}` }
+            : done
+              ? { background: "rgba(231,169,63,0.13)", color: GOLD_SOFT }
+              : { background: "transparent", color: dim(0.42) };
+          const cls = "flex-1 whitespace-nowrap rounded-full px-3 py-2.5 text-center text-[0.85rem] font-semibold transition-colors";
+          return isAdmin ? (
+            <motion.button key={p} whileTap={{ scale: 0.96 }} onClick={() => onJump(p)} className={cls} style={st}>
+              {PHASE_LABEL[p]}
+            </motion.button>
+          ) : (
+            <div key={p} className={cls} style={st}>{PHASE_LABEL[p]}</div>
+          );
+        })}
+      </div>
     </div>
   );
 }
