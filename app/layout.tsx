@@ -19,6 +19,11 @@ const body = Plus_Jakarta_Sans({
 export const metadata: Metadata = {
   title: "Fikir Sepeti",
   description: "Fikir at, oyla veya kuraya bırak. İç hackathon için build modu dahil.",
+  icons: {
+    icon: [{ url: "/brand/fikirsepeti-icon.png", type: "image/png" }],
+    shortcut: "/brand/fikirsepeti-icon.png",
+    apple: "/brand/fikirsepeti-icon.png",
+  },
 };
 
 export default function RootLayout({

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useNameContext } from "@/components/AuthGate";
+import { BrandIcon } from "@/components/BrandIcon";
 import { Avatars } from "@/components/shared/Avatars";
 import { loadHome } from "@/lib/db";
 import { accentFor, soft } from "@/lib/accent";
@@ -103,6 +104,7 @@ export default function ProfilePage() {
         </div>
       ) : mine.length === 0 ? (
         <div className="mt-6 rounded-[22px] py-16 text-center" style={{ background: "#242424" }}>
+          <BrandIcon size="md" className="mb-4 inline-block opacity-90" />
           <p style={{ color: "#9A9A9A" }}>Henüz sepet açmadın.</p>
           <Link href="/" className="mt-3 inline-block font-display text-xl font-semibold" style={{ color: "#F2795F" }}>İlk sepetini aç →</Link>
         </div>

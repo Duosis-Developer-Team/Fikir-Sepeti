@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useNameContext } from "@/components/AuthGate";
+import { BrandIcon } from "@/components/BrandIcon";
 import { NewBasketModal } from "@/components/NewBasketModal";
 import { Avatars } from "@/components/shared/Avatars";
 import { createBasket, loadHome } from "@/lib/db";
@@ -250,13 +251,22 @@ function Featured({ basket, ideas }: { basket: Basket; ideas: Idea[] }) {
 function Wordmark() {
   return (
     <Link href="/" className="flex shrink-0 items-center" aria-label="FikirSepeti ana sayfa">
+      {/* Desktop: yatay logo · Mobil: kare icon (dar alanda taşmayı önler) */}
       <Image
         src="/brand/fikirsepeti-logo.png"
         alt="FikirSepeti"
         width={958}
         height={220}
         priority
-        className="h-8 w-auto object-contain sm:h-9"
+        className="hidden h-9 w-auto object-contain sm:block"
+      />
+      <Image
+        src="/brand/fikirsepeti-icon.png"
+        alt="FikirSepeti"
+        width={512}
+        height={512}
+        priority
+        className="h-9 w-9 object-contain sm:hidden"
       />
     </Link>
   );
@@ -357,6 +367,7 @@ export default function Home() {
           </div>
         ) : baskets.length === 0 ? (
           <div className="mt-6 rounded-[22px] py-20 text-center" style={{ background: T.card }}>
+            <BrandIcon size="md" className="mb-4 inline-block opacity-90" />
             <p style={{ color: T.muted }}>Henüz sepet yok.</p>
             <button onClick={() => setModal(true)} className="mt-3 font-display text-2xl font-semibold" style={{ color: "#F2795F" }}>İlk sepeti aç →</button>
           </div>
@@ -371,6 +382,7 @@ export default function Home() {
           </div>
         ) : resolved.length === 0 ? (
           <div className="mt-6 rounded-[22px] py-16 text-center" style={{ background: T.card }}>
+            <BrandIcon size="md" className="mb-4 inline-block opacity-90" />
             <p style={{ color: T.muted }}>Henüz sonuçlanan karar yok.</p>
           </div>
         ) : (
