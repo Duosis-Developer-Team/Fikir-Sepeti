@@ -1,5 +1,6 @@
 "use client";
 
+import { motion } from "motion/react";
 import { markDone } from "@/lib/hackathon";
 import type { StageContext } from "../contract";
 import { GOLD, GOLD_SOFT, dim } from "../contract";
@@ -31,10 +32,27 @@ export function ProductionStage({ data, isAdmin }: StageContext) {
         </span>
 
         {winner ? (
-          <>
-            <h2 className="font-display mt-4 text-[clamp(2rem,4vw,3rem)] font-extrabold" style={{ color: "var(--text)" }}>🏆 {winner.name}</h2>
-            <p className="mt-1 tnum text-[1rem]" style={{ color: GOLD_SOFT }}>{votesOf(winner.id)} oy</p>
-            <div className="mt-4 flex flex-wrap justify-center gap-1.5">
+          <div className="relative">
+            {/* bloom — kutlama */}
+            <motion.span
+              aria-hidden
+              className="pointer-events-none absolute left-1/2 top-1/2 h-[300px] w-[300px] -translate-x-1/2 -translate-y-1/2 rounded-full blur-[80px]"
+              initial={{ opacity: 0, scale: 0.6 }}
+              animate={{ opacity: 0.45, scale: 1 }}
+              transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+              style={{ background: "rgba(231,169,63,0.45)" }}
+            />
+            <motion.h2
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: "spring", stiffness: 300, damping: 18, delay: 0.1 }}
+              className="font-display relative mt-4 text-[clamp(2.2rem,5.5vw,3.6rem)] font-extrabold leading-[1.02]"
+              style={{ color: GOLD, textShadow: "0 20px 80px rgba(231,169,63,0.35)" }}
+            >
+              🏆 {winner.name}
+            </motion.h2>
+            <p className="relative mt-2 tnum text-[1.05rem]" style={{ color: GOLD_SOFT }}>{votesOf(winner.id)} oy ile</p>
+            <div className="relative mt-5 flex flex-wrap justify-center gap-1.5">
               {winnerMembers.map((m) => (
                 <span key={m.id} className="inline-flex items-center gap-2 rounded-full py-1 pl-1 pr-3 text-[0.9rem]" style={{ background: "rgba(var(--border-rgb),0.05)", color: "var(--text)" }}>
                   <Avatar name={nameOf(m.user_id)} size={26} />
@@ -42,7 +60,7 @@ export function ProductionStage({ data, isAdmin }: StageContext) {
                 </span>
               ))}
             </div>
-          </>
+          </div>
         ) : (
           <h2 className="font-display mt-4 text-[1.6rem] font-bold" style={{ color: "var(--text)" }}>Kazanan yok</h2>
         )}
