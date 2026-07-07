@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { motion } from "motion/react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -26,6 +27,20 @@ const T = {
   line: "rgba(var(--border-rgb),0.09)",
   track: "rgba(var(--border-rgb),0.07)",
 };
+
+// editorial ease — yumuşak, kendinden emin çıkış
+const EASE = [0.16, 1, 0.3, 1] as const;
+
+/** Maskeli satır-reveal — editorial giriş. */
+function Reveal({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
+  return (
+    <span className="block overflow-hidden pb-[0.08em]">
+      <motion.span className="block" initial={{ y: "118%" }} animate={{ y: 0 }} transition={{ duration: 0.95, ease: EASE, delay }}>
+        {children}
+      </motion.span>
+    </span>
+  );
+}
 
 const WORDS = [
   { text: "ne yapalım?", color: "#E7A93F" },
@@ -143,9 +158,9 @@ function RichCard({ basket, ideas }: { basket: Basket; ideas: Idea[] }) {
       style={{
         background: T.card,
         border: `1px solid ${hover ? soft(a, 0.55) : T.line}`,
-        transform: hover ? "translateY(-3px)" : "none",
-        boxShadow: hover ? `0 24px 50px -30px ${soft(a, 0.6)}` : "none",
-        transition: "border-color 240ms ease, transform 240ms ease, box-shadow 240ms ease",
+        transform: hover ? "translateY(-4px)" : "none",
+        boxShadow: hover ? `var(--card-shadow-hover), 0 30px 64px -34px ${soft(a, 0.5)}` : "var(--card-shadow)",
+        transition: "border-color 300ms ease, transform 300ms cubic-bezier(.16,1,.3,1), box-shadow 300ms ease",
       }}
     >
       <div className="flex items-center justify-between">
@@ -200,12 +215,13 @@ function Featured({ basket, ideas }: { basket: Basket; ideas: Idea[] }) {
       href={`/basket/${basket.id}`}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
-      className="block rounded-[26px] p-[clamp(26px,3vw,38px)]"
+      className="block rounded-[28px] p-[clamp(28px,3.2vw,44px)]"
       style={{
         background: T.black,
         border: `1px solid ${soft(a, hover ? 0.55 : 0.22)}`,
-        boxShadow: hover ? `0 26px 60px -34px ${soft(a, 0.7)}` : "none",
-        transition: "border-color 240ms ease, box-shadow 240ms ease",
+        transform: hover ? "translateY(-4px)" : "none",
+        boxShadow: hover ? `var(--card-shadow-hover), 0 34px 72px -36px ${soft(a, 0.6)}` : "var(--card-shadow)",
+        transition: "border-color 300ms ease, transform 300ms cubic-bezier(.16,1,.3,1), box-shadow 300ms ease",
       }}
     >
       <div className="grid gap-8 md:grid-cols-[1.05fr_1fr]">
@@ -214,7 +230,7 @@ function Featured({ basket, ideas }: { basket: Basket; ideas: Idea[] }) {
             <span className="h-1.5 w-1.5 animate-pulse rounded-full" style={{ background: a.base }} />
             şu an canlı
           </span>
-          <h2 className="font-display mt-5 text-[clamp(1.9rem,3.4vw,2.9rem)] font-semibold leading-[1.02]" style={{ color: T.text }}>
+          <h2 className="font-display mt-5 text-[clamp(2.2rem,4vw,3.4rem)] font-bold leading-[0.98] tracking-[-0.02em]" style={{ color: T.text }}>
             {basket.title}
           </h2>
         </div>
@@ -332,19 +348,41 @@ export default function Home() {
       </header>
 
       <div className="mx-auto max-w-[1180px] px-[clamp(24px,5vw,56px)] pb-[90px]">
-        {/* HERO — ortalı, iki satır (Bugün üstte, dönen kelime altta) */}
-        <section className="pt-[clamp(52px,8vw,96px)] text-center">
-          <h1 className="font-display flex flex-col items-center font-semibold leading-[1.04] tracking-tight text-[clamp(2.8rem,7.5vw,5.4rem)]" style={{ color: T.text }}>
-            <span>Bugün</span>
-            <RotatingQuestion />
+        {/* HERO — editorial, kinetik */}
+        <section className="pt-[clamp(56px,9vw,120px)] text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: EASE }}
+            className="flex items-center justify-center gap-2.5"
+          >
+            <span className="h-1.5 w-1.5 rounded-full" style={{ background: "#E7A93F", boxShadow: "0 0 0 4px rgba(231,169,63,0.16)" }} />
+            <span className="text-[0.72rem] font-semibold uppercase tracking-[0.34em]" style={{ color: T.muted }}>Duosis · Karar &amp; Hackathon</span>
+          </motion.div>
+
+          <h1 className="font-display mt-8 flex flex-col items-center font-bold leading-[0.9] tracking-[-0.03em] text-[clamp(3.4rem,9.5vw,7.4rem)]" style={{ color: T.text }}>
+            <Reveal delay={0.12}><span>Bugün</span></Reveal>
+            <Reveal delay={0.26}><RotatingQuestion /></Reveal>
           </h1>
-          <p className="mx-auto mt-8 max-w-[52ch] text-[1.08rem] leading-[1.55]" style={{ color: T.t3 }}>
+
+          <motion.p
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, ease: EASE, delay: 0.62 }}
+            className="mx-auto mt-10 max-w-[46ch] text-[1.13rem] leading-[1.55]"
+            style={{ color: T.t3 }}
+          >
             Fikri sepete at — gerisini ekibin <span className="font-semibold" style={{ color: "#F2795F" }}>oyu</span> ya da <span className="font-semibold" style={{ color: "#33C293" }}>kura</span> çözsün. Hackathon için canlı sunum dahil.
-          </p>
+          </motion.p>
         </section>
 
         {/* sekmeler — segmented pill, ortalı */}
-        <div className="mt-[52px] flex justify-center">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: EASE, delay: 0.8 }}
+          className="mt-[clamp(48px,7vw,72px)] flex justify-center"
+        >
         <div className="inline-flex gap-1 rounded-full p-1" style={{ background: "rgba(var(--border-rgb),0.04)", border: "1px solid rgba(var(--border-rgb),0.08)" }}>
           {([["aktif", "Aktif", active.length], ["gecmis", "Geçmiş", resolved.length]] as const).map(([key, label, count]) => {
             const on = tab === key;
@@ -361,7 +399,7 @@ export default function Home() {
             );
           })}
         </div>
-        </div>
+        </motion.div>
 
         {loading ? (
           <div className="mt-6 grid gap-5 md:grid-cols-3">
@@ -374,11 +412,19 @@ export default function Home() {
             <button onClick={() => setModal(true)} className="mt-3 font-display text-2xl font-semibold" style={{ color: "#F2795F" }}>İlk sepeti aç →</button>
           </div>
         ) : tab === "aktif" ? (
-          <div className="mt-6 flex flex-col gap-5">
-            {live.map((b) => <Featured key={b.id} basket={b} ideas={ideasBy[b.id] ?? []} />)}
+          <div className="mt-[clamp(28px,4vw,44px)] flex flex-col gap-5">
+            {live.map((b, i) => (
+              <motion.div key={b.id} initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: EASE, delay: 0.9 + i * 0.08 }}>
+                <Featured basket={b} ideas={ideasBy[b.id] ?? []} />
+              </motion.div>
+            ))}
             {activeRest.length > 0 && (
               <div className="grid gap-5 md:grid-cols-2">
-                {activeRest.map((b) => <RichCard key={b.id} basket={b} ideas={ideasBy[b.id] ?? []} />)}
+                {activeRest.map((b, i) => (
+                  <motion.div key={b.id} initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: EASE, delay: 0.95 + i * 0.07 }}>
+                    <RichCard basket={b} ideas={ideasBy[b.id] ?? []} />
+                  </motion.div>
+                ))}
               </div>
             )}
           </div>
