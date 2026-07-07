@@ -48,15 +48,23 @@ export default function BasketDetail() {
       </div>
 
       {basket && a && (
-        <div className="mt-8 text-center">
-          <div className="flex items-center justify-center gap-[9px]">
+        isHackathon ? (
+          <div className="mt-7 flex items-center justify-center gap-2.5">
             <span className="h-[7px] w-[7px] rounded-full" style={{ background: a.base, boxShadow: `0 0 0 4px ${a.base}22` }} />
-            <span className="text-[0.72rem] font-bold uppercase tracking-[0.22em]" style={{ color: a.base }}>{eyebrow}</span>
+            <span className="text-[0.74rem] font-bold uppercase tracking-[0.22em]" style={{ color: a.base }}>Hackathon</span>
+            <span className="text-[0.74rem] font-semibold" style={{ color: "#9A9A9A" }}>· {basket.title}</span>
           </div>
-          <h1 className="font-display mt-3 text-[clamp(2.2rem,5vw,3.5rem)] font-semibold leading-[1.02]" style={{ color: "#EDEDED" }}>
-            {basket.title}
-          </h1>
-        </div>
+        ) : (
+          <div className="mt-8 text-center">
+            <div className="flex items-center justify-center gap-[9px]">
+              <span className="h-[7px] w-[7px] rounded-full" style={{ background: a.base, boxShadow: `0 0 0 4px ${a.base}22` }} />
+              <span className="text-[0.72rem] font-bold uppercase tracking-[0.22em]" style={{ color: a.base }}>{eyebrow}</span>
+            </div>
+            <h1 className="font-display mt-3 text-[clamp(2.2rem,5vw,3.5rem)] font-semibold leading-[1.02]" style={{ color: "#EDEDED" }}>
+              {basket.title}
+            </h1>
+          </div>
+        )
       )}
 
       <div className="mt-8">

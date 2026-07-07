@@ -138,7 +138,7 @@ function RichCard({ basket, ideas }: { basket: Basket; ideas: Idea[] }) {
       href={`/basket/${basket.id}`}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
-      className="flex flex-col gap-5 rounded-[22px] p-[26px]"
+      className="flex flex-col gap-6 rounded-[26px] p-[34px]"
       style={{
         background: T.card,
         border: `1px solid ${hover ? soft(a, 0.55) : T.line}`,
@@ -148,16 +148,16 @@ function RichCard({ basket, ideas }: { basket: Basket; ideas: Idea[] }) {
       }}
     >
       <div className="flex items-center justify-between">
-        <span className="inline-flex items-center gap-[7px] text-[0.68rem] font-bold uppercase tracking-[0.2em]" style={{ color: a.base }}>
+        <span className="inline-flex items-center gap-[7px] text-[0.72rem] font-bold uppercase tracking-[0.2em]" style={{ color: a.base }}>
           <span className="h-1.5 w-1.5 rounded-full" style={{ background: a.base }} />
           {basket.type === "hackathon" ? "hackathon" : "etkinlik"}
         </span>
-        <span className="flex items-center gap-1.5 text-[0.76rem]" style={{ color: live ? a.base : T.muted }}>
+        <span className="flex items-center gap-1.5 text-[0.8rem]" style={{ color: live ? a.base : T.muted }}>
           {live && <span className="h-1.5 w-1.5 rounded-full" style={{ background: a.base, animation: "fs-livedot 2s ease-in-out infinite" }} />}
           {status}
         </span>
       </div>
-      <h3 className="font-display text-[1.5rem] font-semibold leading-[1.1]" style={{ color: T.text }}>
+      <h3 className="font-display text-[2rem] font-bold leading-[1.08] tracking-tight" style={{ color: T.text }}>
         {basket.title}
       </h3>
       <div className="flex-1">

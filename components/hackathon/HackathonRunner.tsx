@@ -101,8 +101,8 @@ export function HackathonRunner({ basketId }: { basketId: string }) {
         <def.Comp {...ctx} />
       </div>
 
-      {/* admin faz çubuğu — geri + ileri */}
-      {isAdmin && phase !== "done" && (
+      {/* admin faz çubuğu — geri + ileri (lobi kendi navigasyonunu yönetir) */}
+      {isAdmin && phase !== "done" && phase !== "lobby" && (
         <div className="fixed inset-x-0 bottom-0 z-30 flex justify-center px-4 pb-5">
           <div className="flex items-center gap-3 rounded-full px-3 py-2.5" style={{ background: "#242424", border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 20px 50px -24px rgba(0,0,0,0.7)" }}>
             <button

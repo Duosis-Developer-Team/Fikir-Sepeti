@@ -57,6 +57,36 @@ export function Seg<T extends string>({
   );
 }
 
+/** Ana sayfa hero ruhu — kocaman kendinden emin başlık + renkli aksan kelime. */
+export function StageHeadline({
+  pre,
+  accent,
+  post,
+  sub,
+  color = GOLD,
+}: {
+  pre?: string;
+  accent: string;
+  post?: string;
+  sub?: string;
+  color?: string;
+}) {
+  return (
+    <div className="mx-auto mb-10 max-w-[860px] text-center">
+      <h2 className="font-display text-[clamp(2.4rem,4.6vw,3.8rem)] font-extrabold leading-[1.0] tracking-tight" style={{ color: "#EDEDED" }}>
+        {pre ? `${pre} ` : ""}
+        <span style={{ color }}>{accent}</span>
+        {post ?? ""}
+      </h2>
+      {sub && (
+        <p className="mx-auto mt-4 max-w-[520px] text-[1.08rem] leading-snug" style={{ color: dim(0.55) }}>
+          {sub}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-2.5">

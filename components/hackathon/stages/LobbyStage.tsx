@@ -1,180 +1,183 @@
 "use client";
 
+import { useState } from "react";
 import type { HackathonConfig } from "@/lib/types";
 import { setConfig } from "@/lib/hackathon";
+import { setBasketPhase } from "@/lib/db";
 import type { StageContext } from "../contract";
 import { GOLD, GOLD_SOFT, dim } from "../contract";
-import { Seg, Field, Card, Avatar } from "../ui";
+import { Card, GoldButton, StageHeadline } from "../ui";
 import { InvitePanel } from "../InvitePanel";
 
-const IDEA_LABEL: Record<string, string> = { static: "Fikir var", pool: "Brainstorming" };
-const POOL_LABEL: Record<string, string> = { vote: "Oylama", random: "Kura" };
-const TEAM_LABEL: Record<string, string> = { solo: "Herkes tek", groups: "Gruplar", one: "Tek takım" };
+type Sub = "invite" | "ideaSource" | "poolSelect" | "teamMode" | "groups" | "ready";
 
 export function LobbyStage({ data, config, isAdmin, refresh }: StageContext) {
   const { basket, participants } = data;
+  const [sub, setSub] = useState<Sub>("invite");
 
   const write = (c: HackathonConfig) => setConfig(basket.id, c).then(refresh);
   const patch = (p: Partial<HackathonConfig>) => write({ ...config, ...p });
   const patchGroups = (g: Partial<NonNullable<HackathonConfig["groups"]>>) =>
     patch({ groups: { count: 3, size: 4, assignment: "random", ...config.groups, ...g } });
 
-  // sıradaki adım config'ten türetilir — cevaplar dolunca otomatik ilerler
-  const step: "ideaSource" | "poolSelect" | "teamMode" | "groups" | "ready" =
-    !config.ideaSource
-      ? "ideaSource"
-      : config.ideaSource === "pool" && !config.poolSelect
-        ? "poolSelect"
-        : !config.teamMode
-          ? "teamMode"
-          : config.teamMode === "groups" && !config.groups
-            ? "groups"
-            : "ready";
+  const prevOf = (s: Sub): Sub | null => {
+    switch (s) {
+      case "ideaSource": return "invite";
+      case "poolSelect": return "ideaSource";
+      case "teamMode": return config.ideaSource === "pool" ? "poolSelect" : "ideaSource";
+      case "groups": return "teamMode";
+      case "ready": return config.teamMode === "groups" ? "groups" : "teamMode";
+      default: return null;
+    }
+  };
 
-  // seçilmişleri düzenlemek için: o adımdan sonrasını temizle
-  const editIdea = () => write({});
-  const editPool = () => write({ ideaSource: config.ideaSource });
-  const editTeam = () => write({ ideaSource: config.ideaSource, poolSelect: config.poolSelect });
+  const start = () => setBasketPhase(basket.id, "idea").then(refresh);
+
+  // ── katılımcı (admin değil) → sade bekleme ──
+  if (!isAdmin) {
+    return (
+      <div className="mx-auto flex min-h-[60vh] max-w-[680px] flex-col justify-center text-center">
+        <StageHeadline pre="Lobide" accent="bekle" sub={`${basket.created_by ?? "Admin"} kuruyor. Başlayınca ekran değişecek.`} />
+        <p className="text-[0.95rem]" style={{ color: dim(0.5) }}>{participants.length} kişi katıldı</p>
+      </div>
+    );
+  }
+
+  const back = prevOf(sub);
 
   return (
-    <div className="mx-auto flex max-w-[860px] flex-col gap-6">
-      {/* 1) davet — ilk ekranda öne çıkar */}
-      <InvitePanel basketId={basket.id} />
-
-      {/* 2) kurulum — admin için sıralı wizard */}
-      {isAdmin ? (
-        <Card>
-          <div className="flex items-center justify-between">
-            <h2 className="font-display text-[1.35rem] font-bold" style={{ color: "#EDEDED" }}>Kurulum</h2>
-            {step !== "ready" && <span className="text-[0.82rem]" style={{ color: dim(0.45) }}>{stepNo(step, config)}/{totalSteps(config)}</span>}
-          </div>
-
-          {/* seçilmiş cevaplar — tıkla değiştir */}
-          {(config.ideaSource || config.teamMode) && (
-            <div className="mt-4 flex flex-wrap gap-2">
-              {config.ideaSource && <Chip label={`Fikir: ${IDEA_LABEL[config.ideaSource]}`} onClick={editIdea} />}
-              {config.poolSelect && <Chip label={`Seçim: ${POOL_LABEL[config.poolSelect]}`} onClick={editPool} />}
-              {config.teamMode && <Chip label={`Takım: ${TEAM_LABEL[config.teamMode]}`} onClick={editTeam} />}
-            </div>
-          )}
-
-          <div className="mt-6">
-            {step === "ideaSource" && (
-              <Field label="Fikir kaynağı">
-                <Seg
-                  value={config.ideaSource}
-                  onChange={(v) => patch({ ideaSource: v })}
-                  options={[
-                    { v: "static", label: "Fikir var", hint: "sen girersin" },
-                    { v: "pool", label: "Brainstorming", hint: "herkes yazar" },
-                  ]}
-                />
-              </Field>
-            )}
-
-            {step === "poolSelect" && (
-              <Field label="Pool'dan seçim">
-                <Seg
-                  value={config.poolSelect}
-                  onChange={(v) => patch({ poolSelect: v })}
-                  options={[
-                    { v: "vote", label: "Oylama", hint: "en çok oy" },
-                    { v: "random", label: "Kura", hint: "rastgele" },
-                  ]}
-                />
-              </Field>
-            )}
-
-            {step === "teamMode" && (
-              <Field label="Takım modu">
-                <Seg
-                  value={config.teamMode}
-                  onChange={(v) => patch({ teamMode: v })}
-                  options={[
-                    { v: "solo", label: "Herkes tek", hint: "solo" },
-                    { v: "groups", label: "Gruplar", hint: "N takım" },
-                    { v: "one", label: "Tek takım", hint: "hep birlikte" },
-                  ]}
-                />
-              </Field>
-            )}
-
-            {step === "groups" && (
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-                <Field label="Kaç takım">
-                  <input type="number" min={2} value={config.groups?.count ?? 3} onChange={(e) => patchGroups({ count: Math.max(1, +e.target.value) })} className="w-full rounded-lg px-3 py-2.5 text-[0.95rem] outline-none" style={{ background: "#2A2A2A", border: "1px solid rgba(255,255,255,0.09)", color: "#EDEDED" }} />
-                </Field>
-                <Field label="Kişi/takım">
-                  <input type="number" min={1} value={config.groups?.size ?? 4} onChange={(e) => patchGroups({ size: Math.max(1, +e.target.value) })} className="w-full rounded-lg px-3 py-2.5 text-[0.95rem] outline-none" style={{ background: "#2A2A2A", border: "1px solid rgba(255,255,255,0.09)", color: "#EDEDED" }} />
-                </Field>
-                <Field label="Atama">
-                  <Seg value={config.groups?.assignment} onChange={(v) => patchGroups({ assignment: v })} options={[{ v: "random", label: "Random" }, { v: "manual", label: "Elle" }]} />
-                </Field>
-              </div>
-            )}
-
-            {step === "ready" && (
-              <div className="flex items-center gap-3 rounded-2xl px-5 py-4" style={{ background: "rgba(51,194,147,0.1)", border: "1px solid rgba(51,194,147,0.3)" }}>
-                <span className="text-[1.3rem]">✓</span>
-                <div>
-                  <p className="font-display text-[1.05rem] font-bold" style={{ color: "#EDEDED" }}>Kurulum hazır</p>
-                  <p className="text-[0.88rem]" style={{ color: dim(0.55) }}>Alttaki <b style={{ color: GOLD_SOFT }}>Sonraki: Fikir →</b> ile başlat.</p>
-                </div>
-              </div>
-            )}
-          </div>
-        </Card>
-      ) : (
-        <Card>
-          <span className="inline-flex items-center gap-2 text-[0.8rem] font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD }}>
-            <span className="h-2 w-2 rounded-full" style={{ background: GOLD, animation: "fs-livedot 2s ease-in-out infinite" }} />
-            Lobide
-          </span>
-          <h2 className="font-display mt-3 text-[1.5rem] font-bold" style={{ color: "#EDEDED" }}>Başlaması bekleniyor…</h2>
-          <p className="mt-1.5 text-[0.95rem]" style={{ color: dim(0.5) }}>{basket.created_by ?? "Admin"} kurulumu yapıyor. Sen katıldın.</p>
-        </Card>
+    <div className="mx-auto flex min-h-[62vh] w-full max-w-[860px] flex-col justify-center">
+      {sub === "invite" && (
+        <>
+          <StageHeadline pre="Önce ekibi" accent="topla" sub="Linki paylaş — açan herkes iş e-postasıyla lobiye katılır. Sonra akışı kur." />
+          <InvitePanel basketId={basket.id} />
+          <p className="mt-5 text-center text-[0.92rem]" style={{ color: dim(0.5) }}>{participants.length} kişi katıldı</p>
+        </>
       )}
 
-      {/* 3) katılımcılar */}
-      <Card>
-        <div className="flex items-baseline justify-between">
-          <span className="text-[0.72rem] font-semibold uppercase tracking-[0.22em]" style={{ color: dim(0.5) }}>Katılımcılar</span>
-          <span className="font-display text-[1.1rem] font-bold" style={{ color: "#EDEDED" }}>{participants.length}</span>
+      {sub === "ideaSource" && (
+        <>
+          <StageHeadline pre="Fikir" accent="nereden" post=" gelecek?" />
+          <Choice
+            value={config.ideaSource}
+            onChange={(v) => { patch({ ideaSource: v }); setSub(v === "pool" ? "poolSelect" : "teamMode"); }}
+            options={[
+              { v: "static", label: "Fikir var", hint: "sen girersin" },
+              { v: "pool", label: "Brainstorming", hint: "herkes yazar" },
+            ]}
+          />
+        </>
+      )}
+
+      {sub === "poolSelect" && (
+        <>
+          <StageHeadline pre="Pool nasıl" accent="seçilsin?" />
+          <Choice
+            value={config.poolSelect}
+            onChange={(v) => { patch({ poolSelect: v }); setSub("teamMode"); }}
+            options={[
+              { v: "vote", label: "Oylama", hint: "en çok oy" },
+              { v: "random", label: "Kura", hint: "rastgele" },
+            ]}
+          />
+        </>
+      )}
+
+      {sub === "teamMode" && (
+        <>
+          <StageHeadline pre="Kim" accent="kiminle?" />
+          <Choice
+            value={config.teamMode}
+            onChange={(v) => { patch({ teamMode: v }); setSub(v === "groups" ? "groups" : "ready"); }}
+            options={[
+              { v: "solo", label: "Herkes tek", hint: "solo" },
+              { v: "groups", label: "Gruplar", hint: "N takım" },
+              { v: "one", label: "Tek takım", hint: "hep birlikte" },
+            ]}
+          />
+        </>
+      )}
+
+      {sub === "groups" && (
+        <>
+          <StageHeadline pre="Grupları" accent="ayarla" />
+          <div className="mx-auto grid w-full max-w-[560px] grid-cols-2 gap-4 sm:grid-cols-3">
+            <NumField label="Kaç takım" value={config.groups?.count ?? 3} min={2} onChange={(n) => patchGroups({ count: n })} />
+            <NumField label="Kişi/takım" value={config.groups?.size ?? 4} min={1} onChange={(n) => patchGroups({ size: n })} />
+            <div className="flex flex-col gap-2">
+              <span className="text-[0.72rem] font-semibold uppercase tracking-[0.2em]" style={{ color: dim(0.5) }}>Atama</span>
+              <div className="flex gap-2">
+                {(["random", "manual"] as const).map((a) => {
+                  const on = config.groups?.assignment === a;
+                  return <button key={a} onClick={() => patchGroups({ assignment: a })} className="flex-1 rounded-xl py-2.5 text-[0.9rem] font-semibold transition" style={{ background: on ? "rgba(231,169,63,0.14)" : "#2A2A2A", border: `1px solid ${on ? GOLD : "rgba(255,255,255,0.09)"}`, color: on ? GOLD : "#EDEDED" }}>{a === "random" ? "Random" : "Elle"}</button>;
+                })}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {sub === "ready" && (
+        <div className="text-center">
+          <StageHeadline pre="Hazır" accent="mısın?" sub="Kurulum tamam. Başlat'a bas, hackathon başlasın." />
+          <Summary config={config} />
         </div>
-        <div className="mt-4 flex flex-wrap gap-2.5">
-          {participants.map((p) => (
-            <span key={p.id} className="inline-flex items-center gap-2 rounded-full py-1 pl-1 pr-3" style={{ background: "#2A2A2A", border: `1px solid ${p.role === "admin" ? "rgba(231,169,63,0.4)" : "rgba(255,255,255,0.08)"}` }}>
-              <Avatar name={p.display_name || p.email || p.user_id} size={26} />
-              <span className="text-[0.9rem]" style={{ color: "#EDEDED" }}>{p.display_name || p.email || p.user_id}</span>
-              {p.role === "admin" && <span className="text-[0.68rem] font-semibold uppercase tracking-[0.12em]" style={{ color: GOLD }}>admin</span>}
-            </span>
-          ))}
-          {!participants.length && <p className="text-[0.9rem]" style={{ color: dim(0.4) }}>Henüz kimse yok.</p>}
-        </div>
-      </Card>
+      )}
+
+      {/* nav — geri her zaman, ileri adıma göre */}
+      <div className="mt-12 flex items-center justify-center gap-3">
+        {back && (
+          <button onClick={() => setSub(back)} className="rounded-full border px-6 py-3 text-[0.95rem] transition hover:bg-white/10" style={{ borderColor: "rgba(255,255,255,0.2)", color: dim(0.85) }}>← Geri</button>
+        )}
+        {sub === "invite" && <GoldButton onClick={() => setSub("ideaSource")}>Kuruluma geç →</GoldButton>}
+        {sub === "groups" && <GoldButton onClick={() => setSub("ready")}>Devam →</GoldButton>}
+        {sub === "ready" && <GoldButton onClick={start}>Başlat →</GoldButton>}
+      </div>
     </div>
   );
 }
 
-function Chip({ label, onClick }: { label: string; onClick: () => void }) {
+function Choice<T extends string>({ value, options, onChange }: { value?: T; options: { v: T; label: string; hint?: string }[]; onChange: (v: T) => void }) {
   return (
-    <button onClick={onClick} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[0.85rem] transition hover:bg-white/10" style={{ background: "rgba(231,169,63,0.12)", color: GOLD_SOFT }}>
-      {label} <span style={{ opacity: 0.6 }}>✎</span>
-    </button>
+    <div className="flex flex-wrap justify-center gap-4">
+      {options.map((o) => {
+        const on = value === o.v;
+        return (
+          <button key={o.v} onClick={() => onChange(o.v)} className="min-w-[190px] rounded-[22px] px-8 py-7 text-center transition" style={{ background: on ? "rgba(231,169,63,0.12)" : "#242424", border: `1px solid ${on ? GOLD : "rgba(255,255,255,0.09)"}`, transform: on ? "translateY(-2px)" : "none" }}>
+            <span className="font-display block text-[1.5rem] font-bold" style={{ color: on ? GOLD : "#EDEDED" }}>{o.label}</span>
+            {o.hint && <span className="mt-1 block text-[0.92rem]" style={{ color: dim(0.5) }}>{o.hint}</span>}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
-function totalSteps(c: HackathonConfig): number {
-  let n = 2; // ideaSource + teamMode
-  if (c.ideaSource === "pool") n += 1;
-  if (c.teamMode === "groups") n += 1;
-  return n;
+function NumField({ label, value, min, onChange }: { label: string; value: number; min: number; onChange: (n: number) => void }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <span className="text-[0.72rem] font-semibold uppercase tracking-[0.2em]" style={{ color: dim(0.5) }}>{label}</span>
+      <input type="number" min={min} value={value} onChange={(e) => onChange(Math.max(min, +e.target.value))} className="w-full rounded-xl px-3 py-3 text-center font-display text-[1.3rem] font-bold outline-none" style={{ background: "#2A2A2A", border: "1px solid rgba(255,255,255,0.09)", color: "#EDEDED" }} />
+    </div>
+  );
 }
-function stepNo(step: string, c: HackathonConfig): number {
-  const order = ["ideaSource", "poolSelect", "teamMode", "groups"].filter((s) => {
-    if (s === "poolSelect") return c.ideaSource === "pool";
-    if (s === "groups") return c.teamMode === "groups";
-    return true;
-  });
-  return Math.min(order.indexOf(step) + 1, totalSteps(c));
+
+const IDEA_LABEL: Record<string, string> = { static: "Fikir var", pool: "Brainstorming" };
+const POOL_LABEL: Record<string, string> = { vote: "Oylama", random: "Kura" };
+const TEAM_LABEL: Record<string, string> = { solo: "Herkes tek", groups: "Gruplar", one: "Tek takım" };
+
+function Summary({ config }: { config: HackathonConfig }) {
+  const items = [
+    config.ideaSource && `Fikir: ${IDEA_LABEL[config.ideaSource]}`,
+    config.poolSelect && `Seçim: ${POOL_LABEL[config.poolSelect]}`,
+    config.teamMode && `Takım: ${TEAM_LABEL[config.teamMode]}`,
+    config.teamMode === "groups" && config.groups && `${config.groups.count} takım · ${config.groups.assignment === "random" ? "random" : "elle"}`,
+  ].filter(Boolean) as string[];
+  return (
+    <div className="mt-2 flex flex-wrap justify-center gap-2">
+      {items.map((t) => (
+        <span key={t} className="rounded-full px-4 py-2 text-[0.9rem]" style={{ background: "rgba(231,169,63,0.1)", color: GOLD_SOFT }}>{t}</span>
+      ))}
+    </div>
+  );
 }
