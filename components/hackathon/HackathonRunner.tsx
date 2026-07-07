@@ -85,9 +85,11 @@ export function HackathonRunner({ basketId }: { basketId: string }) {
   const def = STAGES[phase];
   const idx = PHASE_ORDER.indexOf(phase);
   const nextPhase = PHASE_ORDER[idx + 1];
+  const prevPhase = PHASE_ORDER[idx - 1];
   const canAdvance = phase !== "done" && phase !== "production" && def.canAdvance(ctx);
 
   const advance = () => nextPhase && setBasketPhase(basketId, nextPhase).then(load);
+  const goBack = () => prevPhase && setBasketPhase(basketId, prevPhase).then(load);
 
   return (
     <div className="pb-28">
@@ -99,21 +101,31 @@ export function HackathonRunner({ basketId }: { basketId: string }) {
         <def.Comp {...ctx} />
       </div>
 
-      {/* admin ilerletme çubuğu */}
-      {isAdmin && phase !== "done" && phase !== "production" && (
+      {/* admin faz çubuğu — geri + ileri */}
+      {isAdmin && phase !== "done" && (
         <div className="fixed inset-x-0 bottom-0 z-30 flex justify-center px-4 pb-5">
-          <div className="flex items-center gap-4 rounded-full px-5 py-3" style={{ background: "#242424", border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 20px 50px -24px rgba(0,0,0,0.7)" }}>
-            <span className="text-[0.85rem]" style={{ color: dim(0.5) }}>
-              {canAdvance ? "Hazır" : "Bu aşamayı tamamla"}
-            </span>
+          <div className="flex items-center gap-3 rounded-full px-3 py-2.5" style={{ background: "#242424", border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 20px 50px -24px rgba(0,0,0,0.7)" }}>
             <button
-              onClick={advance}
-              disabled={!canAdvance || !nextPhase}
-              className="rounded-full px-6 py-2.5 text-[0.9rem] font-semibold transition hover:opacity-90 disabled:opacity-30"
-              style={{ background: GOLD, color: "#17150F" }}
+              onClick={goBack}
+              disabled={!prevPhase}
+              className="rounded-full border px-5 py-2.5 text-[0.9rem] transition hover:bg-white/10 disabled:opacity-25"
+              style={{ borderColor: "rgba(255,255,255,0.2)", color: dim(0.85) }}
             >
-              {nextPhase ? `Sonraki: ${PHASE_LABEL[nextPhase]} →` : "Bitti"}
+              ← {prevPhase ? PHASE_LABEL[prevPhase] : "Geri"}
             </button>
+            {phase !== "production" && (
+              <>
+                <span className="px-1 text-[0.82rem]" style={{ color: dim(0.45) }}>{canAdvance ? "Hazır" : "Bu aşamayı tamamla"}</span>
+                <button
+                  onClick={advance}
+                  disabled={!canAdvance || !nextPhase}
+                  className="rounded-full px-6 py-2.5 text-[0.9rem] font-semibold transition hover:opacity-90 disabled:opacity-30"
+                  style={{ background: GOLD, color: "#17150F" }}
+                >
+                  {nextPhase ? `Sonraki: ${PHASE_LABEL[nextPhase]} →` : "Bitti"}
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}
