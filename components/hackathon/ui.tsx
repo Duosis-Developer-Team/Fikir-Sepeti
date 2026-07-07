@@ -1,6 +1,27 @@
 "use client";
 
 import { GOLD, dim } from "./contract";
+import { avatarColor, initial } from "@/lib/avatar";
+
+/** Renkli, kimlik-bazlı baş-harf avatarı — ana sayfayla aynı palet. */
+export function Avatar({ name, size = 28, ring }: { name: string; size?: number; ring?: string }) {
+  return (
+    <span
+      className="grid shrink-0 place-items-center rounded-full font-bold"
+      style={{
+        width: size,
+        height: size,
+        fontSize: size * 0.42,
+        background: avatarColor(name),
+        color: "#0F0F0F",
+        border: ring ? `2px solid ${ring}` : undefined,
+      }}
+      title={name}
+    >
+      {initial(name)}
+    </span>
+  );
+}
 
 /** Segmented seçim — config için. */
 export function Seg<T extends string>({

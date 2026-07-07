@@ -4,7 +4,7 @@ import { useState } from "react";
 import { rebuildTeams, partition } from "@/lib/hackathon";
 import type { StageContext } from "../contract";
 import { GOLD, dim } from "../contract";
-import { Card, GoldButton, initials } from "../ui";
+import { Card, GoldButton, Avatar } from "../ui";
 
 export function TeamStage(ctx: StageContext) {
   const { data, config, isAdmin, refresh } = ctx;
@@ -52,14 +52,12 @@ export function TeamStage(ctx: StageContext) {
             const mem = members.filter((m) => m.team_id === t.id);
             return (
               <Card key={t.id}>
-                <h3 className="font-display text-[1.2rem] font-bold" style={{ color: GOLD }}>{t.name}</h3>
-                <div className="mt-3 flex flex-col gap-2">
-                  {mem.map((m) => (
-                    <div key={m.id} className="flex items-center gap-2.5">
-                      <span className="grid h-7 w-7 place-items-center rounded-full text-[0.72rem] font-bold" style={{ background: "#3a3a3a", color: "#EDEDED" }}>{initials(nameOf(m.user_id))}</span>
-                      <span className="text-[0.92rem]" style={{ color: "#EDEDED" }}>{nameOf(m.user_id)}</span>
-                    </div>
-                  ))}
+                <div className="flex items-center justify-between">
+                  <h3 className="font-display text-[1.2rem] font-bold" style={{ color: GOLD }}>{t.name}</h3>
+                  <span className="tnum text-[0.82rem]" style={{ color: dim(0.45) }}>{mem.length} kişi</span>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {mem.map((m) => <Avatar key={m.id} name={nameOf(m.user_id)} size={34} ring="#242424" />)}
                   {!mem.length && <span className="text-[0.85rem]" style={{ color: dim(0.4) }}>boş</span>}
                 </div>
               </Card>

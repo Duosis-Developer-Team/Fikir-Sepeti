@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { voteTeam } from "@/lib/hackathon";
 import type { StageContext } from "../contract";
 import { GOLD, GOLD_SOFT, dim } from "../contract";
-import { initials } from "../ui";
+import { Avatar } from "../ui";
 
 export function DemoStage({ data, user, refresh }: StageContext) {
   const { basket, teams, members, teamVotes, participants, ideas } = data;
@@ -58,13 +58,8 @@ export function DemoStage({ data, user, refresh }: StageContext) {
                   <span className="tnum font-display w-8 shrink-0 text-[1.6rem] font-bold" style={{ color: lead ? GOLD_SOFT : dim(0.3) }}>{rank + 1}</span>
                   <div className="min-w-0 flex-1">
                     <p className="font-display text-[1.5rem] font-bold leading-tight" style={{ color: "#EDEDED" }}>{t.name}</p>
-                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                      {mem.map((m) => (
-                        <span key={m.id} className="inline-flex items-center gap-1 rounded-full py-0.5 pl-0.5 pr-2 text-[0.78rem]" style={{ background: "rgba(255,255,255,0.05)", color: dim(0.6) }}>
-                          <span className="grid h-5 w-5 place-items-center rounded-full text-[0.62rem] font-bold" style={{ background: "#3a3a3a", color: "#EDEDED" }}>{initials(nameOf(m.user_id))}</span>
-                          {nameOf(m.user_id)}
-                        </span>
-                      ))}
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      {mem.map((m) => <Avatar key={m.id} name={nameOf(m.user_id)} size={26} />)}
                     </div>
                   </div>
                   {mine && <span className="shrink-0 text-[0.8rem] font-semibold" style={{ color: GOLD }}>senin oyun ✓</span>}

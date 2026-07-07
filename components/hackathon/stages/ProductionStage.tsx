@@ -3,7 +3,7 @@
 import { markDone } from "@/lib/hackathon";
 import type { StageContext } from "../contract";
 import { GOLD, GOLD_SOFT, dim } from "../contract";
-import { Card, GoldButton, initials } from "../ui";
+import { Card, GoldButton, Avatar } from "../ui";
 
 export function ProductionStage({ data, isAdmin, refresh }: StageContext) {
   const { basket, teams, members, teamVotes, ideas, participants } = data;
@@ -35,8 +35,8 @@ export function ProductionStage({ data, isAdmin, refresh }: StageContext) {
             <p className="mt-1 tnum text-[1rem]" style={{ color: GOLD_SOFT }}>{votesOf(winner.id)} oy</p>
             <div className="mt-4 flex flex-wrap justify-center gap-1.5">
               {winnerMembers.map((m) => (
-                <span key={m.id} className="inline-flex items-center gap-1.5 rounded-full py-1 pl-1 pr-3 text-[0.85rem]" style={{ background: "rgba(231,169,63,0.12)", color: GOLD_SOFT }}>
-                  <span className="grid h-6 w-6 place-items-center rounded-full text-[0.68rem] font-bold" style={{ background: GOLD, color: "#17150F" }}>{initials(nameOf(m.user_id))}</span>
+                <span key={m.id} className="inline-flex items-center gap-2 rounded-full py-1 pl-1 pr-3 text-[0.9rem]" style={{ background: "rgba(255,255,255,0.05)", color: "#EDEDED" }}>
+                  <Avatar name={nameOf(m.user_id)} size={26} />
                   {nameOf(m.user_id)}
                 </span>
               ))}
