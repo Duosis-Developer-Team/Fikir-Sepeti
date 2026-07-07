@@ -21,8 +21,13 @@ export function useNameContext() {
   return { name: user?.email ?? "", setName: () => {} };
 }
 
-/** Dev fallback: Azure creds gelmeden local'de çalışmak için (NEXT_PUBLIC_AUTH_BYPASS=1). */
-const BYPASS = process.env.NEXT_PUBLIC_AUTH_BYPASS === "1";
+/** Dev fallback: SADECE localhost'ta + NEXT_PUBLIC_AUTH_BYPASS=1 ise aktif. Prod domainde asla → gerçek Azure girişi. */
+function isDevBypass(): boolean {
+  if (typeof window === "undefined") return false;
+  if (process.env.NEXT_PUBLIC_AUTH_BYPASS !== "1") return false;
+  const h = window.location.hostname;
+  return h === "localhost" || h === "127.0.0.1";
+}
 const DEV_KEY = "fikirsepeti:devuser";
 
 function toUser(session: Session | null): SessionUser | null {
@@ -37,11 +42,14 @@ function toUser(session: Session | null): SessionUser | null {
 export default function AuthGate({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<SessionUser | null>(null);
   const [ready, setReady] = useState(false);
+  const [bypass, setBypass] = useState(false);
   const [draft, setDraft] = useState("");
 
   useEffect(() => {
-    if (BYPASS) {
-      const raw = typeof window !== "undefined" ? window.localStorage.getItem(DEV_KEY) : null;
+    const b = isDevBypass();
+    setBypass(b);
+    if (b) {
+      const raw = window.localStorage.getItem(DEV_KEY);
       if (raw) setUser(JSON.parse(raw) as SessionUser);
       setReady(true);
       return;
@@ -70,7 +78,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = () => {
-    if (BYPASS) {
+    if (bypass) {
       window.localStorage.removeItem(DEV_KEY);
       setUser(null);
     } else {
@@ -103,7 +111,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
                 İş e-postanla giriş yap. Oyların, fikirlerin ve takımların hesabına bağlanır.
               </p>
 
-              {BYPASS ? (
+              {bypass ? (
                 <>
                   <input
                     autoFocus
