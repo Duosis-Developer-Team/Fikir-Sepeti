@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { motion } from "motion/react";
 import { supabase } from "@/lib/supabase";
 import { setBasketPhase } from "@/lib/db";
 import { joinLobby, listParticipants, listTeamMembers, listTeamVotes, listTeams, startHackathonTimer } from "@/lib/hackathon";
@@ -105,10 +106,16 @@ export function HackathonRunner({ basketId }: { basketId: string }) {
       {/* stepper — admin herhangi bir faza atlayabilir */}
       <Stepper phase={phase} isAdmin={isAdmin} onJump={enterPhase} />
 
-      {/* aktif modül */}
-      <div className="mt-8">
+      {/* aktif modül — fazlar arası orkestre giriş */}
+      <motion.div
+        key={phase}
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        className="mt-10"
+      >
         <def.Comp {...ctx} />
-      </div>
+      </motion.div>
 
       {/* admin faz çubuğu — geri + ileri (lobi ve hackathon kendi navigasyonunu yönetir) */}
       {isAdmin && phase !== "done" && phase !== "lobby" && phase !== "hackathon" && (

@@ -38,7 +38,7 @@ export function SocialBasket({ basket: initial, voter, accent }: { basket: Baske
   return (
     <div className="flex flex-col gap-7">
       {/* özet şeridi */}
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl px-5 py-4" style={{ background: "var(--card)", border: "1px solid rgba(var(--border-rgb),0.08)" }}>
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl px-5 py-4" style={{ background: "var(--card)", border: "1px solid rgba(var(--border-rgb),0.08)", boxShadow: "var(--card-shadow)" }}>
         <div className="flex items-center gap-4">
           <Avatars names={authors} size={30} ring="var(--card)" />
           <span className="tnum text-[0.95rem]" style={{ color: "var(--text-muted)" }}>

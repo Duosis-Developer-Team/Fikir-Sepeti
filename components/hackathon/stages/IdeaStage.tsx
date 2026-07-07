@@ -116,7 +116,7 @@ export function IdeaStage(ctx: StageContext) {
                 exit={{ opacity: 0, scale: 0.97 }}
                 transition={{ type: "spring", stiffness: 320, damping: 30 }}
                 className="flex items-center gap-4 rounded-[20px] px-5 py-4"
-                style={{ background: mine ? "rgba(231,169,63,0.1)" : "var(--card)", border: `1px solid ${mine ? GOLD : "rgba(var(--border-rgb),0.08)"}` }}
+                style={{ background: mine ? "rgba(231,169,63,0.1)" : "var(--card)", border: `1px solid ${mine ? GOLD : "rgba(var(--border-rgb),0.08)"}`, boxShadow: "var(--card-shadow)" }}
               >
                 <Avatar name={idea.created_by ?? "?"} size={40} />
                 <div className="min-w-0 flex-1">

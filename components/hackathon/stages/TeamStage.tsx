@@ -60,7 +60,7 @@ export function TeamStage(ctx: StageContext) {
                 transition={{ duration: 0.42, ease: [0.22, 0.85, 0.25, 1], delay: idx * 0.08 }}
                 whileHover={{ y: -4 }}
                 className="rounded-[22px] p-6"
-                style={{ background: "var(--card)", border: "1px solid rgba(var(--border-rgb),0.09)" }}
+                style={{ background: "var(--card)", border: "1px solid rgba(var(--border-rgb),0.09)", boxShadow: "var(--card-shadow)" }}
               >
                 <div className="flex items-center justify-between">
                   <h3 className="font-display text-[1.2rem] font-bold" style={{ color: GOLD }}>{t.name}</h3>

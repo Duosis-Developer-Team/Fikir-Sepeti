@@ -42,6 +42,7 @@ export function LiveVotePanel({
               style={{
                 background: "var(--card)",
                 border: `1px solid ${lead ? soft(accent, 0.5) : "rgba(var(--border-rgb),0.09)"}`,
+                boxShadow: "var(--card-shadow)",
               }}
             >
               <div
@@ -66,7 +67,7 @@ export function LiveVotePanel({
                     onClick={() => onVote(idea.id, phase)}
                     title={mine ? "oyunu geri al" : "oy ver"}
                     className="shrink-0 rounded-full px-[18px] py-[10px] text-[0.9rem] font-semibold transition hover:opacity-90"
-                    style={mine ? { background: accent.base, color: "#0F0F0F" } : { background: "var(--text)", color: "#0F0F0F" }}
+                    style={mine ? { background: accent.base, color: "#0F0F0F" } : { background: "var(--text)", color: "var(--bg)" }}
                   >
                     {mine ? "oyun ✓" : "oy ver"}
                   </button>

@@ -201,7 +201,7 @@ function Choice<T extends string>({ value, options, onChange }: { value?: T; opt
             style={{
               background: on ? "rgba(231,169,63,0.12)" : "var(--card)",
               border: `1px solid ${on ? GOLD : "rgba(var(--border-rgb),0.09)"}`,
-              boxShadow: on ? "0 20px 50px -28px rgba(231,169,63,0.65)" : "none",
+              boxShadow: on ? "var(--card-shadow-hover), 0 20px 50px -28px rgba(231,169,63,0.6)" : "var(--card-shadow)",
             }}
           >
             <span className="font-display block text-[1.75rem] font-bold" style={{ color: on ? GOLD : "var(--text)" }}>{o.label}</span>

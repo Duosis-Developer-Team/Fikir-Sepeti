@@ -77,23 +77,29 @@ export function StageHeadline({
 }) {
   return (
     <div className="mx-auto mb-11 max-w-[920px] text-center">
-      <motion.h2
-        initial={{ opacity: 0, y: 22, filter: "blur(6px)" }}
-        animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-        transition={{ duration: 0.55, ease: EASE }}
-        className="font-display text-[clamp(2.8rem,5.4vw,4.6rem)] font-extrabold leading-[0.98] tracking-tight"
+      <h2
+        className="font-display text-[clamp(2.9rem,5.6vw,4.8rem)] font-extrabold leading-[0.95] tracking-[-0.025em]"
         style={{ color: "var(--text)" }}
       >
-        {pre ? `${pre} ` : ""}
-        <span style={{ color }}>{accent}</span>
-        {post ?? ""}
-      </motion.h2>
+        <span className="block overflow-hidden pb-[0.09em]">
+          <motion.span
+            className="block"
+            initial={{ y: "122%" }}
+            animate={{ y: 0 }}
+            transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+          >
+            {pre ? `${pre} ` : ""}
+            <span style={{ color }}>{accent}</span>
+            {post ?? ""}
+          </motion.span>
+        </span>
+      </h2>
       {sub && (
         <motion.p
-          initial={{ opacity: 0, y: 10 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: EASE, delay: 0.12 }}
-          className="mx-auto mt-5 max-w-[540px] text-[1.12rem] leading-snug"
+          transition={{ duration: 0.6, ease: EASE, delay: 0.28 }}
+          className="mx-auto mt-6 max-w-[540px] text-[1.13rem] leading-snug"
           style={{ color: dim(0.55) }}
         >
           {sub}
@@ -155,8 +161,8 @@ export function Field({ label, children }: { label: string; children: React.Reac
 export function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
     <div
-      className={`rounded-[22px] p-6 ${className}`}
-      style={{ background: "var(--card)", border: "1px solid rgba(var(--border-rgb),0.09)" }}
+      className={`rounded-[24px] p-7 ${className}`}
+      style={{ background: "var(--card)", border: "1px solid rgba(var(--border-rgb),0.09)", boxShadow: "var(--card-shadow)" }}
     >
       {children}
     </div>
