@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import { BrandIcon } from "@/components/BrandIcon";
 
 export type SessionUser = { id: string; email: string; name: string };
 
@@ -96,7 +97,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
               animate={{ scale: 1, y: 0 }}
               transition={{ type: "spring", stiffness: 400, damping: 30 }}
             >
-              <span className="font-display grid h-11 w-11 place-items-center rounded-[13px] text-[1.3rem] font-extrabold" style={{ background: "linear-gradient(140deg,#F2795F,#E7A93F)", color: "#0F0F0F" }}>F</span>
+              <BrandIcon size="md" priority />
               <h1 className="font-display mt-5 text-[1.5rem] font-bold tracking-tight" style={{ color: "#EDEDED" }}>Fikir Sepeti</h1>
               <p className="mt-1.5 text-[0.92rem]" style={{ color: "#9A9A9A" }}>
                 İş e-postanla giriş yap. Oyların, fikirlerin ve takımların hesabına bağlanır.
