@@ -92,7 +92,7 @@ export function HackathonRunner({ basketId }: { basketId: string }) {
   const goBack = () => prevPhase && setBasketPhase(basketId, prevPhase).then(load);
 
   return (
-    <div className="pb-28">
+    <div className="pb-40">
       {/* stepper */}
       <Stepper phase={phase} />
 
