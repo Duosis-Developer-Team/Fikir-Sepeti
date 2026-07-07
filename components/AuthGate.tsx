@@ -57,6 +57,10 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     supabase.auth.getSession().then(({ data }) => {
       setUser(toUser(data.session));
       setReady(true);
+      // OAuth dönüşünde URL'de kalan #access_token=... hash'ini temizle
+      if (typeof window !== "undefined" && window.location.hash.includes("access_token")) {
+        window.history.replaceState(null, "", window.location.pathname + window.location.search);
+      }
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => setUser(toUser(session)));
     return () => sub.subscription.unsubscribe();

@@ -2,19 +2,29 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useNameContext } from "@/components/AuthGate";
 import { SocialBasket } from "@/components/social/SocialBasket";
 import { HackathonRunner } from "@/components/hackathon/HackathonRunner";
 import { supabase } from "@/lib/supabase";
+import { deleteBasket } from "@/lib/db";
 import { accentFor } from "@/lib/accent";
 import type { Basket } from "@/lib/types";
 
 export default function BasketDetail() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const { name } = useNameContext();
   const [basket, setBasket] = useState<Basket | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [confirmDel, setConfirmDel] = useState(false);
+
+  const isOwner = Boolean(name) && basket?.created_by === name;
+  const doDelete = async () => {
+    if (!basket) return;
+    await deleteBasket(basket.id);
+    router.push("/");
+  };
 
   useEffect(() => {
     (async () => {
@@ -38,13 +48,28 @@ export default function BasketDetail() {
 
   return (
     <main className={`mx-auto ${maxW} px-[clamp(24px,5vw,40px)] pb-[90px] pt-[clamp(28px,4vw,48px)]`}>
-      <div className="flex justify-center">
+      <div className="flex items-center justify-between gap-3">
         <Link
           href="/"
           className="inline-flex items-center gap-2 rounded-full border border-[rgba(var(--border-rgb),0.09)] bg-[var(--card)] px-4 py-2 text-[0.88rem] text-[var(--text-3)] transition hover:border-[rgba(var(--border-rgb),0.2)] hover:text-[var(--text)]"
         >
           <span className="text-base leading-none">←</span> sepetler
         </Link>
+
+        {isOwner && basket && (
+          confirmDel ? (
+            <div className="flex items-center gap-2">
+              <span className="text-[0.82rem]" style={{ color: "var(--text-muted)" }}>Sepeti sil?</span>
+              <button onClick={doDelete} className="rounded-full px-4 py-1.5 text-[0.82rem] font-bold transition hover:opacity-90" style={{ background: "#F2795F", color: "#0F0F0F" }}>Sil</button>
+              <button onClick={() => setConfirmDel(false)} className="rounded-full px-3 py-1.5 text-[0.82rem] transition hover:opacity-70" style={{ color: "var(--text-muted)" }}>Vazgeç</button>
+            </div>
+          ) : (
+            <button onClick={() => setConfirmDel(true)} className="inline-flex items-center gap-1.5 rounded-full border px-4 py-2 text-[0.82rem] font-medium transition hover:border-[rgba(242,121,95,0.5)] hover:text-[#F2795F]" style={{ borderColor: "rgba(var(--border-rgb),0.09)", color: "var(--text-muted)" }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M10 11v6M14 11v6" /></svg>
+              Sil
+            </button>
+          )
+        )}
       </div>
 
       {basket && a && (

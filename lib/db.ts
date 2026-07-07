@@ -55,6 +55,10 @@ export async function createBasket(input: {
   return (data as Basket) ?? null;
 }
 
+export async function deleteBasket(id: string) {
+  await supabase.from("baskets").delete().eq("id", id);
+}
+
 export async function setBasketPhase(id: string, phase: Phase) {
   await supabase.from("baskets").update({ phase }).eq("id", id);
 }
