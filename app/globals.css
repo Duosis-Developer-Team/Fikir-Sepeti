@@ -30,6 +30,10 @@
   --card-shadow: 0 22px 48px -34px rgba(0, 0, 0, 0.85);
   --card-shadow-hover: 0 34px 70px -34px rgba(0, 0, 0, 0.9);
 
+  /* premium yüzey: üstten ışık sheen + üst kenar highlight */
+  --sheen: rgba(255, 255, 255, 0.05);
+  --edge: rgba(255, 255, 255, 0.08);
+
   /* 4 aksan — iki temada da sabit */
   --coral: #f2795f;
   --gold: #e7a93f;
@@ -70,6 +74,9 @@
 
   --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.03), 0 12px 30px -18px rgba(31, 27, 22, 0.14);
   --card-shadow-hover: 0 2px 4px rgba(0, 0, 0, 0.04), 0 28px 55px -24px rgba(31, 27, 22, 0.22);
+
+  --sheen: rgba(255, 255, 255, 0.65);
+  --edge: rgba(255, 255, 255, 0.9);
 }
 
 @theme inline {
@@ -118,6 +125,26 @@ body {
 @keyframes fs-float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-4px); }
+}
+
+/* premium yüzey — üstten ışık sheen + üst kenar highlight + derinlik */
+.surface {
+  position: relative;
+  background: linear-gradient(180deg, var(--sheen), transparent 46%), var(--card);
+  border: 1px solid var(--line);
+  box-shadow: var(--card-shadow), inset 0 1px 0 var(--edge);
+}
+
+/* ince noise — malzeme/grain hissi (metni bozmaz) */
+.grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.03;
+  pointer-events: none;
+  mix-blend-mode: overlay;
 }
 
 /* açık temada açık-renkli yatay logo okunmaz → siyah silüet */

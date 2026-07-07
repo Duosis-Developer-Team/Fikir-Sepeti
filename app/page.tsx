@@ -154,16 +154,24 @@ function RichCard({ basket, ideas }: { basket: Basket; ideas: Idea[] }) {
       href={`/basket/${basket.id}`}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
-      className="flex flex-col gap-6 rounded-[26px] p-[34px]"
+      className="grain relative flex flex-col gap-6 overflow-hidden rounded-[26px] p-[34px]"
       style={{
-        background: T.card,
+        background: "linear-gradient(180deg, var(--sheen), transparent 46%), var(--card)",
         border: `1px solid ${hover ? soft(a, 0.55) : T.line}`,
         transform: hover ? "translateY(-4px)" : "none",
-        boxShadow: hover ? `var(--card-shadow-hover), 0 30px 64px -34px ${soft(a, 0.5)}` : "var(--card-shadow)",
+        boxShadow: hover
+          ? `var(--card-shadow-hover), 0 34px 72px -36px ${soft(a, 0.55)}, inset 0 1px 0 var(--edge)`
+          : "var(--card-shadow), inset 0 1px 0 var(--edge)",
         transition: "border-color 300ms ease, transform 300ms cubic-bezier(.16,1,.3,1), box-shadow 300ms ease",
       }}
     >
-      <div className="flex items-center justify-between">
+      {/* aksan köşe glow'u — kartın kimliği */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -right-20 -top-20 h-48 w-48 rounded-full blur-[50px]"
+        style={{ background: soft(a, hover ? 0.24 : 0.15), transition: "background 300ms ease" }}
+      />
+      <div className="relative flex items-center justify-between">
         <span className="inline-flex items-center gap-[7px] text-[0.72rem] font-bold uppercase tracking-[0.2em]" style={{ color: a.base }}>
           <span className="h-1.5 w-1.5 rounded-full" style={{ background: a.base }} />
           {basket.type === "hackathon" ? "hackathon" : "etkinlik"}
@@ -173,10 +181,10 @@ function RichCard({ basket, ideas }: { basket: Basket; ideas: Idea[] }) {
           {status}
         </span>
       </div>
-      <h3 className="font-display text-[2rem] font-bold leading-[1.08] tracking-tight" style={{ color: T.text }}>
+      <h3 className="font-display relative text-[2rem] font-bold leading-[1.08] tracking-tight" style={{ color: T.text }}>
         {basket.title}
       </h3>
-      <div className="flex-1">
+      <div className="relative flex-1">
         {raffle ? (
           <div className="flex flex-wrap gap-2">
             {ideas.slice(0, 5).map((i) => (
@@ -190,7 +198,7 @@ function RichCard({ basket, ideas }: { basket: Basket; ideas: Idea[] }) {
           <MiniBars ideas={ideas} accent={a} />
         )}
       </div>
-      <div className="mt-auto flex items-center justify-between pt-1">
+      <div className="relative mt-auto flex items-center justify-between pt-1">
         <Avatars names={authors} ring={T.card} />
         <span className="tnum text-[0.86rem]" style={{ color: T.muted }}>
           {raffle ? `${ideas.length} fikir` : <><span className="font-bold" style={{ color: T.text }}>{total}</span> oy</>}
@@ -215,16 +223,23 @@ function Featured({ basket, ideas }: { basket: Basket; ideas: Idea[] }) {
       href={`/basket/${basket.id}`}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
-      className="block rounded-[28px] p-[clamp(28px,3.2vw,44px)]"
+      className="grain relative block overflow-hidden rounded-[28px] p-[clamp(28px,3.2vw,44px)]"
       style={{
-        background: T.black,
+        background: "linear-gradient(180deg, var(--sheen), transparent 46%), var(--black)",
         border: `1px solid ${soft(a, hover ? 0.55 : 0.22)}`,
         transform: hover ? "translateY(-4px)" : "none",
-        boxShadow: hover ? `var(--card-shadow-hover), 0 34px 72px -36px ${soft(a, 0.6)}` : "var(--card-shadow)",
+        boxShadow: hover
+          ? `var(--card-shadow-hover), 0 40px 80px -36px ${soft(a, 0.6)}, inset 0 1px 0 var(--edge)`
+          : "var(--card-shadow), inset 0 1px 0 var(--edge)",
         transition: "border-color 300ms ease, transform 300ms cubic-bezier(.16,1,.3,1), box-shadow 300ms ease",
       }}
     >
-      <div className="grid gap-8 md:grid-cols-[1.05fr_1fr]">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full blur-[64px]"
+        style={{ background: soft(a, hover ? 0.26 : 0.18), transition: "background 300ms ease" }}
+      />
+      <div className="relative grid gap-8 md:grid-cols-[1.05fr_1fr]">
         <div>
           <span className="inline-flex items-center gap-[7px] rounded-full px-[13px] py-[7px] text-[0.68rem] font-bold uppercase tracking-[0.2em]" style={{ background: soft(a, 0.14), color: a.base }}>
             <span className="h-1.5 w-1.5 animate-pulse rounded-full" style={{ background: a.base }} />
@@ -252,7 +267,7 @@ function Featured({ basket, ideas }: { basket: Basket; ideas: Idea[] }) {
       </div>
 
       {/* footer — tam genişlik, CTA sağ-alt */}
-      <div className="mt-7 flex items-center justify-between gap-4 border-t pt-5" style={{ borderColor: "rgba(var(--border-rgb),0.08)" }}>
+      <div className="relative mt-7 flex items-center justify-between gap-4 border-t pt-5" style={{ borderColor: "rgba(var(--border-rgb),0.08)" }}>
         <div className="flex items-center gap-[14px]">
           <Avatars names={authors} size={30} ring={T.black} />
           <span className="tnum text-[0.92rem]" style={{ color: T.muted }}>

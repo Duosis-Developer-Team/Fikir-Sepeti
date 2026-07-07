@@ -161,8 +161,12 @@ export function Field({ label, children }: { label: string; children: React.Reac
 export function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
     <div
-      className={`rounded-[24px] p-7 ${className}`}
-      style={{ background: "var(--card)", border: "1px solid rgba(var(--border-rgb),0.09)", boxShadow: "var(--card-shadow)" }}
+      className={`grain relative overflow-hidden rounded-[24px] p-7 ${className}`}
+      style={{
+        background: "linear-gradient(180deg, var(--sheen), transparent 46%), var(--card)",
+        border: "1px solid rgba(var(--border-rgb),0.09)",
+        boxShadow: "var(--card-shadow), inset 0 1px 0 var(--edge)",
+      }}
     >
       {children}
     </div>
