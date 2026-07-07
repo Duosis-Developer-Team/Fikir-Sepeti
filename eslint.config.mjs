@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Vendored design-tool HTML export — üçüncü parti, uygulama kodu değil.
+    "Design system documentation/**",
   ]),
 ]);
 
