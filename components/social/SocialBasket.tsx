@@ -65,7 +65,7 @@ export function SocialBasket({ basket: initial, voter, accent }: { basket: Baske
         <RaffleReveal basket={b} ideas={ideas} voter={voter} accent={accent} isOwner={isOwner} onWinner={(w) => resolveBasket(b.id, w.id)} />
       ) : (
         <>
-          <IdeaInput accent={accent} onAdd={async (text, tag) => { await addIdea({ basket_id: b.id, text, tag, created_by: voter }); }} />
+          <IdeaInput accent={accent} onAdd={async (text, tag) => { await addIdea({ basket_id: b.id, text, tag, created_by: voter, tenant_id: b.tenant_id }); }} />
           <LiveVotePanel ideas={ideas} phase="ideas" myVoteId={myVotes["ideas"]} onVote={vote} accent={accent} />
           {ideas.length > 0 && (
             isOwner ? (

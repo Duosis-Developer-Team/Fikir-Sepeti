@@ -20,7 +20,7 @@ export function DemoStage({ data, user, refresh }: StageContext) {
     return p?.display_name || p?.email || uid;
   };
   const vote = async (teamId: string) => {
-    await voteTeam(basket.id, teamId, user.email);
+    await voteTeam(basket.id, teamId, user.email, basket.tenant_id);
     refresh();
   };
 

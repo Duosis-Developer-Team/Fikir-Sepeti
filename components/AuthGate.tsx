@@ -5,11 +5,27 @@ import { AnimatePresence, motion } from "motion/react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { BrandIcon } from "@/components/BrandIcon";
+import { resolveTenantId, type TenantRecord } from "@/lib/tenant";
 
-export type SessionUser = { id: string; email: string; name: string };
+export type SessionUser = {
+  id: string;
+  email: string;
+  name: string;
+  tenantId: string | null;
+};
 
-type Ctx = { user: SessionUser | null; ready: boolean; signOut: () => void };
-const SessionContext = createContext<Ctx>({ user: null, ready: false, signOut: () => {} });
+type Ctx = {
+  user: SessionUser | null;
+  ready: boolean;
+  signOut: () => void;
+  tenantDenied: boolean;
+};
+const SessionContext = createContext<Ctx>({
+  user: null,
+  ready: false,
+  signOut: () => {},
+  tenantDenied: false,
+});
 
 export function useSession() {
   return useContext(SessionContext);
@@ -18,7 +34,7 @@ export function useSession() {
 /** Geriye dönük uyumluluk: eski `useNameContext().name` = kullanıcı kimliği (iş e-postası). */
 export function useNameContext() {
   const { user } = useSession();
-  return { name: user?.email ?? "", setName: () => {} };
+  return { name: user?.email ?? "", setName: () => {}, tenantId: user?.tenantId ?? null };
 }
 
 /** Dev fallback: SADECE localhost'ta + NEXT_PUBLIC_AUTH_BYPASS=1 ise aktif. Prod domainde asla → gerçek Azure girişi. */
@@ -30,7 +46,35 @@ function isDevBypass(): boolean {
 }
 const DEV_KEY = "fikirsepeti:devuser";
 
-function toUser(session: Session | null): SessionUser | null {
+async function loadTenants(): Promise<TenantRecord[]> {
+  const { data } = await supabase
+    .from("tenants")
+    .select("id, name, azure_tenant_id, email_domain");
+  return (data as TenantRecord[]) ?? [];
+}
+
+async function bindTenant(
+  email: string,
+  azureTenantId?: string | null
+): Promise<{ tenantId: string | null; denied: boolean }> {
+  const tenants = await loadTenants();
+  const tenantId = resolveTenantId(tenants, { email, azureTenantId });
+  if (!tenantId) return { tenantId: null, denied: true };
+
+  // ensure app_users row
+  await supabase.from("app_users").upsert(
+    {
+      tenant_id: tenantId,
+      user_id: email,
+      email,
+      display_name: email.split("@")[0],
+    },
+    { onConflict: "tenant_id,user_id" }
+  );
+  return { tenantId, denied: false };
+}
+
+function toUserBase(session: Session | null): Omit<SessionUser, "tenantId"> | null {
   const u = session?.user;
   if (!u) return null;
   const email = u.email ?? "";
@@ -44,25 +88,64 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
   const [bypass, setBypass] = useState(false);
   const [draft, setDraft] = useState("");
+  const [tenantDenied, setTenantDenied] = useState(false);
 
   useEffect(() => {
     const b = isDevBypass();
     setBypass(b);
     if (b) {
       const raw = window.localStorage.getItem(DEV_KEY);
-      if (raw) setUser(JSON.parse(raw) as SessionUser);
+      if (raw) {
+        const stored = JSON.parse(raw) as SessionUser;
+        void bindTenant(stored.email).then(({ tenantId, denied }) => {
+          setTenantDenied(denied);
+          if (tenantId) {
+            const next = { ...stored, tenantId };
+            window.localStorage.setItem(DEV_KEY, JSON.stringify(next));
+            setUser(next);
+          } else {
+            setUser(null);
+          }
+          setReady(true);
+        });
+        return;
+      }
       setReady(true);
       return;
     }
-    supabase.auth.getSession().then(({ data }) => {
-      setUser(toUser(data.session));
-      setReady(true);
-      // OAuth dönüşünde URL'de kalan #access_token=... hash'ini temizle
-      if (typeof window !== "undefined" && window.location.hash.includes("access_token")) {
-        window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    supabase.auth.getSession().then(async ({ data }) => {
+      const base = toUserBase(data.session);
+      if (!base) {
+        setReady(true);
+        return;
       }
+      const azureTenantId =
+        (data.session?.user.app_metadata?.tenant_id as string | undefined) ??
+        (data.session?.user.user_metadata?.tid as string | undefined) ??
+        null;
+      const { tenantId, denied } = await bindTenant(base.email, azureTenantId);
+      setTenantDenied(denied);
+      setUser(tenantId ? { ...base, tenantId } : null);
+      setReady(true);
     });
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => setUser(toUser(session)));
+    // OAuth dönüşünde URL'de kalan #access_token=... hash'ini temizle
+    if (typeof window !== "undefined" && window.location.hash.includes("access_token")) {
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    }
+    const { data: sub } = supabase.auth.onAuthStateChange(async (_e, session) => {
+      const base = toUserBase(session);
+      if (!base) {
+        setUser(null);
+        return;
+      }
+      const azureTenantId =
+        (session?.user.app_metadata?.tenant_id as string | undefined) ??
+        (session?.user.user_metadata?.tid as string | undefined) ??
+        null;
+      const { tenantId, denied } = await bindTenant(base.email, azureTenantId);
+      setTenantDenied(denied);
+      setUser(tenantId ? { ...base, tenantId } : null);
+    });
     return () => sub.subscription.unsubscribe();
   }, []);
 
@@ -72,11 +155,17 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       options: { scopes: "email openid profile", redirectTo: window.location.origin },
     });
 
-  const devLogin = () => {
+  const devLogin = async () => {
     const clean = draft.trim();
     if (clean.length < 2) return;
-    const email = clean.includes("@") ? clean.toLowerCase() : `${clean.toLowerCase()}@dev.local`;
-    const u: SessionUser = { id: email, email, name: clean };
+    const email = clean.includes("@") ? clean.toLowerCase() : `${clean.toLowerCase()}@duosis.dev`;
+    const { tenantId, denied } = await bindTenant(email);
+    setTenantDenied(denied);
+    if (!tenantId) {
+      setUser(null);
+      return;
+    }
+    const u: SessionUser = { id: email, email, name: clean, tenantId };
     window.localStorage.setItem(DEV_KEY, JSON.stringify(u));
     setUser(u);
   };
@@ -85,13 +174,14 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     if (bypass) {
       window.localStorage.removeItem(DEV_KEY);
       setUser(null);
+      setTenantDenied(false);
     } else {
       void supabase.auth.signOut();
     }
   };
 
   return (
-    <SessionContext.Provider value={{ user, ready, signOut }}>
+    <SessionContext.Provider value={{ user, ready, signOut, tenantDenied }}>
       {children}
       <AnimatePresence>
         {ready && !user && (
@@ -114,6 +204,11 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
               <p className="mt-1.5 text-[0.92rem]" style={{ color: "var(--text-muted)" }}>
                 İş e-postanla giriş yap. Oyların, fikirlerin ve takımların hesabına bağlanır.
               </p>
+              {tenantDenied && (
+                <p className="mt-3 rounded-lg px-3 py-2 text-[0.85rem]" style={{ background: "rgba(242,121,95,0.12)", color: "#F2795F" }}>
+                  Bu e-posta için tanımsız tenant. Erişim reddedildi.
+                </p>
+              )}
 
               {bypass ? (
                 <>
@@ -121,13 +216,13 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
                     autoFocus
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && devLogin()}
+                    onKeyDown={(e) => e.key === "Enter" && void devLogin()}
                     placeholder="Adın ya da iş e-postan"
                     className="mt-6 w-full rounded-lg px-3.5 py-3 text-[0.95rem] outline-none"
                     style={{ background: "var(--surface-2)", border: "1px solid rgba(var(--border-rgb),0.09)", color: "var(--text)" }}
                   />
                   <button
-                    onClick={devLogin}
+                    onClick={() => void devLogin()}
                     disabled={draft.trim().length < 2}
                     className="mt-3 w-full rounded-full py-3 text-[0.95rem] font-semibold transition disabled:opacity-40"
                     style={{ background: "var(--text)", color: "var(--bg)" }}

@@ -70,6 +70,7 @@ export function HackathonRunner({ basketId }: { basketId: string }) {
     if (!data.participants.some((p) => p.user_id === user.email)) {
       void joinLobby({
         basket_id: basketId,
+        tenant_id: data.basket.tenant_id,
         user_id: user.email,
         email: user.email,
         display_name: user.name,

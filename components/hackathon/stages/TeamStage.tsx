@@ -25,7 +25,7 @@ export function TeamStage(ctx: StageContext) {
     return p?.display_name || p?.email || uid;
   };
   const build = async (spec: { name: string; members: string[] }[]) => {
-    await rebuildTeams(basket.id, spec);
+    await rebuildTeams(basket.id, basket.tenant_id, spec);
     refresh();
   };
   const doAuto = async () => {

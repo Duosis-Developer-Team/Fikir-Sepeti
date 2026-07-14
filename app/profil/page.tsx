@@ -56,26 +56,34 @@ function MineCard({ basket, ideas }: { basket: Basket; ideas: Idea[] }) {
 }
 
 export default function ProfilePage() {
-  const { name } = useNameContext();
+  const { name, tenantId } = useNameContext();
   const { signOut } = useSession();
   const [baskets, setBaskets] = useState<Basket[]>([]);
   const [ideasBy, setIdeasBy] = useState<Record<string, Idea[]>>({});
   const [loading, setLoading] = useState(true);
 
   const refresh = async () => {
-    const { baskets, ideasByBasket } = await loadHome();
+    if (!tenantId) {
+      setBaskets([]);
+      setIdeasBy({});
+      setLoading(false);
+      return;
+    }
+    const { baskets, ideasByBasket } = await loadHome(tenantId);
     setBaskets(baskets);
     setIdeasBy(ideasByBasket);
     setLoading(false);
   };
   useEffect(() => {
     void refresh();
+    if (!tenantId) return;
     const ch = supabase
       .channel("profil:live")
       .on("postgres_changes", { event: "*", schema: "public", table: "baskets" }, () => void refresh())
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tenantId]);
 
   const mine = useMemo(() => baskets.filter((b) => b.created_by && b.created_by === name), [baskets, name]);
   const openCount = mine.filter((b) => b.status !== "resolved").length;

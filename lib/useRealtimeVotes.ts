@@ -29,6 +29,7 @@ export function useRealtimeVotes(basketId: string, voter: string) {
   });
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const tenantRef = useRef<string | null>(null);
 
   const fetchAll = useCallback(async () => {
     const [basketRes, ideasRes, votesRes] = await Promise.all([
@@ -44,6 +45,10 @@ export function useRealtimeVotes(basketId: string, voter: string) {
         .eq("basket_id", basketId)
         .eq("voter", voter),
     ]);
+
+    if (basketRes.data) {
+      tenantRef.current = (basketRes.data as Basket).tenant_id ?? null;
+    }
 
     const myVotes: Record<string, string> = {};
     for (const v of votesRes.data ?? []) {
@@ -174,7 +179,13 @@ export function useRealtimeVotes(basketId: string, voter: string) {
       const delOld = () =>
         supabase.from("votes").delete().eq("basket_id", basketId).eq("phase", phase).eq("voter", voter);
       const insNew = () =>
-        supabase.from("votes").insert({ basket_id: basketId, idea_id: ideaId, phase, voter });
+        supabase.from("votes").insert({
+          basket_id: basketId,
+          idea_id: ideaId,
+          phase,
+          voter,
+          tenant_id: tenantRef.current,
+        });
 
       try {
         if (h.action === "unvote") {

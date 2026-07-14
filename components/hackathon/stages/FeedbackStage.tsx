@@ -29,7 +29,13 @@ export function FeedbackStage({ data, user }: StageContext) {
   const submit = async () => {
     const t = draft.trim();
     if (t.length < 2) return;
-    await addFeedback({ basket_id: basket.id, author_id: user.email, author_name: user.name, text: t });
+    await addFeedback({
+      basket_id: basket.id,
+      tenant_id: basket.tenant_id,
+      author_id: user.email,
+      author_name: user.name,
+      text: t,
+    });
     setDraft("");
     load();
   };

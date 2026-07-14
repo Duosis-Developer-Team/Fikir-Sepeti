@@ -31,7 +31,12 @@ export function IdeaStage(ctx: StageContext) {
   const submitIdea = async () => {
     const t = draft.trim();
     if (t.length < 2) return;
-    const created = await addIdea({ basket_id: basket.id, text: t, created_by: user.email });
+    const created = await addIdea({
+      basket_id: basket.id,
+      text: t,
+      created_by: user.email,
+      tenant_id: basket.tenant_id,
+    });
     setDraft("");
     if (config.ideaSource === "static" && created) await setSelectedIdea(basket.id, created.id);
     refresh();
@@ -39,7 +44,13 @@ export function IdeaStage(ctx: StageContext) {
 
   const voteFor = async (ideaId: string) => {
     await supabase.from("votes").delete().eq("basket_id", basket.id).eq("phase", "idea").eq("voter", user.email);
-    await supabase.from("votes").insert({ idea_id: ideaId, basket_id: basket.id, phase: "idea", voter: user.email });
+    await supabase.from("votes").insert({
+      idea_id: ideaId,
+      basket_id: basket.id,
+      phase: "idea",
+      voter: user.email,
+      tenant_id: basket.tenant_id,
+    });
     refresh();
   };
   const lockTop = async () => {

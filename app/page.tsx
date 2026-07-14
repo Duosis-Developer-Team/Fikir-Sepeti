@@ -313,7 +313,7 @@ function Wordmark() {
 }
 
 export default function Home() {
-  const { name } = useNameContext();
+  const { name, tenantId } = useNameContext();
   const router = useRouter();
   const [baskets, setBaskets] = useState<Basket[]>([]);
   const [ideasBy, setIdeasBy] = useState<Record<string, Idea[]>>({});
@@ -321,20 +321,28 @@ export default function Home() {
   const [modal, setModal] = useState(false);
 
   const refresh = async () => {
-    const { baskets, ideasByBasket } = await loadHome();
+    if (!tenantId) {
+      setBaskets([]);
+      setIdeasBy({});
+      setLoading(false);
+      return;
+    }
+    const { baskets, ideasByBasket } = await loadHome(tenantId);
     setBaskets(baskets);
     setIdeasBy(ideasByBasket);
     setLoading(false);
   };
   useEffect(() => {
     void refresh();
+    if (!tenantId) return;
     const ch = supabase
       .channel("home:live")
       .on("postgres_changes", { event: "*", schema: "public", table: "baskets" }, () => void refresh())
       .on("postgres_changes", { event: "*", schema: "public", table: "ideas" }, () => void refresh())
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh closes over tenantId
+  }, [tenantId]);
 
   const [tab, setTab] = useState<"aktif" | "gecmis">("aktif");
   const resolved = useMemo(() => baskets.filter((b) => b.status === "resolved"), [baskets]);
@@ -343,7 +351,8 @@ export default function Home() {
   const activeRest = useMemo(() => active.filter((b) => !isLiveBasket(b, ideasBy[b.id] ?? [])), [active, ideasBy]);
 
   const onCreate = async (input: { title: string; type: BasketType; resolve_method: ResolveMethod }) => {
-    const created = await createBasket({ ...input, created_by: name });
+    if (!tenantId) return;
+    const created = await createBasket({ ...input, created_by: name, tenant_id: tenantId });
     if (created) router.push(`/basket/${created.id}`);
   };
 

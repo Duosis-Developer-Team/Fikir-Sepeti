@@ -14,7 +14,7 @@ import type { Basket } from "@/lib/types";
 export default function BasketDetail() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { name } = useNameContext();
+  const { name, tenantId } = useNameContext();
   const [basket, setBasket] = useState<Basket | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
@@ -28,11 +28,20 @@ export default function BasketDetail() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from("baskets").select("*").eq("id", id).single();
+      if (!tenantId) {
+        setNotFound(true);
+        return;
+      }
+      const { data } = await supabase
+        .from("baskets")
+        .select("*")
+        .eq("id", id)
+        .eq("tenant_id", tenantId)
+        .maybeSingle();
       if (data) setBasket(data as Basket);
       else setNotFound(true);
     })();
-  }, [id]);
+  }, [id, tenantId]);
 
   const a = basket ? accentFor(basket) : null;
   const isHackathon = basket?.type === "hackathon";

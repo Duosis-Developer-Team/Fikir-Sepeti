@@ -1,4 +1,17 @@
 import { defineConfig, devices } from "@playwright/test";
+import { readFileSync, existsSync } from "node:fs";
+
+/** Load .env.local into process.env for tests (without overriding existing). */
+function loadEnvLocal() {
+  const path = ".env.local";
+  if (!existsSync(path)) return;
+  for (const line of readFileSync(path, "utf8").split("\n")) {
+    const m = line.match(/^([A-Z0-9_]+)=(.*)$/);
+    if (!m) continue;
+    if (process.env[m[1]] === undefined) process.env[m[1]] = m[2];
+  }
+}
+loadEnvLocal();
 
 const PORT = Number(process.env.PLAYWRIGHT_PORT ?? 3000);
 const BASE_URL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${PORT}`;

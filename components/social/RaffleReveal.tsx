@@ -38,7 +38,7 @@ export function RaffleReveal({
     const v = draft.trim();
     if (v.length < 2) return;
     setDraft("");
-    await addIdea({ basket_id: basket.id, text: v, created_by: voter });
+    await addIdea({ basket_id: basket.id, text: v, created_by: voter, tenant_id: basket.tenant_id });
   };
 
   const showStage = phase !== "idle";

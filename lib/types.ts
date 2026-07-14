@@ -50,6 +50,16 @@ export type Basket = {
   current_demo_idx: number;
   created_by: string | null;
   created_at: string;
+  tenant_id: string;
+};
+
+export type Tenant = {
+  id: string;
+  name: string;
+  azure_tenant_id: string | null;
+  email_domain: string | null;
+  settings: Record<string, unknown>;
+  created_at: string;
 };
 
 export type Participant = {

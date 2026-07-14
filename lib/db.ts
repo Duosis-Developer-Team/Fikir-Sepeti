@@ -5,26 +5,28 @@ import type { Basket, BasketType, Idea, Phase, ResolveMethod } from "./types";
 
 // ---- Sepetler ----
 
-export async function listBaskets(): Promise<Basket[]> {
+export async function listBaskets(tenantId: string): Promise<Basket[]> {
   const { data } = await supabase
     .from("baskets")
     .select("*")
+    .eq("tenant_id", tenantId)
     .order("created_at", { ascending: false });
   return (data as Basket[]) ?? [];
 }
 
 /** Ana ekran için zengin veri: sepetler + her sepetin fikirleri (canlı bar + katılımcı için). */
-export async function loadHome(): Promise<{
+export async function loadHome(tenantId: string): Promise<{
   baskets: Basket[];
   ideasByBasket: Record<string, Idea[]>;
 }> {
-  const baskets = await listBaskets();
+  const baskets = await listBaskets(tenantId);
   const ids = baskets.map((b) => b.id);
   const ideasByBasket: Record<string, Idea[]> = {};
   if (ids.length) {
     const { data } = await supabase
       .from("ideas")
       .select("*")
+      .eq("tenant_id", tenantId)
       .in("basket_id", ids)
       .order("vote_count", { ascending: false });
     for (const idea of (data as Idea[]) ?? []) {
@@ -39,6 +41,7 @@ export async function createBasket(input: {
   type: BasketType;
   resolve_method: ResolveMethod;
   created_by: string;
+  tenant_id: string;
 }): Promise<Basket | null> {
   const isHackathon = input.type === "hackathon";
   const { data } = await supabase
@@ -49,6 +52,8 @@ export async function createBasket(input: {
       resolve_method: isHackathon ? "vote" : input.resolve_method,
       phase: isHackathon ? "lobby" : "ideas",
       created_by: input.created_by,
+      tenant_id: input.tenant_id,
+      config: {},
     })
     .select()
     .single();
@@ -81,6 +86,7 @@ export async function addIdea(input: {
   text: string;
   tag?: string | null;
   created_by: string;
+  tenant_id: string;
 }): Promise<Idea | null> {
   const { data } = await supabase
     .from("ideas")
@@ -89,6 +95,7 @@ export async function addIdea(input: {
       text: input.text,
       tag: input.tag ?? null,
       created_by: input.created_by,
+      tenant_id: input.tenant_id,
     })
     .select()
     .single();
@@ -116,11 +123,11 @@ export async function updateDemo(
 
 // ---- Squad ----
 
-export async function addSquadMember(basketId: string, member: string) {
+export async function addSquadMember(basketId: string, member: string, tenantId: string) {
   // aynı üye iki kez eklenirse unique (23505) döner — sessizce yut.
   const { error } = await supabase
     .from("squad_members")
-    .insert({ basket_id: basketId, member });
+    .insert({ basket_id: basketId, member, tenant_id: tenantId });
   if (error && error.code !== "23505") throw error;
 }
 
