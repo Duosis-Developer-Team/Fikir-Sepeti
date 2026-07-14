@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from "motion/react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { BrandIcon } from "@/components/BrandIcon";
-import { resolveTenantId, type TenantRecord } from "@/lib/tenant";
+import { DEV_AUTH_PASSWORD } from "@/lib/dev-auth";
 
 export type SessionUser = {
   id: string;
@@ -44,24 +44,19 @@ function isDevBypass(): boolean {
   const h = window.location.hostname;
   return h === "localhost" || h === "127.0.0.1";
 }
-const DEV_KEY = "fikirsepeti:devuser";
 
-async function loadTenants(): Promise<TenantRecord[]> {
-  const { data } = await supabase
-    .from("tenants")
-    .select("id, name, azure_tenant_id, email_domain");
-  return (data as TenantRecord[]) ?? [];
+async function resolveTenantIdForEmail(email: string): Promise<string | null> {
+  const { data, error } = await supabase.rpc("resolve_tenant_id_for_email", {
+    p_email: email,
+  });
+  if (error) {
+    console.error("resolve_tenant_id_for_email", error);
+    return null;
+  }
+  return (data as string | null) ?? null;
 }
 
-async function bindTenant(
-  email: string,
-  azureTenantId?: string | null
-): Promise<{ tenantId: string | null; denied: boolean }> {
-  const tenants = await loadTenants();
-  const tenantId = resolveTenantId(tenants, { email, azureTenantId });
-  if (!tenantId) return { tenantId: null, denied: true };
-
-  // ensure app_users row + default member role
+async function ensureMembership(email: string, tenantId: string) {
   await supabase.from("app_users").upsert(
     {
       tenant_id: tenantId,
@@ -77,24 +72,31 @@ async function bindTenant(
     .eq("key", "member")
     .is("tenant_id", null)
     .maybeSingle();
-  if (mem) {
-    const { data: existing } = await supabase
-      .from("user_roles")
-      .select("id")
-      .eq("tenant_id", tenantId)
-      .eq("user_id", email)
-      .eq("role_id", mem.id)
-      .is("scope_basket_id", null)
-      .maybeSingle();
-    if (!existing) {
-      await supabase.from("user_roles").insert({
-        tenant_id: tenantId,
-        user_id: email,
-        role_id: mem.id,
-        scope_basket_id: null,
-      });
-    }
+  if (!mem) return;
+  const { data: existing } = await supabase
+    .from("user_roles")
+    .select("id")
+    .eq("tenant_id", tenantId)
+    .eq("user_id", email)
+    .eq("role_id", mem.id)
+    .is("scope_basket_id", null)
+    .maybeSingle();
+  if (!existing) {
+    await supabase.from("user_roles").insert({
+      tenant_id: tenantId,
+      user_id: email,
+      role_id: mem.id,
+      scope_basket_id: null,
+    });
   }
+}
+
+async function bindAfterAuth(
+  email: string
+): Promise<{ tenantId: string | null; denied: boolean }> {
+  const tenantId = await resolveTenantIdForEmail(email);
+  if (!tenantId) return { tenantId: null, denied: true };
+  await ensureMembership(email, tenantId);
   return { tenantId, denied: false };
 }
 
@@ -113,60 +115,35 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   const [bypass, setBypass] = useState(false);
   const [draft, setDraft] = useState("");
   const [tenantDenied, setTenantDenied] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
 
   useEffect(() => {
     const b = isDevBypass();
     setBypass(b);
-    if (b) {
-      const raw = window.localStorage.getItem(DEV_KEY);
-      if (raw) {
-        const stored = JSON.parse(raw) as SessionUser;
-        void bindTenant(stored.email).then(({ tenantId, denied }) => {
-          setTenantDenied(denied);
-          if (tenantId) {
-            const next = { ...stored, tenantId };
-            window.localStorage.setItem(DEV_KEY, JSON.stringify(next));
-            setUser(next);
-          } else {
-            setUser(null);
-          }
-          setReady(true);
-        });
-        return;
-      }
-      setReady(true);
-      return;
-    }
+
     supabase.auth.getSession().then(async ({ data }) => {
       const base = toUserBase(data.session);
       if (!base) {
         setReady(true);
         return;
       }
-      const azureTenantId =
-        (data.session?.user.app_metadata?.tenant_id as string | undefined) ??
-        (data.session?.user.user_metadata?.tid as string | undefined) ??
-        null;
-      const { tenantId, denied } = await bindTenant(base.email, azureTenantId);
+      const { tenantId, denied } = await bindAfterAuth(base.email);
       setTenantDenied(denied);
       setUser(tenantId ? { ...base, tenantId } : null);
       setReady(true);
     });
-    // OAuth dönüşünde URL'de kalan #access_token=... hash'ini temizle
+
     if (typeof window !== "undefined" && window.location.hash.includes("access_token")) {
       window.history.replaceState(null, "", window.location.pathname + window.location.search);
     }
+
     const { data: sub } = supabase.auth.onAuthStateChange(async (_e, session) => {
       const base = toUserBase(session);
       if (!base) {
         setUser(null);
         return;
       }
-      const azureTenantId =
-        (session?.user.app_metadata?.tenant_id as string | undefined) ??
-        (session?.user.user_metadata?.tid as string | undefined) ??
-        null;
-      const { tenantId, denied } = await bindTenant(base.email, azureTenantId);
+      const { tenantId, denied } = await bindAfterAuth(base.email);
       setTenantDenied(denied);
       setUser(tenantId ? { ...base, tenantId } : null);
     });
@@ -183,25 +160,35 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     const clean = draft.trim();
     if (clean.length < 2) return;
     const email = clean.includes("@") ? clean.toLowerCase() : `${clean.toLowerCase()}@duosis.dev`;
-    const { tenantId, denied } = await bindTenant(email);
-    setTenantDenied(denied);
-    if (!tenantId) {
+    setLoginError(null);
+
+    const tenantIdPre = await resolveTenantIdForEmail(email);
+    if (!tenantIdPre) {
+      setTenantDenied(true);
       setUser(null);
       return;
     }
-    const u: SessionUser = { id: email, email, name: clean, tenantId };
-    window.localStorage.setItem(DEV_KEY, JSON.stringify(u));
-    setUser(u);
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password: DEV_AUTH_PASSWORD,
+    });
+    if (error || !data.session) {
+      setLoginError(error?.message ?? "Giriş başarısız — seed kullanıcı mı?");
+      return;
+    }
+
+    const base = toUserBase(data.session);
+    if (!base) return;
+    const { tenantId, denied } = await bindAfterAuth(base.email);
+    setTenantDenied(denied);
+    setUser(tenantId ? { ...base, name: clean, tenantId } : null);
   };
 
   const signOut = () => {
-    if (bypass) {
-      window.localStorage.removeItem(DEV_KEY);
-      setUser(null);
-      setTenantDenied(false);
-    } else {
-      void supabase.auth.signOut();
-    }
+    void supabase.auth.signOut();
+    setUser(null);
+    setTenantDenied(false);
   };
 
   return (
@@ -233,6 +220,11 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
                   Bu e-posta için tanımsız tenant. Erişim reddedildi.
                 </p>
               )}
+              {loginError && (
+                <p className="mt-3 rounded-lg px-3 py-2 text-[0.85rem]" style={{ background: "rgba(242,121,95,0.12)", color: "#F2795F" }}>
+                  {loginError}
+                </p>
+              )}
 
               {bypass ? (
                 <>
@@ -253,8 +245,8 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
                   >
                     Devam
                   </button>
-                  <p className="mt-4 flex items-center justify-center gap-2 text-[0.8rem]" style={{ color: "var(--text-faint)" }}>
-                    <MicrosoftMark /> Microsoft ile giriş yakında
+                  <p className="mt-4 text-center text-[0.8rem]" style={{ color: "var(--text-faint)" }}>
+                    Yerel: seed kullanıcı + JWT (RLS)
                   </p>
                 </>
               ) : (

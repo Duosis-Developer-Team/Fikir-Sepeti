@@ -32,27 +32,36 @@ export function useRealtimeVotes(basketId: string, voter: string) {
   const tenantRef = useRef<string | null>(null);
 
   const fetchAll = useCallback(async () => {
-    const [basketRes, ideasRes, votesRes] = await Promise.all([
+    const [basketRes, ideasRes] = await Promise.all([
       supabase.from("baskets").select("*").eq("id", basketId).single(),
       supabase
         .from("ideas")
         .select("*")
         .eq("basket_id", basketId)
         .order("created_at", { ascending: true }),
-      supabase
-        .from("votes")
-        .select("phase, idea_id")
-        .eq("basket_id", basketId)
-        .eq("voter", voter),
     ]);
 
     if (basketRes.data) {
       tenantRef.current = (basketRes.data as Basket).tenant_id ?? null;
     }
 
+    // Prefer masked RPC; fall back to filtered votes select (own rows / vote.view_all)
+    let voteRows: { phase: string; idea_id: string }[] = [];
+    const rpc = await supabase.rpc("list_my_votes", { p_basket: basketId });
+    if (!rpc.error && rpc.data) {
+      voteRows = rpc.data as { phase: string; idea_id: string }[];
+    } else {
+      const votesRes = await supabase
+        .from("votes")
+        .select("phase, idea_id")
+        .eq("basket_id", basketId)
+        .eq("voter", voter);
+      voteRows = (votesRes.data as { phase: string; idea_id: string }[]) ?? [];
+    }
+
     const myVotes: Record<string, string> = {};
-    for (const v of votesRes.data ?? []) {
-      myVotes[v.phase as string] = v.idea_id as string;
+    for (const v of voteRows) {
+      myVotes[v.phase] = v.idea_id;
     }
 
     setState((prev) => ({

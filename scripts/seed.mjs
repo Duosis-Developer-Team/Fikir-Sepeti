@@ -211,6 +211,27 @@ async function main() {
   const { error: rErr } = await sb.from("user_roles").insert(roleRows);
   if (rErr) throw rErr;
 
+  // Auth users for RLS (JWT) — password shared with AuthGate DEV_AUTH_PASSWORD
+  const DEV_PASSWORD = process.env.NEXT_PUBLIC_DEV_AUTH_PASSWORD || "test-password-123";
+  const authEmails = [ADMIN, "member@duosis.dev", OTHER_ADMIN];
+  for (const email of authEmails) {
+    const { data: listed } = await sb.auth.admin.listUsers({ page: 1, perPage: 200 });
+    const existing = listed?.users?.find((u) => u.email === email);
+    if (existing) {
+      await sb.auth.admin.updateUserById(existing.id, {
+        password: DEV_PASSWORD,
+        email_confirm: true,
+      });
+    } else {
+      const { error: aErr } = await sb.auth.admin.createUser({
+        email,
+        password: DEV_PASSWORD,
+        email_confirm: true,
+      });
+      if (aErr) console.warn("auth create", email, aErr.message);
+    }
+  }
+
   console.log("Seed OK", IDS);
 }
 
