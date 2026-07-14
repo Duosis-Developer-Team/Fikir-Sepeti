@@ -156,7 +156,7 @@ Ajan her sprint sonunda bu tabloyu günceller ve commit eder.
 | S2 | RBAC: rol, izin, zorlama | ✅ geçti | — | API /api/baskets + /tenant/roles |
 | S3 | RLS: izolasyon + realtime | ✅ geçti | 🚦 Duo onaylandı | 2026-07-15 güvenlik kapısı |
 | S4 | Kavanoz (Fikir Deposu) + üç tab | ✅ geçti | — | docs/sprints/S4-report.md |
-| S5 | Sonuç / Arşiv | 🟡 devam | 🚦 Duo | sprint
+| S5 | Sonuç / Arşiv | ⏸️ Duo bekliyor | 🚦 Duo omurga | docs/sprints/S5-report.md — onay sonrası S6 |
 | S6 | ★ İmza an: çekiliş + dağıtım | ⬜ bekliyor | — | RaffleReveal taşınacak, yeniden yazılmayacak |
 | S7 | Puanlama (rubrik + jüri) | ⬜ bekliyor | 🚦 Duo | |
 | S8 | ★ Analitik huni | ⬜ bekliyor | 🚦 Duo | v2'nin asıl sınavı |
