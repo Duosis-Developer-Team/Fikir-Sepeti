@@ -34,11 +34,12 @@
   --sheen: rgba(255, 255, 255, 0.05);
   --edge: rgba(255, 255, 255, 0.08);
 
-  /* 4 aksan — iki temada da sabit */
+  /* aksanlar — iki temada da sabit */
   --coral: #f2795f;
   --gold: #e7a93f;
   --green: #33c293;
   --blue: #6b8cf0;
+  --clay: #d97757; /* Kavanoz (fikir deposu) */
 
   --danger: #f2795f;
   --radius: 22px;
@@ -46,8 +47,10 @@
   /* semantik + geriye dönük isimler */
   --social: var(--coral);
   --build: var(--gold);
+  --pool: var(--clay);
   --accent-social: var(--coral);
   --accent-build: var(--gold);
+  --accent-pool: var(--clay);
   --paper: var(--bg);
   --ink: var(--text);
   --ink-soft: var(--text-muted);
@@ -90,6 +93,7 @@
   --color-gold: var(--gold);
   --color-green: var(--green);
   --color-blue: var(--blue);
+  --color-clay: var(--clay);
   --radius-card: var(--radius);
   --font-sans: var(--font-body);
   --font-display: var(--font-display);

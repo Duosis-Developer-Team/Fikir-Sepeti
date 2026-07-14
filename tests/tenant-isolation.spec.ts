@@ -31,6 +31,7 @@ test.describe("S1 tenant isolation (app layer)", () => {
   test("DuoSis user does not see Other Corp baskets on home", async ({ page }) => {
     await loginAs(page, { email: SEED.adminEmail, name: SEED.adminName });
     await expectHome(page);
+    await page.getByTestId("tab-etkinlik").click();
     await expect(page.getByText("Other Corp Secret")).toHaveCount(0);
     // Seed Duo basket may appear
     await expect(page.getByText("Seed: Akşam nereye?").or(page.getByText("Yeni sepet")).first()).toBeVisible();
@@ -40,6 +41,7 @@ test.describe("S1 tenant isolation (app layer)", () => {
     await loginAs(page, { email: "admin@other.com", name: "Other Admin" });
     await page.goto("/");
     await expect(page.getByRole("button", { name: /Yeni sepet|Yeni/i }).first()).toBeVisible();
+    await page.getByTestId("tab-etkinlik").click();
     await expect(page.getByText("Seed: Akşam nereye?")).toHaveCount(0);
     await expect(page.getByText("Seed: Other Corp Secret")).toBeVisible();
   });

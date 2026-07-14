@@ -22,8 +22,11 @@ export type DurationUnit = "hour" | "day" | "week";
 
 /** Hackathon config — kod dallanmaz, hangi modülün çalışacağını bu seçer. */
 export type HackathonConfig = {
-  ideaSource?: "static" | "pool";
+  /** static = admin girer; pool = sepet-içi brainstorm; repo = Kavanoz'dan */
+  ideaSource?: "static" | "pool" | "repo";
   poolSelect?: "vote" | "random";
+  /** Kavanoz fikir id — ideaSource=repo iken */
+  repoPoolIdeaId?: string;
   teamMode?: "solo" | "groups" | "one";
   groups?: {
     count: number;
@@ -34,6 +37,26 @@ export type HackathonConfig = {
     value: number;
     unit: DurationUnit;
   };
+};
+
+export type PoolStatus = "new" | "voting" | "promoted" | "archived" | "rejected";
+
+export type PoolIdea = {
+  id: string;
+  tenant_id: string;
+  text: string;
+  brief: string | null;
+  category: string | null;
+  track_hint: "hackathon" | "etkinlik" | null;
+  status: PoolStatus;
+  hidden: boolean;
+  created_by: string;
+  vote_count: number;
+  promoted_basket_id: string | null;
+  source_basket_id: string | null;
+  poll_closes_at: string | null;
+  winner_label: string | null;
+  created_at: string;
 };
 
 export type Basket = {

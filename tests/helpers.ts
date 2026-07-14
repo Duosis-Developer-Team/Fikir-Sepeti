@@ -42,3 +42,8 @@ export async function openNewBasketModal(page: Page) {
   await page.getByRole("button", { name: /Yeni sepet|\+ Yeni/i }).first().click();
   await expect(page.getByRole("heading", { name: "Yeni sepet" })).toBeVisible();
 }
+
+/** Scope to the NewBasketModal panel (avoids colliding with home mode tabs). */
+export function newBasketModal(page: Page) {
+  return page.locator("div").filter({ has: page.getByRole("heading", { name: "Yeni sepet" }) }).last();
+}

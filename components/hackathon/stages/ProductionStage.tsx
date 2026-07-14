@@ -1,18 +1,21 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "motion/react";
 import { markDone } from "@/lib/hackathon";
+import { markPoolWinner, returnIdeaToPool } from "@/lib/pool";
 import type { StageContext } from "../contract";
 import { GOLD, GOLD_SOFT, dim } from "../contract";
 import { Card, GoldButton, Avatar } from "../ui";
 
-export function ProductionStage({ data, isAdmin }: StageContext) {
+export function ProductionStage({ data, user, isAdmin }: StageContext) {
   const { basket, teams, members, teamVotes, ideas, participants } = data;
   const selected = ideas.find((i) => i.id === basket.selected_idea_id) ?? null;
   const votesOf = (id: string) => teamVotes.filter((v) => v.team_id === id).length;
   const winner = [...teams].sort((a, b) => votesOf(b.id) - votesOf(a.id))[0] ?? null;
   const winnerMembers = winner ? members.filter((m) => m.team_id === winner.id) : [];
   const done = basket.status === "resolved" || basket.phase === "done";
+  const [returned, setReturned] = useState<Set<string>>(new Set());
   const nameOf = (uid: string) => {
     const p = participants.find((x) => x.user_id === uid);
     return p?.display_name || p?.email || uid;
@@ -20,8 +23,27 @@ export function ProductionStage({ data, isAdmin }: StageContext) {
 
   const finalize = async () => {
     await markDone(basket.id, selected?.id ?? null);
+    const poolId = basket.config?.repoPoolIdeaId;
+    if (poolId && winner) {
+      await markPoolWinner({
+        pool_idea_id: poolId,
+        winner_label: winner.name,
+        tenant_id: basket.tenant_id,
+        actor: user.email,
+      });
+    }
     // üretime alındı → ana sayfaya dön (tam reload)
     window.location.href = "/";
+  };
+
+  const sendToJar = async (ideaId: string) => {
+    const row = await returnIdeaToPool({
+      idea_id: ideaId,
+      basket_id: basket.id,
+      created_by: user.email,
+      tenant_id: basket.tenant_id,
+    });
+    if (row) setReturned((prev) => new Set(prev).add(ideaId));
   };
 
   return (
@@ -87,6 +109,44 @@ export function ProductionStage({ data, isAdmin }: StageContext) {
           <p className="mt-5 text-[0.95rem]" style={{ color: dim(0.55) }}>
             Fikir: <span style={{ color: "var(--text)" }}>{selected.text}</span>
           </p>
+        )}
+
+        {done && ideas.length > 1 && (
+          <div className="mt-6 text-left" data-testid="return-to-pool">
+            <span className="text-[0.7rem] font-semibold uppercase tracking-[0.22em]" style={{ color: dim(0.45) }}>
+              Kaybedenleri kavanoza at
+            </span>
+            <div className="mt-2 flex flex-col gap-2">
+              {ideas
+                .filter((i) => i.id !== (basket.winner_idea_id ?? basket.selected_idea_id))
+                .map((idea) => (
+                  <div
+                    key={idea.id}
+                    className="flex items-center justify-between gap-3 rounded-xl px-4 py-2.5"
+                    style={{ background: "var(--surface-2)" }}
+                  >
+                    <span className="truncate text-[0.95rem]" style={{ color: "var(--text)" }}>
+                      {idea.text}
+                    </span>
+                    {returned.has(idea.id) ? (
+                      <span className="text-[0.8rem]" style={{ color: "#6FD9B4" }}>
+                        ✓ kavanozda
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => void sendToJar(idea.id)}
+                        className="shrink-0 rounded-full px-3 py-1.5 text-[0.78rem] font-semibold"
+                        style={{ background: "rgba(217,119,87,0.2)", color: "#D97757" }}
+                        data-testid={`return-idea-${idea.id}`}
+                      >
+                        Kavanoza at
+                      </button>
+                    )}
+                  </div>
+                ))}
+            </div>
+          </div>
         )}
 
         <div className="mt-7">

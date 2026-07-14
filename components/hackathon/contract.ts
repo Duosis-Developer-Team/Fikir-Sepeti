@@ -52,7 +52,10 @@ export const dim = (a: number) => `rgba(var(--text-rgb), ${a})`;
 /** config tamam mı — lobide "başlat" için. */
 export function configReady(c: HackathonConfig): boolean {
   if (!c.ideaSource) return false;
-  if (c.ideaSource === "pool" && !c.poolSelect) return false;
+  if ((c.ideaSource === "pool" || c.ideaSource === "repo") && !c.poolSelect) {
+    // promote path may pre-select idea; still require selection mode when configuring
+    if (c.ideaSource === "pool") return false;
+  }
   if (!c.teamMode) return false;
   if (c.teamMode === "groups" && !c.groups) return false;
   return true;

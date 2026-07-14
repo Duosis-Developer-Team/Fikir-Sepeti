@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { loginAs, expectHome, openNewBasketModal, SEED } from "./helpers";
+import { loginAs, expectHome, openNewBasketModal, newBasketModal, SEED } from "./helpers";
 
 test.describe("smoke: etkinlik", () => {
   test("fikir ekle → oy ver → sonucu çek", async ({ page }) => {
@@ -7,10 +7,11 @@ test.describe("smoke: etkinlik", () => {
     await expectHome(page);
 
     await openNewBasketModal(page);
+    const modal = newBasketModal(page);
     await page.getByPlaceholder(/Ne konuşuyoruz/i).fill("Smoke: Öğle yemeği");
-    await page.getByRole("button", { name: "Etkinlik" }).click();
-    await page.getByRole("button", { name: "Oylama" }).click();
-    await page.getByRole("button", { name: "Oluştur" }).click();
+    await modal.getByRole("button", { name: /Etkinlik/i }).click();
+    await modal.getByRole("button", { name: /Oylama/i }).click();
+    await modal.getByRole("button", { name: "Oluştur" }).click();
 
     await expect(page).toHaveURL(/\/basket\//);
     await expect(page.getByPlaceholder("Fikrini yaz…")).toBeVisible();

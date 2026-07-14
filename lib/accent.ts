@@ -8,7 +8,11 @@ export const ACCENTS: Record<string, Accent> = {
   gold: { base: "#E7A93F", light: "#EEC078", rgb: "231,169,63" },
   green: { base: "#33C293", light: "#6FD9B4", rgb: "51,194,147" },
   blue: { base: "#6B8CF0", light: "#8FA8F5", rgb: "107,140,240" },
+  clay: { base: "#D97757", light: "#E4A08A", rgb: "217,119,87" },
 };
+
+/** Kavanoz (fikir deposu) aksanı — DESIGN-SYSTEM --clay */
+export const POOL_ACCENT = ACCENTS.clay;
 
 const SOCIAL = [ACCENTS.coral, ACCENTS.green, ACCENTS.blue];
 

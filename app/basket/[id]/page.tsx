@@ -28,10 +28,9 @@ export default function BasketDetail() {
 
   useEffect(() => {
     (async () => {
-      if (!tenantId) {
-        setNotFound(true);
-        return;
-      }
+      if (!tenantId) return;
+      setNotFound(false);
+      setBasket(null);
       const { data } = await supabase
         .from("baskets")
         .select("*")

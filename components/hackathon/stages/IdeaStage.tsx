@@ -64,13 +64,20 @@ export function IdeaStage(ctx: StageContext) {
     refresh();
   };
 
-  // seçilmiş fikir → herkes görür
+  // seçilmiş fikir → herkes görür (repo / static / pool kilidi)
   if (selected) {
+    const fromJar = config.ideaSource === "repo";
     return (
       <div className="mx-auto max-w-[760px]">
-        <StageHeadline pre="Fikir" accent="belli" sub="Sıra takımlarda." />
+        <StageHeadline
+          pre={fromJar ? "Kavanozdan" : "Fikir"}
+          accent={fromJar ? "geldi" : "belli"}
+          sub="Sıra takımlarda."
+        />
         <Card className="text-center">
-          <h2 className="font-display text-[clamp(2rem,4vw,3rem)] font-extrabold leading-tight" style={{ color: GOLD }}>{selected.text}</h2>
+          <h2 className="font-display text-[clamp(2rem,4vw,3rem)] font-extrabold leading-tight" style={{ color: GOLD }}>
+            {selected.text}
+          </h2>
         </Card>
       </div>
     );

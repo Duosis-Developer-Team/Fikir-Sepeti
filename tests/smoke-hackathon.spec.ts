@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { loginAs, expectHome, openNewBasketModal, SEED } from "./helpers";
+import { loginAs, expectHome, openNewBasketModal, newBasketModal, SEED } from "./helpers";
 
 test.describe("smoke: hackathon", () => {
   test("lobby → idea → team → demo", async ({ page }) => {
@@ -7,9 +7,10 @@ test.describe("smoke: hackathon", () => {
     await expectHome(page);
 
     await openNewBasketModal(page);
+    const modal = newBasketModal(page);
     await page.getByPlaceholder(/Ne konuşuyoruz/i).fill("Smoke: İç Hackathon");
-    await page.getByRole("button", { name: "Hackathon" }).click();
-    await page.getByRole("button", { name: "Oluştur" }).click();
+    await modal.getByRole("button", { name: /Hackathon/i }).click();
+    await modal.getByRole("button", { name: "Oluştur" }).click();
 
     await expect(page).toHaveURL(/\/basket\//);
     await expect(page.getByRole("button", { name: /Kuruluma geç/i })).toBeVisible();

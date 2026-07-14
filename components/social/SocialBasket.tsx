@@ -1,8 +1,10 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useRealtimeVotes } from "@/lib/useRealtimeVotes";
 import { addIdea, resolveBasket } from "@/lib/db";
+import { markPoolWinner, returnIdeaToPool } from "@/lib/pool";
+import { supabase } from "@/lib/supabase";
 import { LiveVotePanel } from "@/components/shared/LiveVotePanel";
 import { ResultScreen } from "@/components/shared/ResultScreen";
 import { Avatars } from "@/components/shared/Avatars";
@@ -17,8 +19,13 @@ export function SocialBasket({ basket: initial, voter, accent }: { basket: Baske
   const isRaffle = b.resolve_method === "raffle";
   const owner = b.created_by ?? "Sepeti açan";
   const isOwner = Boolean(voter) && voter === b.created_by;
+  const [returned, setReturned] = useState<Set<string>>(new Set());
 
   const winner = useMemo(() => ideas.find((i) => i.id === b.winner_idea_id) ?? null, [ideas, b.winner_idea_id]);
+  const losers = useMemo(
+    () => ideas.filter((i) => i.id !== b.winner_idea_id),
+    [ideas, b.winner_idea_id]
+  );
   const totalVotes = useMemo(() => ideas.reduce((s, i) => s + i.vote_count, 0), [ideas]);
   const authors = useMemo(() => {
     const s = new Set<string>();
@@ -27,13 +34,82 @@ export function SocialBasket({ basket: initial, voter, accent }: { basket: Baske
     return [...s];
   }, [ideas, b.created_by]);
 
+  const annotatePool = async (winnerText: string) => {
+    const { data } = await supabase
+      .from("idea_pool")
+      .select("id")
+      .eq("promoted_basket_id", b.id)
+      .limit(1)
+      .maybeSingle();
+    if (data?.id) {
+      await markPoolWinner({
+        pool_idea_id: data.id as string,
+        winner_label: winnerText,
+        tenant_id: b.tenant_id,
+        actor: voter,
+      });
+    }
+  };
+
   const resolveByVote = async () => {
     if (!ideas.length) return;
     const top = [...ideas].sort((a, c) => c.vote_count - a.vote_count)[0];
     await resolveBasket(b.id, top.id);
+    await annotatePool(top.text);
   };
 
-  if (b.status === "resolved") return <ResultScreen winner={winner} accent={accent} />;
+  const sendToJar = async (ideaId: string) => {
+    const row = await returnIdeaToPool({
+      idea_id: ideaId,
+      basket_id: b.id,
+      created_by: voter,
+      tenant_id: b.tenant_id,
+    });
+    if (row) setReturned((prev) => new Set(prev).add(ideaId));
+  };
+
+  if (b.status === "resolved") {
+    return (
+      <div className="flex flex-col gap-5">
+        <ResultScreen winner={winner} accent={accent} />
+        {losers.length > 0 && (
+          <div
+            className="rounded-[22px] p-5"
+            style={{ background: "var(--card)", border: "1px solid rgba(var(--border-rgb),0.09)" }}
+            data-testid="return-to-pool"
+          >
+            <p className="text-[0.72rem] font-bold uppercase tracking-[0.2em]" style={{ color: "#D97757" }}>
+              Kaybedenleri kavanoza at
+            </p>
+            <div className="mt-3 flex flex-col gap-2">
+              {losers.map((idea) => (
+                <div key={idea.id} className="flex items-center justify-between gap-3">
+                  <span className="truncate" style={{ color: "var(--text)" }}>
+                    {idea.text}
+                  </span>
+                  {returned.has(idea.id) ? (
+                    <span className="text-[0.8rem]" style={{ color: "#6FD9B4" }}>
+                      ✓ kavanozda
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => void sendToJar(idea.id)}
+                      className="rounded-full px-3 py-1.5 text-[0.8rem] font-semibold"
+                      style={{ background: "rgba(217,119,87,0.2)", color: "#D97757" }}
+                      data-testid={`return-idea-${idea.id}`}
+                    >
+                      Kavanoza at
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-7">

@@ -18,6 +18,9 @@ const IDS = {
   otherBasket: "55555555-5555-4555-8555-555555555555",
   ideaPizza: "33333333-3333-4333-8333-333333333333",
   ideaSushi: "44444444-4444-4444-8444-444444444444",
+  poolIdea: "66666666-6666-4666-8666-666666666666",
+  poolPollA: "77777777-7777-4777-8777-777777777777",
+  poolPollB: "88888888-8888-4888-8888-888888888888",
 };
 
 const ADMIN = "admin@duosis.dev";
@@ -68,6 +71,8 @@ async function wipe() {
   await sb.from("teams").delete().neq("id", "00000000-0000-0000-0000-000000000000");
   await sb.from("feedback").delete().neq("id", "00000000-0000-0000-0000-000000000000");
   await sb.from("votes").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+  await sb.from("pool_votes").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+  await sb.from("idea_pool").delete().neq("id", "00000000-0000-0000-0000-000000000000");
   await sb.from("ideas").delete().neq("id", "00000000-0000-0000-0000-000000000000");
   await sb.from("hackathon_participants").delete().neq("id", "00000000-0000-0000-0000-000000000000");
   await sb.from("squad_members").delete().neq("id", "00000000-0000-0000-0000-000000000000");
@@ -180,6 +185,43 @@ async function main() {
     },
   ]);
   if (iErr) throw iErr;
+
+  const pollCloses = new Date(Date.now() + 24 * 3600_000).toISOString();
+  const { error: poolErr } = await sb.from("idea_pool").insert([
+    {
+      id: IDS.poolIdea,
+      tenant_id: IDS.duoTenant,
+      text: "Seed: Ofis ruhu iyileştirme",
+      brief: "Kavanoz örnek fikir",
+      category: "kültür",
+      status: "new",
+      created_by: ADMIN,
+      vote_count: 0,
+    },
+    {
+      id: IDS.poolPollA,
+      tenant_id: IDS.duoTenant,
+      text: "Seed Poll: Kahve makinesi",
+      brief: "Poll seçeneği A",
+      category: "ürün",
+      status: "voting",
+      poll_closes_at: pollCloses,
+      created_by: ADMIN,
+      vote_count: 0,
+    },
+    {
+      id: IDS.poolPollB,
+      tenant_id: IDS.duoTenant,
+      text: "Seed Poll: Ayakta masa",
+      brief: "Poll seçeneği B",
+      category: "ürün",
+      status: "voting",
+      poll_closes_at: pollCloses,
+      created_by: ADMIN,
+      vote_count: 0,
+    },
+  ]);
+  if (poolErr) throw poolErr;
 
   // Roles (system ids from 0004_rbac)
   const ROLE = {

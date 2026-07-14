@@ -9,11 +9,14 @@ import { useNameContext } from "@/components/AuthGate";
 import { BrandIcon } from "@/components/BrandIcon";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NewBasketModal } from "@/components/NewBasketModal";
+import { PoolPanel } from "@/components/pool/PoolPanel";
 import { Avatars } from "@/components/shared/Avatars";
 import { createBasket, loadHome } from "@/lib/db";
 import { supabase } from "@/lib/supabase";
 import { accentFor, soft, type Accent } from "@/lib/accent";
 import type { Basket, BasketType, Idea, ResolveMethod } from "@/lib/types";
+
+type ModeTab = "kavanoz" | "hackathon" | "etkinlik";
 
 const T = {
   bg: "var(--bg)",
@@ -344,9 +347,16 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh closes over tenantId
   }, [tenantId]);
 
-  const [tab, setTab] = useState<"aktif" | "gecmis">("aktif");
-  const resolved = useMemo(() => baskets.filter((b) => b.status === "resolved"), [baskets]);
-  const active = useMemo(() => baskets.filter((b) => b.status !== "resolved"), [baskets]);
+  const [mode, setMode] = useState<ModeTab>("kavanoz");
+  const [statusTab, setStatusTab] = useState<"aktif" | "gecmis">("aktif");
+
+  const typed = useMemo(() => {
+    if (mode === "hackathon") return baskets.filter((b) => b.type === "hackathon");
+    if (mode === "etkinlik") return baskets.filter((b) => b.type === "etkinlik");
+    return [];
+  }, [baskets, mode]);
+  const resolved = useMemo(() => typed.filter((b) => b.status === "resolved"), [typed]);
+  const active = useMemo(() => typed.filter((b) => b.status !== "resolved"), [typed]);
   const live = useMemo(() => active.filter((b) => isLiveBasket(b, ideasBy[b.id] ?? [])), [active, ideasBy]);
   const activeRest = useMemo(() => active.filter((b) => !isLiveBasket(b, ideasBy[b.id] ?? [])), [active, ideasBy]);
 
@@ -409,71 +419,144 @@ export default function Home() {
             className="mx-auto mt-10 max-w-[46ch] text-[1.13rem] leading-[1.55]"
             style={{ color: T.t3 }}
           >
-            Fikri sepete at — gerisini ekibin <span className="font-semibold" style={{ color: "#F2795F" }}>oyu</span> ya da <span className="font-semibold" style={{ color: "#33C293" }}>kura</span> çözsün. Hackathon için canlı sunum dahil.
+            Fikirleri <span className="font-semibold" style={{ color: "#D97757" }}>kavanoza</span> at — oyla, hackathon veya etkinliğe dönüştür. Hızlı yol: doğrudan sepet aç.
           </motion.p>
         </section>
 
-        {/* sekmeler — segmented pill, ortalı */}
+        {/* üç tab — Kavanoz · Hackathon · Etkinlik */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: EASE, delay: 0.8 }}
           className="mt-[clamp(48px,7vw,72px)] flex justify-center"
         >
-        <div className="inline-flex gap-1 rounded-full p-1" style={{ background: "rgba(var(--border-rgb),0.04)", border: "1px solid rgba(var(--border-rgb),0.08)" }}>
-          {([["aktif", "Aktif", active.length], ["gecmis", "Geçmiş", resolved.length]] as const).map(([key, label, count]) => {
-            const on = tab === key;
-            return (
-              <button
-                key={key}
-                onClick={() => setTab(key)}
-                className="flex items-center gap-2 rounded-full px-[18px] py-[9px] text-[0.9rem] font-semibold transition"
-                style={{ background: on ? T.card : "transparent", color: on ? T.text : T.muted, boxShadow: on ? "0 2px 8px -4px rgba(0,0,0,0.6)" : "none" }}
-              >
-                {label}
-                <span className="tnum rounded-full px-[7px] py-0.5 text-[0.7rem]" style={{ background: on ? "rgba(var(--border-rgb),0.08)" : "rgba(var(--border-rgb),0.04)", color: on ? T.t3 : T.faint }}>{count}</span>
-              </button>
-            );
-          })}
-        </div>
+          <div
+            className="inline-flex gap-1 rounded-full p-1"
+            style={{ background: "rgba(var(--border-rgb),0.04)", border: "1px solid rgba(var(--border-rgb),0.08)" }}
+            data-testid="home-mode-tabs"
+          >
+            {(
+              [
+                ["kavanoz", "Kavanoz", "#D97757"],
+                ["hackathon", "Hackathon", "#E7A93F"],
+                ["etkinlik", "Etkinlik", "#F2795F"],
+              ] as const
+            ).map(([key, label, accent]) => {
+              const on = mode === key;
+              return (
+                <button
+                  key={key}
+                  onClick={() => setMode(key)}
+                  className="flex items-center gap-2 rounded-full px-[18px] py-[9px] text-[0.9rem] font-semibold transition"
+                  style={{
+                    background: on ? T.card : "transparent",
+                    color: on ? T.text : T.muted,
+                    boxShadow: on ? "0 2px 8px -4px rgba(0,0,0,0.6)" : "none",
+                  }}
+                  data-testid={`tab-${key}`}
+                >
+                  {on && <span className="h-1.5 w-1.5 rounded-full" style={{ background: accent }} />}
+                  {label}
+                </button>
+              );
+            })}
+          </div>
         </motion.div>
 
-        {loading ? (
+        {mode === "kavanoz" ? (
+          <PoolPanel />
+        ) : loading ? (
           <div className="mt-6 grid gap-5 md:grid-cols-3">
-            {[0, 1, 2].map((i) => <div key={i} className="h-52 animate-pulse rounded-[22px]" style={{ background: T.card }} />)}
-          </div>
-        ) : baskets.length === 0 ? (
-          <div className="mt-6 rounded-[22px] py-20 text-center" style={{ background: T.card }}>
-            <BrandIcon size="md" className="mb-4 inline-block opacity-90" />
-            <p style={{ color: T.muted }}>Henüz sepet yok.</p>
-            <button onClick={() => setModal(true)} className="mt-3 font-display text-2xl font-semibold" style={{ color: "#F2795F" }}>İlk sepeti aç →</button>
-          </div>
-        ) : tab === "aktif" ? (
-          <div className="mt-[clamp(28px,4vw,44px)] flex flex-col gap-5">
-            {live.map((b, i) => (
-              <motion.div key={b.id} initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: EASE, delay: 0.9 + i * 0.08 }}>
-                <Featured basket={b} ideas={ideasBy[b.id] ?? []} />
-              </motion.div>
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="h-52 animate-pulse rounded-[22px]" style={{ background: T.card }} />
             ))}
-            {activeRest.length > 0 && (
-              <div className="grid gap-5 md:grid-cols-2">
-                {activeRest.map((b, i) => (
-                  <motion.div key={b.id} initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: EASE, delay: 0.95 + i * 0.07 }}>
-                    <RichCard basket={b} ideas={ideasBy[b.id] ?? []} />
+          </div>
+        ) : (
+          <>
+            <div className="mt-6 flex justify-center">
+              <div className="inline-flex gap-1 rounded-full p-1" style={{ background: "rgba(var(--border-rgb),0.04)", border: "1px solid rgba(var(--border-rgb),0.08)" }}>
+                {(
+                  [
+                    ["aktif", "Aktif", active.length],
+                    ["gecmis", "Geçmiş", resolved.length],
+                  ] as const
+                ).map(([key, label, count]) => {
+                  const on = statusTab === key;
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => setStatusTab(key)}
+                      className="flex items-center gap-2 rounded-full px-[14px] py-[7px] text-[0.85rem] font-semibold"
+                      style={{ background: on ? T.card : "transparent", color: on ? T.text : T.muted }}
+                    >
+                      {label}
+                      <span className="tnum rounded-full px-[6px] text-[0.68rem]" style={{ color: T.faint }}>
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {typed.length === 0 ? (
+              <div className="mt-6 rounded-[22px] py-20 text-center" style={{ background: T.card }}>
+                <BrandIcon size="md" className="mb-4 inline-block opacity-90" />
+                <p style={{ color: T.muted }}>
+                  Henüz {mode === "hackathon" ? "hackathon" : "etkinlik"} yok.
+                </p>
+                <button
+                  onClick={() => setModal(true)}
+                  className="mt-3 font-display text-2xl font-semibold"
+                  style={{ color: "#F2795F" }}
+                >
+                  Sepet aç →
+                </button>
+              </div>
+            ) : statusTab === "aktif" ? (
+              <div className="mt-[clamp(28px,4vw,44px)] flex flex-col gap-5">
+                {live.map((b, i) => (
+                  <motion.div
+                    key={b.id}
+                    initial={{ opacity: 0, y: 28 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.7, ease: EASE, delay: 0.2 + i * 0.08 }}
+                  >
+                    <Featured basket={b} ideas={ideasBy[b.id] ?? []} />
                   </motion.div>
+                ))}
+                {activeRest.length > 0 && (
+                  <div className="grid gap-5 md:grid-cols-2">
+                    {activeRest.map((b, i) => (
+                      <motion.div
+                        key={b.id}
+                        initial={{ opacity: 0, y: 28 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.6, ease: EASE, delay: 0.25 + i * 0.07 }}
+                      >
+                        <RichCard basket={b} ideas={ideasBy[b.id] ?? []} />
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+                {!live.length && !activeRest.length && (
+                  <p className="py-12 text-center" style={{ color: T.muted }}>
+                    Aktif sepet yok — geçmişe bak veya yeni aç.
+                  </p>
+                )}
+              </div>
+            ) : resolved.length === 0 ? (
+              <div className="mt-6 rounded-[22px] py-16 text-center" style={{ background: T.card }}>
+                <p style={{ color: T.muted }}>Henüz sonuçlanan yok.</p>
+              </div>
+            ) : (
+              <div className="mt-6 grid gap-5 md:grid-cols-2">
+                {resolved.map((b) => (
+                  <RichCard key={b.id} basket={b} ideas={ideasBy[b.id] ?? []} />
                 ))}
               </div>
             )}
-          </div>
-        ) : resolved.length === 0 ? (
-          <div className="mt-6 rounded-[22px] py-16 text-center" style={{ background: T.card }}>
-            <BrandIcon size="md" className="mb-4 inline-block opacity-90" />
-            <p style={{ color: T.muted }}>Henüz sonuçlanan karar yok.</p>
-          </div>
-        ) : (
-          <div className="mt-6 grid gap-5 md:grid-cols-2">
-            {resolved.map((b) => <RichCard key={b.id} basket={b} ideas={ideasBy[b.id] ?? []} />)}
-          </div>
+          </>
         )}
       </div>
 

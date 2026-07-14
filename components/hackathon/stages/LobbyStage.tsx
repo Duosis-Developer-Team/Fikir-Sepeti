@@ -33,7 +33,10 @@ export function LobbyStage({ data, config, isAdmin, refresh }: StageContext) {
     switch (s) {
       case "ideaSource": return "invite";
       case "poolSelect": return "ideaSource";
-      case "teamMode": return config.ideaSource === "pool" ? "poolSelect" : "ideaSource";
+      case "teamMode":
+        return config.ideaSource === "pool" || config.ideaSource === "repo"
+          ? "poolSelect"
+          : "ideaSource";
       case "groups": return "teamMode";
       case "duration": return config.teamMode === "groups" ? "groups" : "teamMode";
       case "ready": return "duration";
@@ -78,10 +81,15 @@ export function LobbyStage({ data, config, isAdmin, refresh }: StageContext) {
           <StageHeadline pre="Fikir" accent="nereden" post=" gelecek?" />
           <Choice
             value={config.ideaSource}
-            onChange={(v) => { patch({ ideaSource: v }); setSub(v === "pool" ? "poolSelect" : "teamMode"); }}
+            onChange={(v) => {
+              patch({ ideaSource: v });
+              if (v === "pool" || v === "repo") setSub("poolSelect");
+              else setSub("teamMode");
+            }}
             options={[
               { v: "static", label: "Fikir var", hint: "sen girersin" },
               { v: "pool", label: "Brainstorming", hint: "herkes yazar" },
+              { v: "repo", label: "Kavanoz", hint: "depodan çek" },
             ]}
           />
         </>
@@ -89,7 +97,10 @@ export function LobbyStage({ data, config, isAdmin, refresh }: StageContext) {
 
       {sub === "poolSelect" && (
         <>
-          <StageHeadline pre="Pool nasıl" accent="seçilsin?" />
+          <StageHeadline
+            pre={config.ideaSource === "repo" ? "Kavanoz nasıl" : "Pool nasıl"}
+            accent="seçilsin?"
+          />
           <Choice
             value={config.poolSelect}
             onChange={(v) => { patch({ poolSelect: v }); setSub("teamMode"); }}
@@ -197,7 +208,11 @@ function Choice<T extends string>({ value, options, onChange }: { value?: T; opt
 
 const EASE = [0.22, 0.85, 0.25, 1] as const;
 
-const IDEA_LABEL: Record<string, string> = { static: "Fikir var", pool: "Brainstorming" };
+const IDEA_LABEL: Record<string, string> = {
+  static: "Fikir var",
+  pool: "Brainstorming",
+  repo: "Kavanoz",
+};
 const POOL_LABEL: Record<string, string> = { vote: "Oylama", random: "Kura" };
 const TEAM_LABEL: Record<string, string> = { solo: "Herkes tek", groups: "Gruplar", one: "Tek takım" };
 
