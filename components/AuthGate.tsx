@@ -61,7 +61,7 @@ async function bindTenant(
   const tenantId = resolveTenantId(tenants, { email, azureTenantId });
   if (!tenantId) return { tenantId: null, denied: true };
 
-  // ensure app_users row
+  // ensure app_users row + default member role
   await supabase.from("app_users").upsert(
     {
       tenant_id: tenantId,
@@ -71,6 +71,30 @@ async function bindTenant(
     },
     { onConflict: "tenant_id,user_id" }
   );
+  const { data: mem } = await supabase
+    .from("roles")
+    .select("id")
+    .eq("key", "member")
+    .is("tenant_id", null)
+    .maybeSingle();
+  if (mem) {
+    const { data: existing } = await supabase
+      .from("user_roles")
+      .select("id")
+      .eq("tenant_id", tenantId)
+      .eq("user_id", email)
+      .eq("role_id", mem.id)
+      .is("scope_basket_id", null)
+      .maybeSingle();
+    if (!existing) {
+      await supabase.from("user_roles").insert({
+        tenant_id: tenantId,
+        user_id: email,
+        role_id: mem.id,
+        scope_basket_id: null,
+      });
+    }
+  }
   return { tenantId, denied: false };
 }
 

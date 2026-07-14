@@ -43,21 +43,29 @@ export async function createBasket(input: {
   created_by: string;
   tenant_id: string;
 }): Promise<Basket | null> {
-  const isHackathon = input.type === "hackathon";
-  const { data } = await supabase
-    .from("baskets")
-    .insert({
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (process.env.NEXT_PUBLIC_AUTH_BYPASS === "1") {
+    headers["X-Dev-User"] = JSON.stringify({
+      email: input.created_by,
+      tenantId: input.tenant_id,
+    });
+  }
+  const res = await fetch("/api/baskets", {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
       title: input.title,
       type: input.type,
-      resolve_method: isHackathon ? "vote" : input.resolve_method,
-      phase: isHackathon ? "lobby" : "ideas",
-      created_by: input.created_by,
-      tenant_id: input.tenant_id,
-      config: {},
-    })
-    .select()
-    .single();
-  return (data as Basket) ?? null;
+      resolve_method: input.resolve_method,
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    console.error("createBasket failed", res.status, err);
+    return null;
+  }
+  const json = (await res.json()) as { basket: Basket };
+  return json.basket ?? null;
 }
 
 export async function deleteBasket(id: string) {

@@ -181,6 +181,36 @@ async function main() {
   ]);
   if (iErr) throw iErr;
 
+  // Roles (system ids from 0004_rbac)
+  const ROLE = {
+    tenant_admin: "c0000000-0000-4000-8000-000000000002",
+    organizer: "c0000000-0000-4000-8000-000000000004",
+    member: "c0000000-0000-4000-8000-000000000006",
+  };
+
+  await sb.from("app_users").upsert(
+    {
+      tenant_id: IDS.duoTenant,
+      user_id: "member@duosis.dev",
+      email: "member@duosis.dev",
+      display_name: "Member",
+    },
+    { onConflict: "tenant_id,user_id" }
+  );
+
+  await sb.from("user_roles").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+
+  const roleRows = [
+    { tenant_id: IDS.duoTenant, user_id: ADMIN, role_id: ROLE.member },
+    { tenant_id: IDS.duoTenant, user_id: ADMIN, role_id: ROLE.organizer },
+    { tenant_id: IDS.duoTenant, user_id: ADMIN, role_id: ROLE.tenant_admin },
+    { tenant_id: IDS.duoTenant, user_id: "member@duosis.dev", role_id: ROLE.member },
+    { tenant_id: IDS.otherTenant, user_id: OTHER_ADMIN, role_id: ROLE.member },
+    { tenant_id: IDS.otherTenant, user_id: OTHER_ADMIN, role_id: ROLE.organizer },
+  ];
+  const { error: rErr } = await sb.from("user_roles").insert(roleRows);
+  if (rErr) throw rErr;
+
   console.log("Seed OK", IDS);
 }
 

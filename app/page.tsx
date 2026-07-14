@@ -369,12 +369,17 @@ export default function Home() {
           <ThemeToggle />
           <button onClick={() => setModal(true)} className="inline-flex items-center gap-1 rounded-full px-4 py-2 text-[0.9rem] font-semibold sm:hidden" style={{ background: T.text, color: "var(--bg)" }}>+ Yeni</button>
           {name && (
-            <Link href="/profil" className="flex items-center gap-[9px] rounded-full border py-1 pl-1 pr-[14px] transition hover:border-[rgba(var(--border-rgb),0.2)]" style={{ borderColor: T.line, background: T.card }}>
-              <span className="grid h-7 w-7 place-items-center rounded-full text-[0.78rem] font-bold" style={{ background: "linear-gradient(135deg,#E7A93F,#F2795F)", color: "#0F0F0F" }}>
-                {name.charAt(0).toLocaleUpperCase("tr")}
-              </span>
-              <span className="text-[0.9rem]" style={{ color: T.t2 }}>{name}</span>
-            </Link>
+            <>
+              <Link href="/tenant/roles" className="hidden text-[0.82rem] font-semibold sm:inline" style={{ color: T.muted }}>
+                Roller
+              </Link>
+              <Link href="/profil" className="flex items-center gap-[9px] rounded-full border py-1 pl-1 pr-[14px] transition hover:border-[rgba(var(--border-rgb),0.2)]" style={{ borderColor: T.line, background: T.card }}>
+                <span className="grid h-7 w-7 place-items-center rounded-full text-[0.78rem] font-bold" style={{ background: "linear-gradient(135deg,#E7A93F,#F2795F)", color: "#0F0F0F" }}>
+                  {name.charAt(0).toLocaleUpperCase("tr")}
+                </span>
+                <span className="text-[0.9rem]" style={{ color: T.t2 }}>{name}</span>
+              </Link>
+            </>
           )}
         </div>
       </header>
