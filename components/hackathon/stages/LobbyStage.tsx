@@ -7,7 +7,7 @@ import { setConfig } from "@/lib/hackathon";
 import { setBasketPhase } from "@/lib/db";
 import type { StageContext } from "../contract";
 import { GOLD, GOLD_SOFT, dim } from "../contract";
-import { Card, GoldButton, StageHeadline, NumberStepper, Segmented } from "../ui";
+import { GoldButton, StageHeadline, NumberStepper, Segmented } from "../ui";
 import { InvitePanel } from "../InvitePanel";
 
 type Sub = "invite" | "ideaSource" | "poolSelect" | "teamMode" | "groups" | "duration" | "ready";
@@ -143,7 +143,7 @@ export function LobbyStage({ data, config, isAdmin, refresh }: StageContext) {
 
       {sub === "ready" && (
         <div className="text-center">
-          <StageHeadline pre="Hazır" accent="mısın?" sub="Kurulum tamam. Başlat'a bas, hackathon başlasın." />
+          <StageHeadline pre="Hazır" accent="mısın?" sub={"Kurulum tamam. Başlat'a bas, hackathon başlasın."} />
           <Summary config={config} />
         </div>
       )}

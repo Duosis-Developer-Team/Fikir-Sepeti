@@ -1,0 +1,2 @@
+-- Optional SQL seed (JS seed is scripts/seed.mjs).
+-- Kept empty so `supabase db reset` does not warn.

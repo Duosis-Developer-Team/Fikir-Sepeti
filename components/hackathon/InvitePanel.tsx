@@ -40,7 +40,7 @@ export function InvitePanel({ basketId }: { basketId: string }) {
       <div className="mt-4 flex items-center gap-4">
         {qr ? <img src={qr} alt="davet QR" className="h-[92px] w-[92px] shrink-0 rounded-xl" style={{ background: "#fff", padding: 6 }} /> : <div className="h-[92px] w-[92px] shrink-0 rounded-xl" style={{ background: "var(--surface-2)" }} />}
         <p className="text-[0.9rem] leading-snug" style={{ color: dim(0.6) }}>
-          Linki <b style={{ color: "var(--text)" }}>WhatsApp'a yapıştır</b> ya da QR'ı okut. Açan herkes iş e-postasıyla girip lobiye katılır.
+          Linki <b style={{ color: "var(--text)" }}>WhatsApp&apos;a yapıştır</b> ya da QR&apos;ı okut. Açan herkes iş e-postasıyla girip lobiye katılır.
         </p>
       </div>
 

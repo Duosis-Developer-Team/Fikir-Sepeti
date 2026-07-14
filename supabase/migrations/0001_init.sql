@@ -1,4 +1,3 @@
--- Mirror of migrations/0001_init.sql — source of truth is migrations/.
 -- Fikir Sepeti — initial schema + realtime publication (idempotent)
 
 create table if not exists baskets (
