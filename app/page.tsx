@@ -380,6 +380,9 @@ export default function Home() {
           <button onClick={() => setModal(true)} className="inline-flex items-center gap-1 rounded-full px-4 py-2 text-[0.9rem] font-semibold sm:hidden" style={{ background: T.text, color: "var(--bg)" }}>+ Yeni</button>
           {name && (
             <>
+              <Link href="/archive" className="hidden text-[0.82rem] font-semibold sm:inline" style={{ color: T.muted }} data-testid="nav-archive">
+                Arşiv
+              </Link>
               <Link href="/tenant/roles" className="hidden text-[0.82rem] font-semibold sm:inline" style={{ color: T.muted }}>
                 Roller
               </Link>

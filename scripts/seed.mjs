@@ -21,6 +21,12 @@ const IDS = {
   poolIdea: "66666666-6666-4666-8666-666666666666",
   poolPollA: "77777777-7777-4777-8777-777777777777",
   poolPollB: "88888888-8888-4888-8888-888888888888",
+  archiveEtkinlik: "99999999-9999-4999-8999-999999999999",
+  archiveHackathon: "aaaa1111-1111-4111-8111-111111111111",
+  archiveIdeaWin: "bbbb2222-2222-4222-8222-222222222222",
+  archiveIdeaLose: "cccc3333-3333-4333-8333-333333333333",
+  archiveHackIdea: "dddd4444-4444-4444-8444-444444444444",
+  archiveTeam: "eeee5555-5555-4555-8555-555555555555",
 };
 
 const ADMIN = "admin@duosis.dev";
@@ -163,6 +169,28 @@ async function main() {
       created_by: OTHER_ADMIN,
       tenant_id: IDS.otherTenant,
     },
+    {
+      id: IDS.archiveEtkinlik,
+      title: "Seed: Arşiv Etkinlik",
+      type: "etkinlik",
+      resolve_method: "vote",
+      phase: "resolved",
+      status: "resolved",
+      config: {},
+      created_by: ADMIN,
+      tenant_id: IDS.duoTenant,
+    },
+    {
+      id: IDS.archiveHackathon,
+      title: "Seed: Arşiv Hackathon",
+      type: "hackathon",
+      resolve_method: "vote",
+      phase: "done",
+      status: "resolved",
+      config: { ideaSource: "static", teamMode: "solo" },
+      created_by: ADMIN,
+      tenant_id: IDS.duoTenant,
+    },
   ]);
   if (bErr) throw bErr;
 
@@ -183,8 +211,107 @@ async function main() {
       vote_count: 0,
       tenant_id: IDS.duoTenant,
     },
+    {
+      id: IDS.archiveIdeaWin,
+      basket_id: IDS.archiveEtkinlik,
+      text: "Arşiv kazanan fikir",
+      created_by: ADMIN,
+      vote_count: 5,
+      tenant_id: IDS.duoTenant,
+    },
+    {
+      id: IDS.archiveIdeaLose,
+      basket_id: IDS.archiveEtkinlik,
+      text: "Arşiv kaybeden fikir",
+      created_by: "member@duosis.dev",
+      vote_count: 2,
+      tenant_id: IDS.duoTenant,
+    },
+    {
+      id: IDS.archiveHackIdea,
+      basket_id: IDS.archiveHackathon,
+      text: "Arşiv hackathon fikri",
+      created_by: ADMIN,
+      vote_count: 3,
+      tenant_id: IDS.duoTenant,
+    },
   ]);
   if (iErr) throw iErr;
+
+  await sb
+    .from("baskets")
+    .update({ winner_idea_id: IDS.archiveIdeaWin })
+    .eq("id", IDS.archiveEtkinlik);
+  await sb
+    .from("baskets")
+    .update({
+      selected_idea_id: IDS.archiveHackIdea,
+      winner_idea_id: IDS.archiveHackIdea,
+    })
+    .eq("id", IDS.archiveHackathon);
+
+  await sb.from("votes").insert([
+    {
+      idea_id: IDS.archiveIdeaWin,
+      basket_id: IDS.archiveEtkinlik,
+      phase: "ideas",
+      voter: ADMIN,
+      tenant_id: IDS.duoTenant,
+    },
+    {
+      idea_id: IDS.archiveIdeaWin,
+      basket_id: IDS.archiveEtkinlik,
+      phase: "ideas",
+      voter: "member@duosis.dev",
+      tenant_id: IDS.duoTenant,
+    },
+  ]);
+
+  await sb.from("hackathon_participants").insert([
+    {
+      basket_id: IDS.archiveHackathon,
+      user_id: ADMIN,
+      email: ADMIN,
+      display_name: "Admin",
+      role: "admin",
+      tenant_id: IDS.duoTenant,
+    },
+    {
+      basket_id: IDS.archiveHackathon,
+      user_id: "member@duosis.dev",
+      email: "member@duosis.dev",
+      display_name: "Member",
+      role: "member",
+      tenant_id: IDS.duoTenant,
+    },
+  ]);
+
+  await sb.from("teams").insert({
+    id: IDS.archiveTeam,
+    basket_id: IDS.archiveHackathon,
+    name: "Squad Alpha",
+    tenant_id: IDS.duoTenant,
+  });
+  await sb.from("team_members").insert({
+    team_id: IDS.archiveTeam,
+    basket_id: IDS.archiveHackathon,
+    user_id: ADMIN,
+    tenant_id: IDS.duoTenant,
+  });
+  await sb.from("team_votes").insert({
+    team_id: IDS.archiveTeam,
+    basket_id: IDS.archiveHackathon,
+    voter: "member@duosis.dev",
+    tenant_id: IDS.duoTenant,
+  });
+  await sb.from("feedback").insert({
+    basket_id: IDS.archiveHackathon,
+    team_id: IDS.archiveTeam,
+    author_id: ADMIN,
+    author_name: "Admin",
+    text: "Harika demo",
+    tenant_id: IDS.duoTenant,
+  });
 
   const pollCloses = new Date(Date.now() + 24 * 3600_000).toISOString();
   const { error: poolErr } = await sb.from("idea_pool").insert([

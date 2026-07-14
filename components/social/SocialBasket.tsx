@@ -72,6 +72,14 @@ export function SocialBasket({ basket: initial, voter, accent }: { basket: Baske
     return (
       <div className="flex flex-col gap-5">
         <ResultScreen winner={winner} accent={accent} />
+        <a
+          href={`/basket/${b.id}/result`}
+          className="rounded-full py-3 text-center text-[0.95rem] font-semibold"
+          style={{ background: soft(accent, 0.14), color: accent.base }}
+          data-testid="open-result-page"
+        >
+          Sonuç tablosu →
+        </a>
         {losers.length > 0 && (
           <div
             className="rounded-[22px] p-5"
