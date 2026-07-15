@@ -38,6 +38,9 @@ export function DemoStage({ data, user, refresh }: StageContext) {
           {sorted.map((t, rank) => {
             const n = votesOf(t.id);
             const pct = (n / max) * 100;
+            const teamIdea =
+              ideas.find((i) => i.id === t.idea_id)?.text ??
+              (selected ? selected.text : null);
             const lead = n === leader && leader > 0;
             const mine = myVote?.team_id === t.id;
             const mem = members.filter((m) => m.team_id === t.id);
@@ -55,6 +58,12 @@ export function DemoStage({ data, user, refresh }: StageContext) {
                   <span className="tnum font-display w-8 shrink-0 text-[1.6rem] font-bold" style={{ color: lead ? GOLD_SOFT : dim(0.3) }}>{rank + 1}</span>
                   <div className="min-w-0 flex-1">
                     <p className="font-display text-[1.5rem] font-bold leading-tight" style={{ color: "var(--text)" }}>{t.name}</p>
+                    {teamIdea && (
+                      <p className="mt-0.5 truncate text-[0.85rem]" style={{ color: dim(0.5) }}>
+                        {teamIdea}
+                        {t.angle ? ` · ${t.angle}` : ""}
+                      </p>
+                    )}
                     <div className="mt-1.5 flex flex-wrap gap-1.5">
                       {mem.map((m) => <Avatar key={m.id} name={nameOf(m.user_id)} size={26} />)}
                     </div>

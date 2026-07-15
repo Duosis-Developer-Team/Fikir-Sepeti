@@ -183,6 +183,14 @@ export default function BasketResultPage() {
                     <span className="ml-2 text-[0.8rem]" style={{ color: "var(--text-faint)" }}>
                       {members.filter((m) => m.team_id === t.id).length} kişi
                     </span>
+                    {(t.idea_id || basket.selected_idea_id) && (
+                      <span className="mt-1 block text-[0.85rem]" style={{ color: "var(--text-2)" }} data-testid="result-team-idea">
+                        Fikir:{" "}
+                        {ideas.find((idea) => idea.id === (t.idea_id ?? basket.selected_idea_id))?.text ??
+                          "—"}
+                        {t.angle ? ` · açı: ${t.angle}` : ""}
+                      </span>
+                    )}
                   </span>
                   <span className="tnum font-bold" style={{ color: a.base }}>
                     {votesOf(t.id)} oy

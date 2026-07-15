@@ -37,6 +37,14 @@ export type HackathonConfig = {
     value: number;
     unit: DurationUnit;
   };
+  /** How many ideas to lock (default 1). */
+  ideaCount?: number;
+  /** Team↔idea: same creator team | cross raffle | manual DnD. Default same. */
+  ideaAssignment?: "same" | "cross" | "manual";
+  /** Show shuffle→reveal stage (default true). */
+  revealAnimation?: boolean;
+  /** Extra locked idea ids when ideaCount > 1 (selected_idea_id is the first). */
+  lockedIdeaIds?: string[];
 };
 
 export type PoolStatus = "new" | "voting" | "promoted" | "archived" | "rejected";
@@ -100,6 +108,10 @@ export type Team = {
   basket_id: string;
   name: string;
   created_at: string;
+  /** Assigned idea for this team (S6). */
+  idea_id?: string | null;
+  /** Team angle / angle when ideaCount === 1 (S6). */
+  angle?: string | null;
 };
 
 export type TeamMember = {

@@ -158,7 +158,7 @@ Ajan her sprint sonunda bu tabloyu günceller ve commit eder.
 | S4 | Kavanoz (Fikir Deposu) + üç tab | ✅ geçti | — | docs/sprints/S4-report.md |
 | S5 | Sonuç / Arşiv | ✅ geçti | 🚦 Duo omurga | docs/sprints/S5-report.md — omurga + login hotfix sonrası S6 |
 | Hotfix | Tenant login + /login | ✅ geçti | ⏸️ prod migrate | docs/sprints/hotfix-tenant-login-report.md — `duosis.com` + `/login` |
-| S6 | ★ İmza an: çekiliş + dağıtım | ⬜ bekliyor | — | RaffleReveal taşınacak, yeniden yazılmayacak |
+| S6 | ★ İmza an: çekiliş + dağıtım | ✅ geçti | — | docs/sprints/S6-report.md |
 | S7 | Puanlama (rubrik + jüri) | ⬜ bekliyor | 🚦 Duo | |
 | S8 | ★ Analitik huni | ⬜ bekliyor | 🚦 Duo | v2'nin asıl sınavı |
 | S9 | Moderasyon + denetim | ⬜ bekliyor | — | |

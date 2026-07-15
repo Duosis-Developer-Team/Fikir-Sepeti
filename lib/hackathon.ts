@@ -63,6 +63,35 @@ export async function setSelectedIdea(basketId: string, ideaId: string | null) {
   await supabase.from("baskets").update({ selected_idea_id: ideaId }).eq("id", basketId);
 }
 
+/** Persist locked ideas: primary selected_idea_id + optional config.lockedIdeaIds. */
+export async function lockIdeas(
+  basketId: string,
+  ideaIds: string[],
+  config: HackathonConfig
+) {
+  const primary = ideaIds[0] ?? null;
+  const next: HackathonConfig = {
+    ...config,
+    lockedIdeaIds: ideaIds.length > 1 ? ideaIds : undefined,
+  };
+  await supabase
+    .from("baskets")
+    .update({ selected_idea_id: primary, config: next })
+    .eq("id", basketId);
+}
+
+export async function assignTeamIdeas(
+  pairs: { teamId: string; ideaId: string }[]
+) {
+  for (const p of pairs) {
+    await supabase.from("teams").update({ idea_id: p.ideaId }).eq("id", p.teamId);
+  }
+}
+
+export async function setTeamAngle(teamId: string, angle: string) {
+  await supabase.from("teams").update({ angle: angle.trim() || null }).eq("id", teamId);
+}
+
 // ---- Takımlar ----
 
 export async function renameTeam(teamId: string, name: string) {

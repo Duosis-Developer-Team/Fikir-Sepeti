@@ -10,7 +10,7 @@ import { GOLD, GOLD_SOFT, dim } from "../contract";
 import { GoldButton, StageHeadline, NumberStepper, Segmented } from "../ui";
 import { InvitePanel } from "../InvitePanel";
 
-type Sub = "invite" | "ideaSource" | "poolSelect" | "teamMode" | "groups" | "duration" | "ready";
+type Sub = "invite" | "ideaSource" | "poolSelect" | "ideaAssign" | "teamMode" | "groups" | "duration" | "ready";
 
 const UNITS: { v: "hour" | "day" | "week"; label: string }[] = [
   { v: "hour", label: "Saat" },
@@ -33,9 +33,10 @@ export function LobbyStage({ data, config, isAdmin, refresh }: StageContext) {
     switch (s) {
       case "ideaSource": return "invite";
       case "poolSelect": return "ideaSource";
+      case "ideaAssign": return "poolSelect";
       case "teamMode":
         return config.ideaSource === "pool" || config.ideaSource === "repo"
-          ? "poolSelect"
+          ? "ideaAssign"
           : "ideaSource";
       case "groups": return "teamMode";
       case "duration": return config.teamMode === "groups" ? "groups" : "teamMode";
@@ -103,12 +104,46 @@ export function LobbyStage({ data, config, isAdmin, refresh }: StageContext) {
           />
           <Choice
             value={config.poolSelect}
-            onChange={(v) => { patch({ poolSelect: v }); setSub("teamMode"); }}
+            onChange={(v) => { patch({ poolSelect: v }); setSub("ideaAssign"); }}
             options={[
               { v: "vote", label: "Oylama", hint: "en çok oy" },
               { v: "random", label: "Kura", hint: "rastgele" },
             ]}
           />
+        </>
+      )}
+
+      {sub === "ideaAssign" && (
+        <>
+          <StageHeadline pre="Dağıtım" accent="nasıl?" sub="Kaç fikir ve kimin fikri kime?" />
+          <div className="mx-auto flex w-full max-w-[640px] flex-col items-center gap-8">
+            <NumberStepper
+              label="Fikir sayısı"
+              value={config.ideaCount ?? 1}
+              min={1}
+              max={8}
+              onChange={(n) => patch({ ideaCount: n })}
+            />
+            <Segmented
+              label="Atama"
+              value={config.ideaAssignment ?? "same"}
+              onChange={(v) => patch({ ideaAssignment: v })}
+              options={[
+                { v: "same", label: "Same" },
+                { v: "cross", label: "Cross" },
+                { v: "manual", label: "Elle" },
+              ]}
+            />
+            <Segmented
+              label="Çekiliş animasyonu"
+              value={config.revealAnimation === false ? "off" : "on"}
+              onChange={(v) => patch({ revealAnimation: v === "on" })}
+              options={[
+                { v: "on", label: "Açık" },
+                { v: "off", label: "Kapalı" },
+              ]}
+            />
+          </div>
         </>
       )}
 
@@ -168,6 +203,7 @@ export function LobbyStage({ data, config, isAdmin, refresh }: StageContext) {
           <button onClick={() => setSub(back)} className="rounded-full border px-6 py-3 text-[0.95rem] transition hover:bg-[rgba(var(--border-rgb),0.08)]" style={{ borderColor: "rgba(var(--border-rgb),0.2)", color: dim(0.85) }}>← Geri</button>
         )}
         {sub === "invite" && <GoldButton onClick={() => setSub("ideaSource")}>Kuruluma geç →</GoldButton>}
+        {sub === "ideaAssign" && <GoldButton onClick={() => setSub("teamMode")}>Devam →</GoldButton>}
         {sub === "groups" && <GoldButton onClick={() => setSub("duration")}>Devam →</GoldButton>}
         {sub === "duration" && <GoldButton onClick={() => setSub("ready")}>Devam →</GoldButton>}
         {sub === "ready" && <GoldButton onClick={start}>Başlat →</GoldButton>}
@@ -220,6 +256,9 @@ function Summary({ config }: { config: HackathonConfig }) {
   const items = [
     config.ideaSource && `Fikir: ${IDEA_LABEL[config.ideaSource]}`,
     config.poolSelect && `Seçim: ${POOL_LABEL[config.poolSelect]}`,
+    config.ideaCount && config.ideaCount > 1 && `${config.ideaCount} fikir`,
+    config.ideaAssignment && `Atama: ${config.ideaAssignment}`,
+    config.revealAnimation === false && "Animasyon kapalı",
     config.teamMode && `Takım: ${TEAM_LABEL[config.teamMode]}`,
     config.teamMode === "groups" && config.groups && `${config.groups.count} takım · ${config.groups.assignment === "random" ? "random" : "elle"}`,
     config.duration && `Süre: ${config.duration.value} ${UNITS.find((u) => u.v === config.duration!.unit)?.label ?? ""}`,

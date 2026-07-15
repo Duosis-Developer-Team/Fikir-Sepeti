@@ -3,8 +3,12 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { addIdea } from "@/lib/db";
-import { setSelectedIdea } from "@/lib/hackathon";
+import { lockIdeas, setSelectedIdea } from "@/lib/hackathon";
+import { pickRandomIdeas } from "@/lib/assignment";
 import { supabase } from "@/lib/supabase";
+import { ACCENTS } from "@/lib/accent";
+import type { Idea } from "@/lib/types";
+import { RaffleRevealStage } from "@/components/shared/RaffleRevealStage";
 import type { StageContext } from "../contract";
 import { GOLD, GOLD_SOFT, dim } from "../contract";
 import { Card, GoldButton, StageHeadline, Avatar } from "../ui";
@@ -15,8 +19,8 @@ export function IdeaStage(ctx: StageContext) {
   const selected = ideas.find((i) => i.id === basket.selected_idea_id) ?? null;
   const [draft, setDraft] = useState("");
   const [myVoteId, setMyVoteId] = useState<string | null>(null);
+  const [rafflePick, setRafflePick] = useState<Idea[] | null>(null);
 
-  // kullanıcının pool oyunu takip et (hangi fikre oy verdi)
   useEffect(() => {
     supabase
       .from("votes")
@@ -54,19 +58,52 @@ export function IdeaStage(ctx: StageContext) {
     refresh();
   };
   const lockTop = async () => {
-    const top = [...ideas].sort((a, b) => b.vote_count - a.vote_count)[0];
-    if (top) { await setSelectedIdea(basket.id, top.id); refresh(); }
-  };
-  const drawRandom = async () => {
-    if (!ideas.length) return;
-    const pick = ideas[Math.floor(Math.random() * ideas.length)];
-    await setSelectedIdea(basket.id, pick.id);
+    const count = Math.max(1, config.ideaCount ?? 1);
+    const top = [...ideas].sort((a, b) => b.vote_count - a.vote_count).slice(0, count);
+    if (!top.length) return;
+    await lockIdeas(
+      basket.id,
+      top.map((i) => i.id),
+      config
+    );
     refresh();
   };
 
-  // seçilmiş fikir → herkes görür (repo / static / pool kilidi)
+  /** Pick winner(s) first, then optionally show raffle stage. */
+  const drawRandom = () => {
+    if (!ideas.length) return;
+    const count = Math.max(1, config.ideaCount ?? 1);
+    const picks = pickRandomIdeas(ideas, count);
+    if (!picks.length) return;
+    const animate = config.revealAnimation !== false;
+    if (!animate) {
+      void lockIdeas(
+        basket.id,
+        picks.map((i) => i.id),
+        config
+      ).then(refresh);
+      return;
+    }
+    setRafflePick(picks);
+  };
+
+  const commitRaffle = async () => {
+    if (!rafflePick?.length) return;
+    await lockIdeas(
+      basket.id,
+      rafflePick.map((i) => i.id),
+      config
+    );
+    setRafflePick(null);
+    refresh();
+  };
+
   if (selected) {
     const fromJar = config.ideaSource === "repo";
+    const locked =
+      config.lockedIdeaIds?.length
+        ? ideas.filter((i) => config.lockedIdeaIds!.includes(i.id))
+        : [selected];
     return (
       <div className="mx-auto max-w-[760px]">
         <StageHeadline
@@ -74,16 +111,19 @@ export function IdeaStage(ctx: StageContext) {
           accent={fromJar ? "geldi" : "belli"}
           sub="Sıra takımlarda."
         />
-        <Card className="text-center">
-          <h2 className="font-display text-[clamp(2rem,4vw,3rem)] font-extrabold leading-tight" style={{ color: GOLD }}>
-            {selected.text}
-          </h2>
-        </Card>
+        <div className="flex flex-col gap-3">
+          {locked.map((idea) => (
+            <Card key={idea.id} className="text-center">
+              <h2 className="font-display text-[clamp(1.6rem,3.4vw,2.6rem)] font-extrabold leading-tight" style={{ color: GOLD }}>
+                {idea.text}
+              </h2>
+            </Card>
+          ))}
+        </div>
       </div>
     );
   }
 
-  // static: sadece admin girer
   if (config.ideaSource === "static") {
     return (
       <div className="mx-auto max-w-[640px]">
@@ -100,14 +140,14 @@ export function IdeaStage(ctx: StageContext) {
     );
   }
 
-  // pool: herkes yazar → oy / kura
   const isVote = config.poolSelect === "vote";
   const sorted = [...ideas].sort((a, b) => b.vote_count - a.vote_count);
+  const rafflePrimary = rafflePick?.[0] ?? null;
+
   return (
     <div className="mx-auto max-w-[760px]">
       <StageHeadline pre="Fikirleri" accent="dök" sub={config.poolSelect === "random" ? "Herkes yazsın; birini kura seçecek." : "Herkes yazsın; en çok oyu alan kazanır."} />
 
-      {/* büyük input */}
       <div className="flex items-stretch gap-3">
         <input
           value={draft}
@@ -120,7 +160,6 @@ export function IdeaStage(ctx: StageContext) {
         <GoldButton onClick={submitIdea} disabled={draft.trim().length < 2}>Ekle</GoldButton>
       </div>
 
-      {/* fikir listesi */}
       <div className="mt-6 flex flex-col gap-3">
         <AnimatePresence initial={false}>
           {sorted.map((idea) => {
@@ -167,6 +206,19 @@ export function IdeaStage(ctx: StageContext) {
             ? <GoldButton onClick={drawRandom}>🎲 Kura çek</GoldButton>
             : <GoldButton onClick={lockTop}>En çok oyu seç →</GoldButton>}
         </div>
+      )}
+
+      {rafflePrimary && (
+        <RaffleRevealStage
+          title={basket.title}
+          labels={ideas.map((i) => i.text)}
+          winnerLabel={rafflePrimary.text}
+          accent={ACCENTS.gold}
+          enabled={config.revealAnimation !== false}
+          eyebrow="Fikir kura"
+          onComplete={() => void commitRaffle()}
+          onSkip={() => void commitRaffle()}
+        />
       )}
     </div>
   );
