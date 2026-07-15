@@ -10,7 +10,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { name } = useNameContext();
 
-  if (pathname?.endsWith("/present") || pathname === "/") return <>{children}</>;
+  if (pathname?.endsWith("/present") || pathname === "/" || pathname === "/login") {
+    return <>{children}</>;
+  }
 
   return (
     <div className="flex min-h-screen flex-col">

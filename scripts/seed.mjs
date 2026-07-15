@@ -116,6 +116,18 @@ async function main() {
   );
   if (tErr) throw tErr;
 
+  // Multi-domain map (hotfix 0007) — DuoSis: duosis.dev + duosis.com
+  await sb.from("tenant_domains").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+  const { error: tdErr } = await sb.from("tenant_domains").upsert(
+    [
+      { tenant_id: IDS.duoTenant, domain: "duosis.dev" },
+      { tenant_id: IDS.duoTenant, domain: "duosis.com" },
+      { tenant_id: IDS.otherTenant, domain: "other.com" },
+    ],
+    { onConflict: "domain" }
+  );
+  if (tdErr) console.warn("tenant_domains seed", tdErr.message);
+
   const { error: uErr } = await sb.from("app_users").upsert(
     [
       {

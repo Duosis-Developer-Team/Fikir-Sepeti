@@ -8,7 +8,7 @@ export const SEED = {
   hackathonId: "22222222-2222-4222-8222-222222222222",
 };
 
-/** Login via AuthGate bypass UI (signs in with seeded password → JWT for RLS). */
+/** Login via /login bypass UI (signs in with seeded password → JWT for RLS). */
 export async function loginAs(
   page: Page,
   user: { email: string; name?: string } = {
@@ -16,20 +16,21 @@ export async function loginAs(
     name: SEED.adminName,
   }
 ) {
-  await page.goto("/");
+  await page.goto("/login");
   await page.evaluate(() => {
     for (const k of Object.keys(localStorage)) localStorage.removeItem(k);
   });
-  await page.goto("/");
+  await page.goto("/login");
 
   const input = page.getByPlaceholder(/Adın ya da iş e-postan/i);
   await expect(input).toBeVisible({ timeout: 15_000 });
   await input.fill(user.email);
   await page.getByRole("button", { name: "Devam" }).click();
 
-  // Overlay must close — Yeni sepet lives under AuthGate even when logged out
+  // After success AuthGate redirects to /
   await expect(input).toBeHidden({ timeout: 20_000 });
-  await expect(page.getByText(/Giriş başarısız|tanımsız tenant/i)).toHaveCount(0);
+  await expect(page.getByText(/Giriş başarısız|tanımlı çalışma alanı yok|tanımsız tenant/i)).toHaveCount(0);
+  await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole("button", { name: /Yeni sepet|\+ Yeni/i }).first()).toBeVisible();
 }
 
