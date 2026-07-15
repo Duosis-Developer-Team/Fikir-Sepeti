@@ -4,9 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { supabase } from "@/lib/supabase";
 import { setBasketPhase } from "@/lib/db";
-import { joinLobby, listParticipants, listTeamMembers, listTeamVotes, listTeams, startHackathonTimer } from "@/lib/hackathon";
+import { joinLobby, listParticipants, listScores, listTeamMembers, listTeamVotes, listTeams, startHackathonTimer } from "@/lib/hackathon";
 import { useSession } from "@/components/AuthGate";
-import type { Basket, Idea } from "@/lib/types";
+import type { Basket, Idea, Score } from "@/lib/types";
 import type { HackData, StageContext, StageDef, StagePhase } from "./contract";
 import { PHASE_ORDER, PHASE_LABEL, GOLD, GOLD_SOFT, dim, configReady } from "./contract";
 import { LobbyStage } from "./stages/LobbyStage";
@@ -35,17 +35,26 @@ export function HackathonRunner({ basketId }: { basketId: string }) {
   const joined = useRef(false);
 
   const load = useCallback(async () => {
-    const [basketRes, ideasRes, participants, teams, members, teamVotes] = await Promise.all([
+    const [basketRes, ideasRes, participants, teams, members, teamVotes, scores] = await Promise.all([
       supabase.from("baskets").select("*").eq("id", basketId).single(),
       supabase.from("ideas").select("*").eq("basket_id", basketId).order("vote_count", { ascending: false }),
       listParticipants(basketId),
       listTeams(basketId),
       listTeamMembers(basketId),
       listTeamVotes(basketId),
+      listScores(basketId),
     ]);
     const basket = basketRes.data as Basket | null;
     if (!basket) return;
-    setData({ basket, ideas: (ideasRes.data as Idea[]) ?? [], participants, teams, members, teamVotes });
+    setData({
+      basket,
+      ideas: (ideasRes.data as Idea[]) ?? [],
+      participants,
+      teams,
+      members,
+      teamVotes,
+      scores: scores as Score[],
+    });
   }, [basketId]);
 
   useEffect(() => {
@@ -58,6 +67,7 @@ export function HackathonRunner({ basketId }: { basketId: string }) {
       .on("postgres_changes", { event: "*", schema: "public", table: "teams", filter: `basket_id=eq.${basketId}` }, () => load())
       .on("postgres_changes", { event: "*", schema: "public", table: "team_members", filter: `basket_id=eq.${basketId}` }, () => load())
       .on("postgres_changes", { event: "*", schema: "public", table: "team_votes", filter: `basket_id=eq.${basketId}` }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "scores", filter: `basket_id=eq.${basketId}` }, () => load())
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [basketId, load]);

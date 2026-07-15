@@ -1,7 +1,7 @@
 "use client";
 
 import { supabase } from "./supabase";
-import type { DurationUnit, Feedback, HackathonConfig, Participant, Team, TeamMember, TeamVote } from "./types";
+import type { DurationUnit, Feedback, HackathonConfig, Participant, Score, Team, TeamMember, TeamVote } from "./types";
 
 const UNIT_MS: Record<DurationUnit, number> = { hour: 3600e3, day: 86400e3, week: 604800e3 };
 
@@ -205,4 +205,34 @@ export async function listFeedback(basketId: string): Promise<Feedback[]> {
     .eq("basket_id", basketId)
     .order("created_at", { ascending: false });
   return (data as Feedback[]) ?? [];
+}
+
+// ---- Rubric scores (S7) ----
+
+export async function listScores(basketId: string): Promise<Score[]> {
+  const { data } = await supabase.from("scores").select("*").eq("basket_id", basketId);
+  return (data as Score[]) ?? [];
+}
+
+export async function upsertScore(input: {
+  basket_id: string;
+  tenant_id: string;
+  team_id: string;
+  voter: string;
+  category_key: string;
+  stars: number;
+  is_jury: boolean;
+}) {
+  await supabase.from("scores").upsert(
+    {
+      basket_id: input.basket_id,
+      tenant_id: input.tenant_id,
+      team_id: input.team_id,
+      voter: input.voter,
+      category_key: input.category_key,
+      stars: input.stars,
+      is_jury: input.is_jury,
+    },
+    { onConflict: "basket_id,team_id,voter,category_key" }
+  );
 }

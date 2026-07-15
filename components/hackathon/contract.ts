@@ -1,5 +1,5 @@
 import type React from "react";
-import type { Basket, HackathonConfig, Idea, Participant, Team, TeamMember, TeamVote } from "@/lib/types";
+import type { Basket, HackathonConfig, Idea, Participant, Score, Team, TeamMember, TeamVote } from "@/lib/types";
 import type { SessionUser } from "@/components/AuthGate";
 
 /** Hackathon faz makinesi — sabit iskelet. */
@@ -26,6 +26,7 @@ export type HackData = {
   teams: Team[];
   members: TeamMember[];
   teamVotes: TeamVote[];
+  scores: Score[];
 };
 
 /** Modül sözleşmesi: her aşama bu context'i alır; orchestrator içini bilmez. */

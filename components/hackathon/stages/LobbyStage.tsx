@@ -4,13 +4,14 @@ import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import type { HackathonConfig } from "@/lib/types";
 import { setConfig } from "@/lib/hackathon";
+import { DEFAULT_RUBRIC } from "@/lib/scoring";
 import { setBasketPhase } from "@/lib/db";
 import type { StageContext } from "../contract";
 import { GOLD, GOLD_SOFT, dim } from "../contract";
 import { GoldButton, StageHeadline, NumberStepper, Segmented } from "../ui";
 import { InvitePanel } from "../InvitePanel";
 
-type Sub = "invite" | "ideaSource" | "poolSelect" | "ideaAssign" | "teamMode" | "groups" | "duration" | "ready";
+type Sub = "invite" | "ideaSource" | "poolSelect" | "ideaAssign" | "teamMode" | "groups" | "duration" | "scoring" | "ready";
 
 const UNITS: { v: "hour" | "day" | "week"; label: string }[] = [
   { v: "hour", label: "Saat" },
@@ -40,7 +41,8 @@ export function LobbyStage({ data, config, isAdmin, refresh }: StageContext) {
           : "ideaSource";
       case "groups": return "teamMode";
       case "duration": return config.teamMode === "groups" ? "groups" : "teamMode";
-      case "ready": return "duration";
+      case "scoring": return "duration";
+      case "ready": return "scoring";
       default: return null;
     }
   };
@@ -187,6 +189,65 @@ export function LobbyStage({ data, config, isAdmin, refresh }: StageContext) {
         </>
       )}
 
+      {sub === "scoring" && (
+        <>
+          <StageHeadline
+            pre="Puanlama"
+            accent="nasıl?"
+            sub="Basit oy varsayılan. Rubrik = kategori × yıldız."
+          />
+          <Choice
+            value={config.scoringMode ?? "simple"}
+            onChange={(v) => {
+              if (v === "simple") {
+                patch({ scoringMode: "simple", rubric: undefined, juryEnabled: false });
+                setSub("ready");
+              } else {
+                patch({ scoringMode: "rubric" });
+              }
+            }}
+            options={[
+              { v: "simple", label: "Basit oy", hint: "tek tık (varsayılan)" },
+              { v: "rubric", label: "Rubrik", hint: "kategori + yıldız" },
+            ]}
+          />
+          {config.scoringMode === "rubric" && (
+            <div className="mt-8 flex flex-col items-center gap-4" data-testid="rubric-setup">
+              <p className="max-w-[420px] text-center text-[0.9rem]" style={{ color: dim(0.55) }}>
+                Varsayılan set: {DEFAULT_RUBRIC.map((c) => c.label).join(" · ")}
+              </p>
+              <GoldButton
+                onClick={() => {
+                  patch({
+                    scoringMode: "rubric",
+                    rubric: DEFAULT_RUBRIC,
+                    juryEnabled: config.juryEnabled ?? false,
+                    juryWeight: config.juryWeight ?? 2,
+                  });
+                  setSub("ready");
+                }}
+              >
+                Varsayılan seti kabul et →
+              </GoldButton>
+              <Segmented
+                label="Jüri ağırlığı"
+                value={config.juryEnabled ? "on" : "off"}
+                onChange={(v) =>
+                  patch({
+                    juryEnabled: v === "on",
+                    juryWeight: config.juryWeight ?? 2,
+                  })
+                }
+                options={[
+                  { v: "off", label: "Kapalı" },
+                  { v: "on", label: "Açık ×2" },
+                ]}
+              />
+            </div>
+          )}
+        </>
+      )}
+
       {sub === "ready" && (
         <div className="text-center">
           <StageHeadline pre="Hazır" accent="mısın?" sub={"Kurulum tamam. Başlat'a bas, hackathon başlasın."} />
@@ -205,7 +266,7 @@ export function LobbyStage({ data, config, isAdmin, refresh }: StageContext) {
         {sub === "invite" && <GoldButton onClick={() => setSub("ideaSource")}>Kuruluma geç →</GoldButton>}
         {sub === "ideaAssign" && <GoldButton onClick={() => setSub("teamMode")}>Devam →</GoldButton>}
         {sub === "groups" && <GoldButton onClick={() => setSub("duration")}>Devam →</GoldButton>}
-        {sub === "duration" && <GoldButton onClick={() => setSub("ready")}>Devam →</GoldButton>}
+        {sub === "duration" && <GoldButton onClick={() => setSub("scoring")}>Devam →</GoldButton>}
         {sub === "ready" && <GoldButton onClick={start}>Başlat →</GoldButton>}
       </div>
     </div>
@@ -261,6 +322,8 @@ function Summary({ config }: { config: HackathonConfig }) {
     config.revealAnimation === false && "Animasyon kapalı",
     config.teamMode && `Takım: ${TEAM_LABEL[config.teamMode]}`,
     config.teamMode === "groups" && config.groups && `${config.groups.count} takım · ${config.groups.assignment === "random" ? "random" : "elle"}`,
+    config.scoringMode === "rubric" && "Puanlama: Rubrik",
+    (config.scoringMode ?? "simple") === "simple" && "Puanlama: Basit",
     config.duration && `Süre: ${config.duration.value} ${UNITS.find((u) => u.v === config.duration!.unit)?.label ?? ""}`,
   ].filter(Boolean) as string[];
   return (

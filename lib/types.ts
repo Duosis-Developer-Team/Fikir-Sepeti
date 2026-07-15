@@ -45,6 +45,12 @@ export type HackathonConfig = {
   revealAnimation?: boolean;
   /** Extra locked idea ids when ideaCount > 1 (selected_idea_id is the first). */
   lockedIdeaIds?: string[];
+  /** Demo scoring: simple team vote (default) or rubric stars. */
+  scoringMode?: "simple" | "rubric";
+  rubric?: { key: string; label: string; weight: number; custom?: boolean }[];
+  juryEnabled?: boolean;
+  /** Multiplier for jury scores when juryEnabled (default 2). */
+  juryWeight?: number;
 };
 
 export type PoolStatus = "new" | "voting" | "promoted" | "archived" | "rejected";
@@ -158,6 +164,18 @@ export type SquadMember = {
   id: string;
   basket_id: string;
   member: string;
+  created_at: string;
+};
+
+export type Score = {
+  id: string;
+  basket_id: string;
+  tenant_id: string;
+  team_id: string;
+  voter: string;
+  category_key: string;
+  stars: number;
+  is_jury: boolean;
   created_at: string;
 };
 

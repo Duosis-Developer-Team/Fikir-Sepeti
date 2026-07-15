@@ -159,7 +159,7 @@ Ajan her sprint sonunda bu tabloyu günceller ve commit eder.
 | S5 | Sonuç / Arşiv | ✅ geçti | 🚦 Duo omurga | docs/sprints/S5-report.md — omurga + login hotfix sonrası S6 |
 | Hotfix | Tenant login + /login | ✅ geçti | ⏸️ prod migrate | docs/sprints/hotfix-tenant-login-report.md — `duosis.com` + `/login` |
 | S6 | ★ İmza an: çekiliş + dağıtım | ✅ geçti | — | docs/sprints/S6-report.md |
-| S7 | Puanlama (rubrik + jüri) | ⬜ bekliyor | 🚦 Duo | |
+| S7 | Puanlama (rubrik + jüri) | ⏸️ Duo bekliyor | 🚦 Duo basitlik | docs/sprints/S7-report.md — onay sonrası S8 |
 | S8 | ★ Analitik huni | ⬜ bekliyor | 🚦 Duo | v2'nin asıl sınavı |
 | S9 | Moderasyon + denetim | ⬜ bekliyor | — | |
 | S10 | Proje bazlı feedback | ⬜ bekliyor | — | |

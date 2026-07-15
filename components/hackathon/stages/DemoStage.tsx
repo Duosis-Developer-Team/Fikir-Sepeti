@@ -1,14 +1,22 @@
 "use client";
 
+import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { voteTeam } from "@/lib/hackathon";
+import { upsertScore, voteTeam } from "@/lib/hackathon";
+import { DEFAULT_RUBRIC, type RubricCategory } from "@/lib/scoring";
+import { Scoreboard } from "../Scoreboard";
 import type { StageContext } from "../contract";
 import { GOLD, GOLD_SOFT, dim } from "../contract";
 import { Avatar, StageHeadline } from "../ui";
 
-export function DemoStage({ data, user, refresh }: StageContext) {
-  const { basket, teams, members, teamVotes, participants, ideas } = data;
+export function DemoStage({ data, user, config, refresh }: StageContext) {
+  const { basket, teams, members, teamVotes, participants, ideas, scores } = data;
   const selected = ideas.find((i) => i.id === basket.selected_idea_id) ?? null;
+  const mode = config.scoringMode ?? "simple";
+  const rubric: RubricCategory[] = config.rubric?.length ? config.rubric : DEFAULT_RUBRIC;
+  const [activeTeam, setActiveTeam] = useState<string | null>(teams[0]?.id ?? null);
+
+  const isJury = false; // jury flag set by role assignment in future; weight tested via seeded is_jury rows
 
   const votesOf = (teamId: string) => teamVotes.filter((v) => v.team_id === teamId).length;
   const sorted = [...teams].sort((a, b) => votesOf(b.id) - votesOf(a.id));
@@ -24,6 +32,103 @@ export function DemoStage({ data, user, refresh }: StageContext) {
     refresh();
   };
 
+  const myStars = (teamId: string, key: string) =>
+    scores.find(
+      (s) =>
+        s.team_id === teamId &&
+        s.voter === user.email &&
+        s.category_key === key
+    )?.stars ?? 0;
+
+  const setStars = async (teamId: string, key: string, stars: number) => {
+    await upsertScore({
+      basket_id: basket.id,
+      tenant_id: basket.tenant_id,
+      team_id: teamId,
+      voter: user.email,
+      category_key: key,
+      stars,
+      is_jury: isJury,
+    });
+    refresh();
+  };
+
+  if (mode === "rubric") {
+    const team = teams.find((t) => t.id === activeTeam) ?? teams[0];
+    return (
+      <div className="mx-auto max-w-[1100px]">
+        <StageHeadline
+          pre="Rubrik"
+          accent="puanla"
+          sub="Her takımı kategorilerde 1–5 yıldızla değerlendir."
+        />
+        <div className="mb-5 flex flex-wrap gap-2">
+          {teams.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setActiveTeam(t.id)}
+              className="rounded-full px-4 py-2 text-[0.9rem] font-semibold"
+              style={{
+                background: t.id === team?.id ? GOLD : "var(--card)",
+                color: t.id === team?.id ? "#17150F" : "var(--text)",
+                border: "1px solid rgba(var(--border-rgb),0.08)",
+              }}
+            >
+              {t.name}
+            </button>
+          ))}
+        </div>
+
+        {team && (
+          <div
+            className="rounded-[22px] p-6"
+            style={{ background: "var(--card)", border: "1px solid rgba(var(--border-rgb),0.09)" }}
+            data-testid="rubric-score-panel"
+          >
+            <p className="font-display text-[1.4rem] font-bold" style={{ color: GOLD }}>{team.name}</p>
+            <div className="mt-4 flex flex-col gap-4">
+              {rubric.map((cat) => {
+                const current = myStars(team.id, cat.key);
+                return (
+                  <div key={cat.key} className="flex flex-wrap items-center justify-between gap-3">
+                    <span style={{ color: "var(--text)" }}>{cat.label}</span>
+                    <div className="flex gap-1.5" data-testid={`stars-${cat.key}`}>
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <button
+                          key={n}
+                          type="button"
+                          onClick={() => void setStars(team.id, cat.key, n)}
+                          className="grid h-9 w-9 place-items-center rounded-full text-[1.05rem] font-bold transition"
+                          style={{
+                            background: current >= n ? GOLD : "var(--surface-2)",
+                            color: current >= n ? "#17150F" : dim(0.5),
+                          }}
+                          aria-label={`${cat.label} ${n} yıldız`}
+                        >
+                          ★
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        <Scoreboard
+          teams={teams}
+          scores={scores}
+          rubric={rubric}
+          juryEnabled={config.juryEnabled}
+          juryWeight={config.juryWeight}
+        />
+      </div>
+    );
+  }
+
+  // ── simple mode (default) ──
   return (
     <div className="mx-auto max-w-[1100px]">
       <StageHeadline pre="En iyi yapımı" accent="seç" sub={selected ? selected.text : "Bir takıma dokun — oyunu ver."} />
