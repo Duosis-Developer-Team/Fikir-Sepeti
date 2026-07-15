@@ -1,4 +1,4 @@
-## D1 — Production yayın · DEVAM (kod hazır, prod migration + doğrulama bekliyor)
+## D1 — Production yayın · DEVAM (deploy canlı ✅ · prod migration + login doğrulama bekliyor)
 
 **Tarih:** 2026-07-15  
 **Branş:** `development` → `main`
@@ -28,6 +28,11 @@ window.location.href = "/";  →  "This value cannot be modified"
 - build: ✅ `next build` başarılı
 - test: ✅ **52 geçti / 0 kaldı** (`supabase db reset` → 0001–0009 + seed sonrası)
 - `ci-gate.spec.ts` ✅ deploy'un CI'a bağlı olduğunu doğruluyor
+
+### Deploy doğrulaması (push sonrası, GitHub Actions)
+- `main` @ `9fdf4cd`: **CI ✅ success** → **Deploy to Vercel (production) ✅ success**
+  (önceki `a0dfe12`: CI failure → deploy skipped idi; blokaj açıldı).
+- Prod erişilebilir: `GET /login` → 200, `GET /` → 200.
 
 ### Regresyon
 S1–S7 + login + RLS izolasyon testleri ✅
