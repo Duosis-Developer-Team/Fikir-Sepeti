@@ -150,7 +150,14 @@ bir kadrandır.** Varsayılan hafif; kurumsal tenant kısar. Bu aynı zamanda **
 ### E0 — Tenant + RBAC + RLS (TEMEL) 🔴
 
 **Çok-kiracılık:** `Platform → Tenant → Kullanıcı`. Tenant eşleşmesi: Azure tenant id veya
-e-posta domain'i. Her satır `tenant_id` taşır; izolasyon **RLS ile** zorlanır.
+e-posta domain'i (bir tenant'ın **birden çok domain'i** olabilir → `tenant_domains`). Her satır
+`tenant_id` taşır; izolasyon **RLS ile** zorlanır.
+
+**Bireysel + self-serve (SG serisi):** Tenant üyeliği domain zorunluluğu **gerektirmez.**
+Kurumsal kullanıcı domain/Azure eşleşmesiyle otomatik katılır; bireysel kullanıcı (Gmail/Hotmail
+dahil) arayüzden **kendi çalışma alanını (tenant) açabilir** — domain opsiyonel, kurucu
+`tenant_admin` olur — ya da davet koduyla mevcut bir tenant'a katılır. Tenant kaydı elle SQL
+yerine `/register` akışıyla yapılır. Ayrıntı: Sprint Planı D1 + SG1–SG3.
 
 **Roller** (sistem varsayılanı — tenant düzenleyebilir):
 
@@ -166,7 +173,8 @@ e-posta domain'i. Her satır `tenant_id` taşır; izolasyon **RLS ile** zorlanı
 
 **İzin kataloğu** (kodda sabit): `hackathon.create` · `etkinlik.create` · `pool.create` ·
 `pool.promote` · `content.moderate` · `vote.view_all` · `archive.view_all` · `analytics.view` ·
-`tenant.manage_roles` · `tenant.manage_settings` · `hackathon.jury` · `hackathon.manage`
+`tenant.manage_roles` · `tenant.manage_settings` · `hackathon.jury` · `hackathon.manage` ·
+`platform.manage_tenants` (yalnızca `platform_owner` — SG3: cross-tenant yönetim)
 
 **RLS:** tüm tablolarda. İzin kontrolü **sunucuda** (RLS + route handler); istemci sadece UI.
 
@@ -314,7 +322,16 @@ hafif durur. Aralarında geçiş kolay, bağlam kaybolmaz.
 create table tenants (
   id uuid primary key default gen_random_uuid(),
   name text not null, azure_tenant_id text, email_domain text,
+  plan text not null default 'free',              -- SG: 'free' | 'analytics'
+  status text not null default 'active',          -- SG: 'active' | 'suspended'
   settings jsonb not null default '{}'::jsonb,    -- yönetişim kadranı
+  created_at timestamptz default now()
+);
+-- SG: bir tenant'ın birden çok domain'i olabilir (bireysel tenant'ta boş kalabilir)
+create table tenant_domains (
+  id uuid primary key default gen_random_uuid(),
+  tenant_id uuid not null references tenants(id) on delete cascade,
+  domain text not null unique,
   created_at timestamptz default now()
 );
 create table app_users (

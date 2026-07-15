@@ -25,10 +25,18 @@ Ve gösterirken "bu bize ne kazandırıyor"un ekranda görünmesi (S8).
 | **S5** | Sonuç / Arşiv | Analitiğin girdisi; erken yap | ✅ **omurga** |
 | **S6** | ★ İmza an: çekiliş + dağıtım | Ürünün ruhu; varlık hazır, taşınacak | — |
 | **S7** | Puanlama (rubrik + jüri) | Hackathon'u tamamlar | ✅ **basitlik** |
+| **D1** | ★ Production yayın | Mevcut kod canlıda çalışmalı; öncelik | — |
+| **SG1** | Landing + giriş noktaları | Dış kapı: ürünü anlatır, sisteme yönlendirir | — |
+| **SG2** | Kayıt + self-serve tenant | Elle SQL yerine arayüzden çalışma alanı | — |
+| **SG3** | Platform yönetim paneli | SaaS omurgası: tenant'ları yönet | — |
 | **S8** | ★ Analitik huni | Paralı katmanın ürünü **ve kapının vitrini** | ✅ **kapı** |
 | **S9** | Moderasyon + denetim | Kurumsal katman | — |
 | **S10** | Proje bazlı feedback | Küçük; kolonlar hazır | — |
 | **S11** | Lobi kontrolü + davet | Davet = viral mekanik | — |
+
+**SG serisi neden burada:** S7 sonrası ürün iç araç olarak tam; **SaaS'a açılmak** (landing →
+kayıt → self-serve tenant → platform yönetimi) analitik huniden (S8) önce gelir çünkü huninin
+"müşteriye açsam" sınavı ancak dışarıdan kayıt olan gerçek tenant'larla anlamlı.
 
 **Kesme noktası:** S8'den sonra durulabilir — o noktada ürün **gösterilebilir**: çalışıyor,
 güvenli, eğlenceli ve kapıyı ekranda kanıtlıyor. S9–S11 değer katar, tutarlılığı bozmaz.
@@ -248,10 +256,121 @@ S1–S3'teki migration'lar denetimsiz production'a akar.
 
 ---
 
+## D1 — ★ Production yayın
+
+**Amaç:** Mevcut geliştirmelerin (hotfix + S4–S7) canlıda gerçekten çalışması. **Kod deploy
+edilmeden hiçbir sprint "bitmiş" sayılmaz** — kullanıcı ürünü canlıda görmeli.
+
+**Neden burada:** `main`'e kod gitti ama production Supabase şeması geride. Login "tanımsız
+tenant" veriyor çünkü prod DB'de `duosis.com` domain kaydı ve S4–S7 tabloları yok. **En yüksek
+öncelik:** önce canlıyı düzelt, sonra yeni kapsam.
+
+**Kapsam**
+1. `development` → `main` merge; Vercel production deploy (CI kapısından geçerek).
+2. **Prod Supabase migration'ları** sırayla uygulanır (hepsi idempotent):
+   `0006_idea_pool` → `0007_tenant_domains` → `0008_team_idea_assignment` → `0009_scores`.
+3. `0007` ile DuoSis tenant'ına `duosis.com` domain'i bağlanır (gerçek iş e-postası).
+4. Prod ortam değişkenleri doğrulanır: `NEXT_PUBLIC_SUPABASE_URL`, anon key, `AZURE` OAuth
+   redirect (`redirectTo = origin`) prod domaininde çalışıyor.
+
+**Çıkış kapısı**
+- [ ] Vercel'de son `main` deploy'u yeşil.
+- [ ] Prod DB'de `tenant_domains` içinde `duosis.com` var; `resolve_tenant_for_claims` çalışıyor.
+- [ ] `https://fikir-sepeti-duosis.vercel.app/login` → Microsoft `@duosis.com` girişi başarılı;
+      "tanımsız tenant" reddi kaybolmuş.
+- [ ] Kavanoz / arşiv / hackathon (S4–S7) canlıda hatasız açılıyor.
+
+---
+
+## SG1 — Landing + giriş noktaları
+
+**Amaç:** Ürünü **dışarıya** anlatan, sisteme yönlendiren bir kapı. Bugün oturumsuz kullanıcı
+doğrudan login modal'ı görüyor; ürünün ne olduğunu anlatan bir yüz yok.
+
+**Giriş koşulu:** D1 canlıda.
+
+**Kapsam**
+1. **Landing rotası:** oturumsuz `/` → landing (mevcut uygulama ana ekranı oturumlu kullanıcıya
+   kalır). Hero + ürün anlatımı ("Fikirden prototipe") + imza an vurgusu.
+2. **Katman kartları (yönlendirme, kesin fiyat yok):**
+   - **Ücretsiz** — tüm ekipler için: kavanoz, hackathon, etkinlik, oylama, çekiliş.
+   - **Analitik** — huni, katılım trendi, üretim metriği (S8 ile açılır; burada teaser CTA).
+   - **Entegrasyon** — "her mesleğe göre" (Hermes/araç köprüleri) — "İletişime geç" CTA.
+3. **Sağ üst navigasyon:** Giriş · Kayıt (oturumsuz), oturumluysa "Uygulamaya git".
+4. **CTA yönlendirme:** her katman kartı ve hero → `/login` veya `/register` (SG2).
+5. Tasarım **`DESIGN-SYSTEM.md`** token'larıyla; yeni renk gerekmiyor (clay + altın aksan).
+
+**Çıkış kapısı**
+- [ ] E2E: oturumsuz `/` landing render ediyor; katman kartları + Giriş/Kayıt görünüyor.
+- [ ] E2E: oturumlu kullanıcı `/` → uygulama ana ekranını görüyor (landing değil).
+- [ ] Giriş ve Kayıt butonları doğru rotalara yönlendiriyor.
+- [ ] Regresyon: mevcut S0–S7 testleri yeşil.
+
+---
+
+## SG2 — Kayıt + self-serve tenant
+
+**Amaç:** Elle SQL yerine **arayüzden** kayıt ve çalışma alanı açma. Kurumsal **ve** bireysel
+kullanıcı desteklenir; kayıt akışı **girişin türüne göre yönlenir.**
+
+**Giriş koşulu:** SG1 tamam.
+
+**Kapsam**
+1. **Kayıt rotası `/register`:** Supabase e-posta+şifre (e-posta doğrulama) + mevcut Azure OAuth.
+2. **Girişe göre yönlendirme (kayıttan sonra tenant çözümlemesi):**
+   - **Domain eşleşiyor** (`tenant_domains`) → otomatik o tenant'a `member` olarak katıl.
+   - **Azure kurumsal tenant** eşleşiyor → aynı şekilde katıl.
+   - **Eşleşme yok** (Gmail/Hotmail dahil bireysel) → iki seçenek:
+     **(a) Çalışma alanı oluştur** (tenant adı + **opsiyonel** domain; kurucu `tenant_admin`),
+     **(b) Davet koduyla katıl.**
+3. **Self-serve tenant oluşturma:** `create_tenant_for_user` RPC — tenant satırı + kurucu
+   `app_users` + `tenant_admin` rolü; domain verildiyse `tenant_domains`'e ekle (domain **zorunlu
+   değil**). `tenants.plan = 'free'`, `tenants.status = 'active'`.
+4. **Davet:** tenant_admin davet kodu/linki üretir; kod domain'siz kullanıcıyı tenant'a bağlar.
+5. `resolve_tenant_for_claims` korunur; domain'siz kullanıcı için tenant üyeliği `app_users` +
+   `user_roles` üzerinden (domain kaydı olmadan) çözülür.
+
+**Çıkış kapısı**
+- [ ] E2E: bilinmeyen domainli e-posta ile kayıt → "çalışma alanı oluştur" → yeni tenant + kurucu
+      `tenant_admin`; kullanıcı kendi tenant'ında sepet açabiliyor.
+- [ ] E2E: bilinen domainli e-posta ile kayıt → otomatik mevcut tenant'a katılıyor.
+- [ ] E2E: davet koduyla domain'siz kullanıcı mevcut tenant'a katılıyor.
+- [ ] Tenant izolasyonu korunuyor: yeni tenant başka tenant'ın satırlarını göremiyor (S3 tekrar).
+- [ ] Birim: tenant çözümleme (domain / azure / bireysel) doğru yönlendiriyor.
+
+---
+
+## SG3 — Platform yönetim paneli
+
+**Amaç:** SaaS omurgası. `platform_owner` tüm tenant'ları görür ve yönetir; hiyerarşi
+**platform → tenant → kullanıcı** netleşir.
+
+**Giriş koşulu:** SG2 tamam.
+
+**Kapsam**
+1. **`/admin` rotası** (`platform_owner` izni; API seviyesinde zorlanır):
+   - Tenant listesi: ad, domain(ler), kullanıcı sayısı, plan, durum, oluşturma tarihi.
+   - Plan yönetimi: `tenants.plan` (`free` | `analytics`) düzenle.
+   - **Askıya alma:** `tenants.status` (`active` | `suspended`); askıdaki tenant girişte reddedilir.
+   - Tenant detayında kullanıcı + rol görünümü (salt-görüntü + `platform_owner` müdahalesi).
+2. **Tenant kendi kendini yönetir:** mevcut `/tenant/roles` (tenant_admin) korunur; rol atama,
+   izin matrisi, yönetişim kadranı.
+3. **Hiyerarşi izinleri:** `platform.manage_tenants` izni (yeni) yalnızca `platform_owner`'da.
+4. RLS: `platform_owner` cross-tenant okuma; diğer roller yalnızca kendi tenant'ı (S3 politikası
+   üstüne `platform_owner` istisnası).
+
+**Çıkış kapısı**
+- [ ] E2E: `platform_owner` `/admin`'de tüm tenant'ları görüyor; `tenant_admin` göremiyor (API 403).
+- [ ] E2E: tenant plan/durum değiştirilebiliyor; `suspended` tenant kullanıcısı girişte reddediliyor.
+- [ ] Tenant izolasyonu bozulmuyor: `tenant_admin` yalnızca kendi tenant'ını yönetiyor.
+- [ ] Birim: `platform.manage_tenants` izin kontrolü.
+
+---
+
 ## S8 — ★ Analitik huni ✅ Duo kapısı
 
 **Amaç:** İki iş birden — **paralı katmanın ürünü** ve **kapının vitrini.**
-**Giriş koşulu:** S7 kapısı geçti.
+**Giriş koşulu:** SG serisi tamam (D1 + SG1–SG3); S7 kapısı geçti.
 
 **Kapsam**
 1. **Huni ekranı:** `fikir girildi → oylandı/seçildi → organizasyona dönüştü → yapıldı →

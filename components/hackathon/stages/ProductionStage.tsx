@@ -33,7 +33,7 @@ export function ProductionStage({ data, user, isAdmin }: StageContext) {
       });
     }
     // üretime alındı → ana sayfaya dön (tam reload)
-    window.location.href = "/";
+    window.location.assign("/");
   };
 
   const sendToJar = async (ideaId: string) => {
