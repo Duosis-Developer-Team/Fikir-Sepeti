@@ -10,7 +10,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { name } = useNameContext();
 
-  if (pathname?.endsWith("/present") || pathname === "/" || pathname === "/login") {
+  if (
+    pathname?.endsWith("/present") ||
+    pathname === "/" ||
+    pathname === "/login" ||
+    pathname === "/register"
+  ) {
     return <>{children}</>;
   }
 

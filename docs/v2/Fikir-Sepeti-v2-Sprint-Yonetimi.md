@@ -160,8 +160,8 @@ Ajan her sprint sonunda bu tabloyu günceller ve commit eder.
 | Hotfix | Tenant login + /login | ✅ geçti | ⏸️ prod migrate | docs/sprints/hotfix-tenant-login-report.md — `duosis.com` + `/login` |
 | S6 | ★ İmza an: çekiliş + dağıtım | ✅ geçti | — | docs/sprints/S6-report.md |
 | S7 | Puanlama (rubrik + jüri) | ⏸️ Duo bekliyor | 🚦 Duo basitlik | docs/sprints/S7-report.md — kod geçti, basitlik kapısı bekliyor |
-| D1 | ★ Production yayın | 🟡 devam | — | docs/sprints/D1-report.md — CI lint fix; prod migration + login doğrulama bekliyor |
-| SG1 | Landing + giriş noktaları | ⬜ bekliyor | — | oturumsuz `/` landing; katman kartları; Giriş/Kayıt |
+| D1 | ★ Production yayın | ✅ geçti | — | docs/sprints/D1-report.md — MCP 0002–0009; duosis.com resolve ✅ |
+| SG1 | Landing + giriş noktaları | ✅ geçti | — | docs/sprints/SG1-report.md — oturumsuz `/` landing; /register stub |
 | SG2 | Kayıt + self-serve tenant | ⬜ bekliyor | — | e-posta+Azure kayıt; domain'siz bireysel tenant; davet |
 | SG3 | Platform yönetim paneli | ⬜ bekliyor | — | `/admin`: tenant/plan/askıya alma; platform→tenant→kullanıcı |
 | S8 | ★ Analitik huni | ⬜ bekliyor | 🚦 Duo | v2'nin asıl sınavı; giriş: SG serisi tamam |

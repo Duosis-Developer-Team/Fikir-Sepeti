@@ -5,11 +5,12 @@ import { motion } from "motion/react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useNameContext } from "@/components/AuthGate";
+import { useNameContext, useSession } from "@/components/AuthGate";
 import { BrandIcon } from "@/components/BrandIcon";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NewBasketModal } from "@/components/NewBasketModal";
 import { PoolPanel } from "@/components/pool/PoolPanel";
+import { LandingPage } from "@/components/LandingPage";
 import { Avatars } from "@/components/shared/Avatars";
 import { createBasket, loadHome } from "@/lib/db";
 import { supabase } from "@/lib/supabase";
@@ -316,12 +317,15 @@ function Wordmark() {
 }
 
 export default function Home() {
+  const { ready, user } = useSession();
   const { name, tenantId } = useNameContext();
   const router = useRouter();
   const [baskets, setBaskets] = useState<Basket[]>([]);
   const [ideasBy, setIdeasBy] = useState<Record<string, Idea[]>>({});
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(false);
+  const [mode, setMode] = useState<ModeTab>("kavanoz");
+  const [statusTab, setStatusTab] = useState<"aktif" | "gecmis">("aktif");
 
   const refresh = async () => {
     if (!tenantId) {
@@ -336,8 +340,11 @@ export default function Home() {
     setLoading(false);
   };
   useEffect(() => {
+    if (!user || !tenantId) {
+      setLoading(false);
+      return;
+    }
     void refresh();
-    if (!tenantId) return;
     const ch = supabase
       .channel("home:live")
       .on("postgres_changes", { event: "*", schema: "public", table: "baskets" }, () => void refresh())
@@ -345,10 +352,7 @@ export default function Home() {
       .subscribe();
     return () => { supabase.removeChannel(ch); };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh closes over tenantId
-  }, [tenantId]);
-
-  const [mode, setMode] = useState<ModeTab>("kavanoz");
-  const [statusTab, setStatusTab] = useState<"aktif" | "gecmis">("aktif");
+  }, [tenantId, user]);
 
   const typed = useMemo(() => {
     if (mode === "hackathon") return baskets.filter((b) => b.type === "hackathon");
@@ -359,6 +363,20 @@ export default function Home() {
   const active = useMemo(() => typed.filter((b) => b.status !== "resolved"), [typed]);
   const live = useMemo(() => active.filter((b) => isLiveBasket(b, ideasBy[b.id] ?? [])), [active, ideasBy]);
   const activeRest = useMemo(() => active.filter((b) => !isLiveBasket(b, ideasBy[b.id] ?? [])), [active, ideasBy]);
+
+  if (!ready) {
+    return (
+      <div className="flex min-h-screen items-center justify-center" style={{ background: "var(--bg)" }}>
+        <p className="text-sm" style={{ color: "var(--text-faint)" }}>
+          Yükleniyor…
+        </p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LandingPage />;
+  }
 
   const onCreate = async (input: { title: string; type: BasketType; resolve_method: ResolveMethod }) => {
     if (!tenantId) return;

@@ -12,6 +12,7 @@ import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { DEV_AUTH_PASSWORD } from "@/lib/dev-auth";
 import { azureTenantIdFromUser } from "@/lib/azure-claims";
+import { isPublicPath } from "@/lib/public-paths";
 
 export type SessionUser = {
   id: string;
@@ -182,14 +183,15 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     return () => sub.subscription.unsubscribe();
   }, [applySession]);
 
-  // Redirect: unauthenticated → /login; authenticated on /login → /
+  // Public: / landing, /login, /register. Else unauthenticated → /login.
+  // Authenticated on /login|/register → home.
   useEffect(() => {
     if (!ready) return;
-    if (!user && pathname !== LOGIN_PATH) {
+    if (!user && !isPublicPath(pathname)) {
       router.replace(LOGIN_PATH);
       return;
     }
-    if (user && pathname === LOGIN_PATH) {
+    if (user && (pathname === LOGIN_PATH || pathname === "/register")) {
       router.replace("/");
     }
   }, [ready, user, pathname, router]);
@@ -260,8 +262,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   };
 
   // While redirecting away from protected routes, render nothing for content
-  const onLogin = pathname === LOGIN_PATH;
-  const showApp = ready && (!!user || onLogin);
+  const showApp = ready && (!!user || isPublicPath(pathname));
 
   return (
     <SessionContext.Provider value={value}>

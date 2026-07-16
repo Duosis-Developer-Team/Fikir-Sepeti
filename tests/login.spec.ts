@@ -2,12 +2,22 @@ import { test, expect } from "@playwright/test";
 import { loginAs, SEED } from "./helpers";
 
 test.describe("login page + tenant gate", () => {
-  test("unauthenticated / redirects to /login", async ({ page }) => {
+  test("unauthenticated / shows landing (not forced login)", async ({ page }) => {
     await page.goto("/");
     await page.evaluate(() => {
       for (const k of Object.keys(localStorage)) localStorage.removeItem(k);
     });
     await page.goto("/");
+    await expect(page).toHaveURL(/\/$/, { timeout: 15_000 });
+    await expect(page.getByRole("heading", { name: /Fikirden prototipe/i })).toBeVisible();
+  });
+
+  test("unauthenticated /login shows login form", async ({ page }) => {
+    await page.goto("/login");
+    await page.evaluate(() => {
+      for (const k of Object.keys(localStorage)) localStorage.removeItem(k);
+    });
+    await page.goto("/login");
     await expect(page).toHaveURL(/\/login/, { timeout: 15_000 });
     await expect(page.getByRole("heading", { name: "Fikir Sepeti" })).toBeVisible();
     await expect(page.getByPlaceholder(/Adın ya da iş e-postan/i)).toBeVisible();
