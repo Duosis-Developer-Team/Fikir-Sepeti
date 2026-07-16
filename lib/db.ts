@@ -43,16 +43,10 @@ export async function createBasket(input: {
   created_by: string;
   tenant_id: string;
 }): Promise<Basket | null> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (process.env.NEXT_PUBLIC_AUTH_BYPASS === "1") {
-    headers["X-Dev-User"] = JSON.stringify({
-      email: input.created_by,
-      tenantId: input.tenant_id,
-    });
-  }
+  const { apiAuthHeaders } = await import("./api-headers");
   const res = await fetch("/api/baskets", {
     method: "POST",
-    headers,
+    headers: await apiAuthHeaders(input.created_by, input.tenant_id),
     body: JSON.stringify({
       title: input.title,
       type: input.type,

@@ -11,6 +11,10 @@ Post-sprint inventory of known gaps, risks, and follow-ups. Not a new sprint pla
 
 ## Teknik / ürün eksikleri
 
+0. **🔴 Prod API auth (kullanıcı bildirimi 2026-07-16)** — Sayfalar açılıyor ama işlemler hata / işlevsiz.
+   Kök neden: client `fetch` sadece `X-Dev-User` (bypass) gönderiyordu; prod’da JWT yok → 401.
+   Düzeltme: `lib/api-headers.ts` + tüm API client’lara Bearer. Branch `fix/prod-api-bearer-auth`.
+
 1. **Analitik teaser metriği zayıf** — son N etkinlikte `capacityHint ≈ participantCount` olduğu için yüzde çoğu zaman ~100. Gerçek kapasite (tenant üye sayısı) bağlanmalı.
 2. **3. ay retention** — seed/tek seferlik oylarda ay penceresi boş kalabilir; demo için zaman kaydırmalı seed faydalı.
 3. **Hermes köprüsü** — `effort_estimate` alan var, entegrasyon yok (bilinçli).
@@ -28,7 +32,7 @@ S0–S11 + D1 + SG1–SG3 kod tarafında ✅. Kalan: Duo kapıları (S7/S8) + yu
 
 ## Önerilen sonraki adımlar
 
-1. CI yeşil + Vercel deploy doğrula (`/analytics`, `/moderation`, lobi).
+1. ~~Prod API Bearer fix deploy~~ → kullanıcıya doğrulat (`/admin`, `/analytics`, `/moderation`, sepet oluştur).
 2. Duo: S7 basitlik + S8 vitrin ekranı.
 3. Teaser metriğini tenant üye sayısına bağla.
 4. `platform_owner` daraltma.

@@ -1,12 +1,6 @@
 "use client";
 
-function authHeaders(email: string, tenantId: string): Record<string, string> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (process.env.NEXT_PUBLIC_AUTH_BYPASS === "1") {
-    headers["X-Dev-User"] = JSON.stringify({ email, tenantId });
-  }
-  return headers;
-}
+import { apiAuthHeaders } from "./api-headers";
 
 export type ArchiveBasket = {
   id: string;
@@ -28,7 +22,7 @@ export async function listArchive(input: {
   if (input.type) params.set("type", input.type);
   if (input.q) params.set("q", input.q);
   const res = await fetch(`/api/archive?${params}`, {
-    headers: authHeaders(input.email, input.tenantId),
+    headers: await apiAuthHeaders(input.email, input.tenantId),
   });
   if (!res.ok) return { baskets: [], viewAll: false };
   return res.json();
@@ -40,7 +34,7 @@ export async function fetchArchiveResult(input: {
   tenantId: string;
 }): Promise<Record<string, unknown> | null> {
   const res = await fetch(`/api/archive/${input.basketId}`, {
-    headers: authHeaders(input.email, input.tenantId),
+    headers: await apiAuthHeaders(input.email, input.tenantId),
   });
   if (!res.ok) return null;
   return res.json();

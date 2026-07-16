@@ -1,15 +1,8 @@
 "use client";
 
 import { supabase } from "./supabase";
+import { apiAuthHeaders } from "./api-headers";
 import type { BasketType, PoolIdea } from "./types";
-
-function authHeaders(email: string, tenantId: string): Record<string, string> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (process.env.NEXT_PUBLIC_AUTH_BYPASS === "1") {
-    headers["X-Dev-User"] = JSON.stringify({ email, tenantId });
-  }
-  return headers;
-}
 
 export async function listPoolIdeas(tenantId: string): Promise<PoolIdea[]> {
   const { data } = await supabase
@@ -33,7 +26,7 @@ export async function createPoolIdea(input: {
 }): Promise<PoolIdea | null> {
   const res = await fetch("/api/pool", {
     method: "POST",
-    headers: authHeaders(input.created_by, input.tenant_id),
+    headers: await apiAuthHeaders(input.created_by, input.tenant_id),
     body: JSON.stringify({
       text: input.text,
       brief: input.brief,
@@ -77,7 +70,7 @@ export async function votePoolIdea(input: {
 }): Promise<{ ok: boolean; error?: string }> {
   const res = await fetch("/api/pool/vote", {
     method: "POST",
-    headers: authHeaders(input.voter, input.tenant_id),
+    headers: await apiAuthHeaders(input.voter, input.tenant_id),
     body: JSON.stringify({ pool_idea_id: input.pool_idea_id }),
   });
   if (!res.ok) {
@@ -96,7 +89,7 @@ export async function promotePoolIdeas(input: {
 }): Promise<{ basketId: string } | null> {
   const res = await fetch("/api/pool/promote", {
     method: "POST",
-    headers: authHeaders(input.created_by, input.tenant_id),
+    headers: await apiAuthHeaders(input.created_by, input.tenant_id),
     body: JSON.stringify({
       pool_idea_ids: input.pool_idea_ids,
       type: input.type,
@@ -116,7 +109,7 @@ export async function returnIdeaToPool(input: {
 }): Promise<PoolIdea | null> {
   const res = await fetch("/api/pool/return", {
     method: "POST",
-    headers: authHeaders(input.created_by, input.tenant_id),
+    headers: await apiAuthHeaders(input.created_by, input.tenant_id),
     body: JSON.stringify({
       idea_id: input.idea_id,
       basket_id: input.basket_id,
@@ -135,7 +128,7 @@ export async function markPoolWinner(input: {
 }): Promise<boolean> {
   const res = await fetch("/api/pool/mark-winner", {
     method: "POST",
-    headers: authHeaders(input.actor, input.tenant_id),
+    headers: await apiAuthHeaders(input.actor, input.tenant_id),
     body: JSON.stringify({
       pool_idea_id: input.pool_idea_id,
       winner_label: input.winner_label,

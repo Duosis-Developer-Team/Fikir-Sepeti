@@ -11,6 +11,7 @@ import type { StageContext } from "../contract";
 import { GOLD, GOLD_SOFT, dim } from "../contract";
 import { GoldButton, StageHeadline, NumberStepper, Segmented, Avatar } from "../ui";
 import { InvitePanel } from "../InvitePanel";
+import { apiAuthHeaders } from "@/lib/api-headers";
 
 type Sub = "invite" | "ideaSource" | "poolSelect" | "ideaAssign" | "teamMode" | "groups" | "duration" | "scoring" | "ready";
 
@@ -21,11 +22,7 @@ const UNITS: { v: "hour" | "day" | "week"; label: string }[] = [
 ];
 
 function authHeaders(email: string, tenantId: string) {
-  const h: Record<string, string> = { "Content-Type": "application/json" };
-  if (process.env.NEXT_PUBLIC_AUTH_BYPASS === "1") {
-    h["X-Dev-User"] = JSON.stringify({ email, tenantId });
-  }
-  return h;
+  return apiAuthHeaders(email, tenantId);
 }
 
 function ParticipantChip({ p }: { p: Participant }) {
@@ -77,7 +74,7 @@ export function LobbyStage({ data, config, isAdmin, user, refresh }: StageContex
   const approve = async (userId: string) => {
     await fetch("/api/lobby/join", {
       method: "PATCH",
-      headers: authHeaders(user.email, basket.tenant_id),
+      headers: await authHeaders(user.email, basket.tenant_id),
       body: JSON.stringify({
         basket_id: basket.id,
         action: "approve",

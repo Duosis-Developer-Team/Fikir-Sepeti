@@ -21,11 +21,9 @@ type DetailUser = {
   roles: { key: string; label: string }[];
 };
 
-function headers(email: string, tenantId: string) {
-  return {
-    "Content-Type": "application/json",
-    "X-Dev-User": JSON.stringify({ email, tenantId }),
-  };
+async function headers(email: string, tenantId: string) {
+  const { apiAuthHeaders } = await import("@/lib/api-headers");
+  return apiAuthHeaders(email, tenantId);
 }
 
 export default function AdminPage() {
@@ -39,7 +37,7 @@ export default function AdminPage() {
 
   const load = useCallback(async () => {
     if (!tenantId || !name) return;
-    const res = await fetch("/api/admin/tenants", { headers: headers(name, tenantId) });
+    const res = await fetch("/api/admin/tenants", { headers: await headers(name, tenantId) });
     if (res.status === 403) {
       setError("platform.manage_tenants izni gerekli.");
       setTenants([]);
@@ -62,7 +60,7 @@ export default function AdminPage() {
     if (!tenantId || !name) return;
     setSelected(id);
     const res = await fetch(`/api/admin/tenants/${id}`, {
-      headers: headers(name, tenantId),
+      headers: await headers(name, tenantId),
     });
     if (!res.ok) {
       setDetailUsers([]);
@@ -80,7 +78,7 @@ export default function AdminPage() {
     setBusy(true);
     const res = await fetch("/api/admin/tenants", {
       method: "PATCH",
-      headers: headers(name, tenantId),
+      headers: await headers(name, tenantId),
       body: JSON.stringify({ tenantId: tenantRowId, ...body }),
     });
     setBusy(false);

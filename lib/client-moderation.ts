@@ -1,12 +1,6 @@
 "use client";
 
-function authHeaders(email: string, tenantId: string): Record<string, string> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (process.env.NEXT_PUBLIC_AUTH_BYPASS === "1") {
-    headers["X-Dev-User"] = JSON.stringify({ email, tenantId });
-  }
-  return headers;
-}
+import { apiAuthHeaders } from "./api-headers";
 
 export type ModerationWarn = {
   error: "warn";
@@ -27,7 +21,7 @@ export async function submitModeratedIdea(input: {
 > {
   const res = await fetch("/api/content/ideas", {
     method: "POST",
-    headers: authHeaders(input.email, input.tenantId),
+    headers: await apiAuthHeaders(input.email, input.tenantId),
     body: JSON.stringify({
       basket_id: input.basket_id,
       text: input.text,
@@ -55,7 +49,7 @@ export async function submitModeratedFeedback(input: {
 > {
   const res = await fetch("/api/content/feedback", {
     method: "POST",
-    headers: authHeaders(input.email, input.tenantId),
+    headers: await apiAuthHeaders(input.email, input.tenantId),
     body: JSON.stringify({
       basket_id: input.basket_id,
       text: input.text,

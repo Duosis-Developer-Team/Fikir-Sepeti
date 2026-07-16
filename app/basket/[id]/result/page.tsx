@@ -38,10 +38,8 @@ export default function BasketResultPage() {
 
   const downloadCsv = async () => {
     if (!tenantId || !name) return;
-    const headers: Record<string, string> = {};
-    if (process.env.NEXT_PUBLIC_AUTH_BYPASS === "1") {
-      headers["X-Dev-User"] = JSON.stringify({ email: name, tenantId });
-    }
+    const { apiAuthHeaders } = await import("@/lib/api-headers");
+    const headers = await apiAuthHeaders(name, tenantId);
     const res = await fetch(archiveCsvUrl(id), { headers });
     if (!res.ok) return;
     const blob = await res.blob();

@@ -45,16 +45,10 @@ export async function joinLobbyGated(input: {
   tenant_id: string;
   display_name: string | null;
 }): Promise<{ ok: boolean; approved?: boolean; error?: string }> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (process.env.NEXT_PUBLIC_AUTH_BYPASS === "1") {
-    headers["X-Dev-User"] = JSON.stringify({
-      email: input.email,
-      tenantId: input.tenant_id,
-    });
-  }
+  const { apiAuthHeaders } = await import("./api-headers");
   const res = await fetch("/api/lobby/join", {
     method: "POST",
-    headers,
+    headers: await apiAuthHeaders(input.email, input.tenant_id),
     body: JSON.stringify({
       basket_id: input.basket_id,
       display_name: input.display_name,

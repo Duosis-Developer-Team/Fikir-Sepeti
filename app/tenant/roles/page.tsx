@@ -11,11 +11,9 @@ type Assignment = { id: string; user_id: string; role_id: string; scope_basket_i
 type UserRow = { user_id: string; email: string | null; display_name: string | null };
 type PermRow = { role_id: string; permission_key: string };
 
-function devHeaders(email: string, tenantId: string) {
-  return {
-    "Content-Type": "application/json",
-    "X-Dev-User": JSON.stringify({ email, tenantId }),
-  };
+async function apiHeaders(email: string, tenantId: string) {
+  const { apiAuthHeaders } = await import("@/lib/api-headers");
+  return apiAuthHeaders(email, tenantId);
 }
 
 export default function TenantRolesPage() {
@@ -33,7 +31,7 @@ export default function TenantRolesPage() {
   const load = useCallback(async () => {
     if (!tenantId || !name) return;
     const res = await fetch("/api/tenant/roles", {
-      headers: devHeaders(name, tenantId),
+      headers: await apiHeaders(name, tenantId),
     });
     if (res.status === 403) {
       setError("Bu sayfa için tenant.manage_roles izni gerekli.");
@@ -60,7 +58,7 @@ export default function TenantRolesPage() {
     setBusy(true);
     await fetch("/api/tenant/roles", {
       method: "POST",
-      headers: devHeaders(name, tenantId),
+      headers: await apiHeaders(name, tenantId),
       body: JSON.stringify({
         action: has ? "revoke" : "assign",
         userId,

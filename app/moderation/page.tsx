@@ -22,11 +22,9 @@ type Flag = {
   created_at: string;
 };
 
-function headers(email: string, tenantId: string) {
-  return {
-    "Content-Type": "application/json",
-    "X-Dev-User": JSON.stringify({ email, tenantId }),
-  };
+async function headers(email: string, tenantId: string) {
+  const { apiAuthHeaders } = await import("@/lib/api-headers");
+  return apiAuthHeaders(email, tenantId);
 }
 
 export default function ModerationPage() {
@@ -39,7 +37,7 @@ export default function ModerationPage() {
 
   const load = useCallback(async () => {
     if (!name || !tenantId) return;
-    const h = headers(name, tenantId);
+    const h = await headers(name, tenantId);
     const [rRes, fRes] = await Promise.all([
       fetch("/api/moderation/rules", { headers: h }),
       fetch("/api/moderation/flags?status=pending", { headers: h }),
@@ -66,7 +64,7 @@ export default function ModerationPage() {
     if (!name || !tenantId || pattern.trim().length < 1) return;
     const res = await fetch("/api/moderation/rules", {
       method: "POST",
-      headers: headers(name, tenantId),
+      headers: await headers(name, tenantId),
       body: JSON.stringify({ pattern: pattern.trim(), action, kind: "word" }),
     });
     if (!res.ok) {
@@ -82,7 +80,7 @@ export default function ModerationPage() {
     if (!name || !tenantId) return;
     await fetch(`/api/moderation/rules?id=${id}`, {
       method: "DELETE",
-      headers: headers(name, tenantId),
+      headers: await headers(name, tenantId),
     });
     await load();
   };
@@ -91,7 +89,7 @@ export default function ModerationPage() {
     if (!name || !tenantId) return;
     await fetch("/api/moderation/rules", {
       method: "PATCH",
-      headers: headers(name, tenantId),
+      headers: await headers(name, tenantId),
       body: JSON.stringify({ id, action: next }),
     });
     await load();
@@ -101,7 +99,7 @@ export default function ModerationPage() {
     if (!name || !tenantId) return;
     await fetch("/api/moderation/flags", {
       method: "PATCH",
-      headers: headers(name, tenantId),
+      headers: await headers(name, tenantId),
       body: JSON.stringify({ id, decision }),
     });
     await load();
