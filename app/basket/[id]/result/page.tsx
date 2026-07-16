@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useNameContext } from "@/components/AuthGate";
 import { archiveCsvUrl, fetchArchiveResult } from "@/lib/archive";
 import { accentFor, soft } from "@/lib/accent";
+import { groupFeedbackByTeam } from "@/lib/feedback-groups";
 import type { Basket, Feedback, Idea, Participant, Team, TeamMember, TeamVote } from "@/lib/types";
 
 type ResultPayload = {
@@ -74,6 +75,8 @@ export default function BasketResultPage() {
   const { basket, ideas, votes, participants, teams, members, teamVotes, feedback, winner } = data;
   const a = accentFor(basket);
   const votesOf = (teamId: string) => teamVotes.filter((v) => v.team_id === teamId).length;
+  const teamNames = Object.fromEntries(teams.map((t) => [t.id, t.name]));
+  const feedbackGroups = groupFeedbackByTeam(feedback, teamNames);
 
   return (
     <main className="mx-auto max-w-[880px] px-[clamp(24px,5vw,40px)] pb-20 pt-8" data-testid="result-page">
@@ -220,15 +223,24 @@ export default function BasketResultPage() {
       {feedback.length > 0 && (
         <section className="mt-8" data-testid="result-feedback">
           <h2 className="text-[0.75rem] font-bold uppercase tracking-[0.2em]" style={{ color: "var(--text-muted)" }}>
-            Feedback
+            Feedback (proje bazlı)
           </h2>
-          <div className="mt-3 flex flex-col gap-2">
-            {feedback.map((f) => (
-              <div key={f.id} className="rounded-xl px-4 py-3" style={{ background: "var(--card)" }}>
-                <p style={{ color: "var(--text)" }}>{f.text}</p>
-                <p className="mt-1 text-[0.78rem]" style={{ color: "var(--text-faint)" }}>
-                  {f.author_name || f.author_id}
-                </p>
+          <div className="mt-3 flex flex-col gap-5" data-testid="result-feedback-grouped">
+            {feedbackGroups.map((g) => (
+              <div key={g.key} data-testid={`result-feedback-group-${g.key}`}>
+                <h3 className="mb-2 text-[0.8rem] font-semibold" style={{ color: "var(--text-2)" }}>
+                  {g.label}
+                </h3>
+                <div className="flex flex-col gap-2">
+                  {g.items.map((f) => (
+                    <div key={f.id} className="rounded-xl px-4 py-3" style={{ background: "var(--card)" }}>
+                      <p style={{ color: "var(--text)" }}>{f.text}</p>
+                      <p className="mt-1 text-[0.78rem]" style={{ color: "var(--text-faint)" }}>
+                        {f.author_name || f.author_id}
+                      </p>
+                    </div>
+                  ))}
+                </div>
               </div>
             ))}
           </div>
