@@ -150,15 +150,21 @@ test.describe("SG2 self-serve register", () => {
       password: DEV_AUTH_PASSWORD,
       email_confirm: true,
     });
-    const { data: tid } = await sb.rpc("create_tenant_for_user", {
+    const { data: tid, error } = await sb.rpc("create_tenant_for_user", {
       p_name: "Iso Co",
       p_domain: null,
       p_email: email,
     });
+    expect(error).toBeNull();
     expect(tid).toBeTruthy();
+    expect(tid).not.toBe(DUOSIS_TENANT_ID);
 
     await loginAs(page, { email, name: "Iso" });
     await page.goto("/");
-    await expect(page.getByText(/Pizza|Hackathon|Demo/i)).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /Yeni sepet|\+ Yeni/i }).first()).toBeVisible();
+    // Seed DuoSis basket titles must not appear (do not match tab labels like "Hackathon")
+    await expect(page.getByText("Seed: Akşam nereye?")).toHaveCount(0);
+    await expect(page.getByText("Seed: İç Hackathon")).toHaveCount(0);
+    await expect(page.locator(`a[href="/basket/${SEED.etkinlikId}"]`)).toHaveCount(0);
   });
 });
