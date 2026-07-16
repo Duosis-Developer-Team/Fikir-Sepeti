@@ -16,5 +16,11 @@ Production’da bypass kapalı → `resolveIdentity` Bearer bulamıyor → **401
 
 ## Doğrulama
 
-- CI (bypass) hâlâ X-Dev-User ile geçer
-- Prod: giriş sonrası `/admin`, `/analytics`, `/moderation`, yeni sepet
+- CI (bypass) hâlâ X-Dev-User ile geçer ✅
+- Prod deploy ✅
+- **Kullanıcı (2026-07-16):** hard refresh sonrası sorun **devam ediyor** — fix yetersiz veya ayrı kök neden.
+  Ertelenen debug: DevTools Network (`/api/*` status + `Authorization`), env, `app_users` / Azure session.
+
+## Durum
+
+⏸️ Açık — not alındı; ürün geliştirmelerine devam (debug sonraya).

@@ -11,9 +11,11 @@ Post-sprint inventory of known gaps, risks, and follow-ups. Not a new sprint pla
 
 ## Teknik / ürün eksikleri
 
-0. **🔴 Prod API auth (kullanıcı bildirimi 2026-07-16)** — Sayfalar açılıyor ama işlemler hata / işlevsiz.
-   Kök neden: client `fetch` sadece `X-Dev-User` (bypass) gönderiyordu; prod’da JWT yok → 401.
-   Düzeltme: `lib/api-headers.ts` + tüm API client’lara Bearer. Branch `fix/prod-api-bearer-auth`.
+0. **🔴 Prod API / sayfa işlemleri hâlâ kırık (kullanıcı 2026-07-16)** — Hard refresh sonrası da aynı.
+   - İlk teşhis: client JWT yok → `fix/prod-api-bearer-auth` deploy edildi (CI+Vercel ✅).
+   - **Kullanıcı doğrulaması: sorun devam ediyor** — Bearer fix tek başına yetmedi veya başka katman var.
+   - Sonraki debug (şimdilik ertelendi): Network’te `/api/*` status (401/403/500), `Authorization` header var mı, Vercel/Supabase env, `app_users` eşleşmesi, Azure session.
+   - Rapor: `docs/sprints/hotfix-prod-api-bearer-report.md`
 
 1. **Analitik teaser metriği zayıf** — son N etkinlikte `capacityHint ≈ participantCount` olduğu için yüzde çoğu zaman ~100. Gerçek kapasite (tenant üye sayısı) bağlanmalı.
 2. **3. ay retention** — seed/tek seferlik oylarda ay penceresi boş kalabilir; demo için zaman kaydırmalı seed faydalı.
