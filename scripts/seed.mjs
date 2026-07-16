@@ -346,7 +346,7 @@ async function main() {
       id: IDS.poolIdea,
       tenant_id: IDS.duoTenant,
       text: "Seed: Ofis ruhu iyileştirme",
-      brief: "Kavanoz örnek fikir",
+      brief: "Sepet örnek fikir",
       category: "kültür",
       status: "new",
       created_by: ADMIN,

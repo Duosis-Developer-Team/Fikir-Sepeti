@@ -1,24 +1,16 @@
-# Gap analysis — after complete-dev-before-qa (2026-07-16)
+# Gap analysis — after sepet rename + env sync (2026-07-16)
 
-## Prod API kök neden (düzeltildi)
+## Yapılanlar
+- Prod API: Bearer + `getDb` JWT/RLS fallback (önceki deploy).
+- Ürün dili: **Kavanoz → Sepet** (UI, landing, design tokens metni, E2E).
+- GitHub workflow: `Sync Vercel production env` — AUTH_BYPASS kaldır + isteğe bağlı SERVICE_ROLE.
 
-1. Vercel Production’da `NEXT_PUBLIC_AUTH_BYPASS=1` vardı.
-2. `apiAuthHeaders` bypass’ta **erken return** edip yalnızca `X-Dev-User` gönderiyordu → Bearer yok.
-3. `SUPABASE_SERVICE_ROLE_KEY` Production’da **yoktu** → `supabaseAdmin()` API route’larda patlıyordu.
+## Benim yapamadığım (senden)
+1. **Production `SUPABASE_SERVICE_ROLE_KEY`** — yereldeki key yalnızca `127.0.0.1` Docker; prod key yok.
+   - Supabase Dashboard → Project Settings → API → `service_role`
+   - Sonra: `gh secret set SUPABASE_SERVICE_ROLE_KEY` (değeri yapıştır)
+   - Ardından Actions → **Sync Vercel production env** çalıştır
+2. Vercel CLI login bu ortamda yoktu; env sync Actions üzerinden.
 
-### Fix
-- `apiAuthHeaders`: bypass + session Bearer birlikte.
-- `resolveIdentity`: Bearer öncelikli.
-- `getDb(req)`: service role yoksa JWT+anon (RLS).
-- `/api/me`, `/api/permissions`, `/api/scores`; DemoStage skorları API üzerinden; analytics teaser kapasitesi = tenant üye sayısı.
-
-## Hâlâ önerilen ops (manuel)
-
-1. Production’dan `NEXT_PUBLIC_AUTH_BYPASS` kaldır (güvenlik).
-2. `SUPABASE_SERVICE_ROLE_KEY` ekle (CI/bypass ve admin edge-case’ler için).
-3. Duo kapıları S7/S8 ürün onayı.
-4. `platform_owner` daraltma (@duosis.com hepsi değil).
-
-## Sprint kod durumu
-
-S0–S11 + D1 + SG1–SG3 kod ✅. Deploy sonrası manuel QA listesi chat’te.
+## Not
+`idea_pool` prod’da 0 satır — Sepet sekmesi boş görünebilir (seed/manual fikir gerekir).

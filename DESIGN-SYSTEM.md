@@ -37,24 +37,24 @@ Claude / Anthropic dilinden ilham: **sıcak-nötr, sakin, editorial, tek hero-ak
 | `--text-muted` | `#9A9A9A` · `--text-faint` `#6E6E6E` |
 | `--line` | `rgba(255,255,255,0.09)` · bar track `rgba(255,255,255,0.07)` |
 
-### Aksanlar — 4 renk sepet + kavanoz (`lib/accent.ts`)
+### Aksanlar — 4 renk etkinlik + ortak sepet (`lib/accent.ts`)
 | Token | Hex | Atama |
 |---|---|---|
 | `--coral` | `#F2795F` (light `#F5A98F`) | sosyal / etkinlik (id hash) |
 | `--gold` | `#E7A93F` (light `#EEC078`) | **hackathon** (sabit) |
 | `--green` | `#33C293` (light `#6FD9B4`) | sosyal (id hash) |
 | `--blue` | `#6B8CF0` (light `#8FA8F5`) | sosyal (id hash) |
-| `--clay` | `#D97757` (light `#E4A08A`) | **Kavanoz** (fikir deposu) — sabit |
+| `--clay` | `#D97757` (light `#E4A08A`) | **Sepet** (fikir deposu) — sabit |
 
 - `accentFor(basket)`: hackathon → gold; etkinlik → id hash ile coral/green/blue.
-- `ACCENTS.clay` / `--clay`: üç tab Kavanoz yüzeyi, durum rozetleri, pool oy barları.
+- `ACCENTS.clay` / `--clay`: üç tab Sepet yüzeyi, durum rozetleri, pool oy barları.
 - Bir sepetin rengi kartında + detayında + barlarında + pill'lerinde tutarlı kullanılır.
 - Dolgu: `rgba(<accent>,0.20)` lider / `0.09` diğer (oy satırı); kartta lider = düz base.
 - Aksan üstü metin/pill: `#161616` (koyu). Açık pill butonlar: `#EDEDED` zemin / `#161616` metin.
 
 ### KESİN kurallar
 - ✅ Nötr koyu `#1E1E1E` zemin. ❌ Soğuk mavi-gri, ❌ sıcak turuncu-gri zemin.
-- ✅ 4 aksanlı çok-renk (coral/gold/green/blue) + clay kavanoz. ❌ Mor.
+- ✅ 4 aksanlı çok-renk (coral/gold/green/blue) + clay sepet. ❌ Mor.
 - Wordmark = 3 bar (coral/gold/green). Avatarlar = 4 aksandan hash ile, koyu harf.
 
 ---

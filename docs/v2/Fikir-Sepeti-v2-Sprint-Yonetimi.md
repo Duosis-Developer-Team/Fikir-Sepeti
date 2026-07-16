@@ -128,7 +128,7 @@ Bunlar her sprintte geçerli — ihlal edilirse kapı kırmızıdır:
 2. **Mimariyi bozma:** hackathon modül sözleşmesi (`contract.ts` → `StageDef`). Yeni aşama =
    registry'ye satır. `if config.x else` dallanması **yasak** — config modül *seçer*.
 3. **Realtime primitifini yeniden yazma:** `lib/useRealtimeVotes.ts` optimistic + reconnect +
-   fallback polling'i çözmüş. Kavanoz oyu ve skorlar **aynı deseni** kullanır.
+   fallback polling'i çözmüş. Sepet oyu ve skorlar **aynı deseni** kullanır.
 3b. **İmza anı yeniden yazma:** `RaffleReveal.tsx` çalışıyor, sadece yanlış yere bağlı (S6).
    **Taşı** — kopyalama, yeniden icat etme.
 3c. **Etkinlik'e dokunma:** yan dal; bugünkü hali korunuyor. Zenginleştirme kapsam dışı
@@ -155,7 +155,7 @@ Ajan her sprint sonunda bu tabloyu günceller ve commit eder.
 | S1 | Tenant modeli + veri taşıma | ✅ geçti | — | düz tenant; app-layer filtre |
 | S2 | RBAC: rol, izin, zorlama | ✅ geçti | — | API /api/baskets + /tenant/roles |
 | S3 | RLS: izolasyon + realtime | ✅ geçti | 🚦 Duo onaylandı | 2026-07-15 güvenlik kapısı |
-| S4 | Kavanoz (Fikir Deposu) + üç tab | ✅ geçti | — | docs/sprints/S4-report.md |
+| S4 | Sepet (fikir deposu) + üç tab | ✅ geçti | — | docs/sprints/S4-report.md |
 | S5 | Sonuç / Arşiv | ✅ geçti | 🚦 Duo omurga | docs/sprints/S5-report.md — omurga + login hotfix sonrası S6 |
 | Hotfix | Tenant login + /login | ✅ geçti | ⏸️ prod migrate | docs/sprints/hotfix-tenant-login-report.md — `duosis.com` + `/login` |
 | S6 | ★ İmza an: çekiliş + dağıtım | ✅ geçti | — | docs/sprints/S6-report.md |

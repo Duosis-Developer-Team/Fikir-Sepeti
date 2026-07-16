@@ -17,7 +17,7 @@ import { supabase } from "@/lib/supabase";
 import { accentFor, soft, type Accent } from "@/lib/accent";
 import type { Basket, BasketType, Idea, ResolveMethod } from "@/lib/types";
 
-type ModeTab = "kavanoz" | "hackathon" | "etkinlik";
+type ModeTab = "sepet" | "hackathon" | "etkinlik";
 
 const T = {
   bg: "var(--bg)",
@@ -324,7 +324,7 @@ export default function Home() {
   const [ideasBy, setIdeasBy] = useState<Record<string, Idea[]>>({});
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(false);
-  const [mode, setMode] = useState<ModeTab>("kavanoz");
+  const [mode, setMode] = useState<ModeTab>("sepet");
   const [statusTab, setStatusTab] = useState<"aktif" | "gecmis">("aktif");
 
   const refresh = async () => {
@@ -459,11 +459,11 @@ export default function Home() {
             className="mx-auto mt-10 max-w-[46ch] text-[1.13rem] leading-[1.55]"
             style={{ color: T.t3 }}
           >
-            Fikirleri <span className="font-semibold" style={{ color: "#D97757" }}>kavanoza</span> at — oyla, hackathon veya etkinliğe dönüştür. Hızlı yol: doğrudan sepet aç.
+            Fikirleri <span className="font-semibold" style={{ color: "#D97757" }}>sepete</span> at — oyla, hackathon veya etkinliğe dönüştür. Hızlı yol: doğrudan etkinlik aç.
           </motion.p>
         </section>
 
-        {/* üç tab — Kavanoz · Hackathon · Etkinlik */}
+        {/* üç tab — Sepet · Hackathon · Etkinlik */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -477,7 +477,7 @@ export default function Home() {
           >
             {(
               [
-                ["kavanoz", "Kavanoz", "#D97757"],
+                ["sepet", "Sepet", "#D97757"],
                 ["hackathon", "Hackathon", "#E7A93F"],
                 ["etkinlik", "Etkinlik", "#F2795F"],
               ] as const
@@ -503,7 +503,7 @@ export default function Home() {
           </div>
         </motion.div>
 
-        {mode === "kavanoz" ? (
+        {mode === "sepet" ? (
           <PoolPanel />
         ) : loading ? (
           <div className="mt-6 grid gap-5 md:grid-cols-3">

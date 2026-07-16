@@ -107,7 +107,7 @@ export function IdeaStage(ctx: StageContext) {
     return (
       <div className="mx-auto max-w-[760px]">
         <StageHeadline
-          pre={fromJar ? "Kavanozdan" : "Fikir"}
+          pre={fromJar ? "Sepetten" : "Fikir"}
           accent={fromJar ? "geldi" : "belli"}
           sub="Sıra takımlarda."
         />

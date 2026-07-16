@@ -1,0 +1,65 @@
+name: Sync Vercel production env
+
+# Manual: remove AUTH_BYPASS; optionally set SERVICE_ROLE from GitHub secret.
+on:
+  workflow_dispatch:
+    inputs:
+      remove_auth_bypass:
+        description: Remove NEXT_PUBLIC_AUTH_BYPASS from Production
+        type: boolean
+        default: true
+      set_service_role:
+        description: Set SUPABASE_SERVICE_ROLE_KEY from GitHub secret (if present)
+        type: boolean
+        default: true
+      redeploy:
+        description: Redeploy production after env changes
+        type: boolean
+        default: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install Vercel CLI
+        run: npm install -g vercel@latest
+      - name: Remove NEXT_PUBLIC_AUTH_BYPASS (Production)
+        if: ${{ inputs.remove_auth_bypass }}
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          set -euo pipefail
+          if vercel env rm NEXT_PUBLIC_AUTH_BYPASS production --yes --token="$VERCEL_TOKEN"; then
+            echo "Removed NEXT_PUBLIC_AUTH_BYPASS from production"
+          else
+            echo "AUTH_BYPASS already absent or remove failed (continuing)"
+          fi
+      - name: Upsert SUPABASE_SERVICE_ROLE_KEY (Production)
+        if: ${{ inputs.set_service_role }}
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SUPABASE_SERVICE_ROLE_KEY:-}" ]; then
+            echo "SUPABASE_SERVICE_ROLE_KEY GitHub secret missing — skip (JWT/RLS fallback remains)."
+            exit 0
+          fi
+          vercel env rm SUPABASE_SERVICE_ROLE_KEY production --yes --token="$VERCEL_TOKEN" || true
+          printf '%s' "$SUPABASE_SERVICE_ROLE_KEY" | vercel env add SUPABASE_SERVICE_ROLE_KEY production --token="$VERCEL_TOKEN"
+          echo "SUPABASE_SERVICE_ROLE_KEY set on production (value not logged)."
+      - name: Redeploy production
+        if: ${{ inputs.redeploy }}
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: vercel deploy --prod --yes --token="$VERCEL_TOKEN"

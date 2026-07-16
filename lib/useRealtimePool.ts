@@ -12,7 +12,7 @@ type State = {
 };
 
 /**
- * Kavanoz realtime — useRealtimeVotes ile aynı dayanıklılık deseni:
+ * Sepet (pool) realtime — useRealtimeVotes ile aynı dayanıklılık deseni:
  * optimistic oy, reconnect, 3sn fallback polling, visibility refresh.
  */
 export function useRealtimePool(tenantId: string | null, voter: string) {

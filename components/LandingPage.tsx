@@ -12,7 +12,7 @@ const LAYERS = [
     key: "free",
     accent: "var(--clay)",
     label: "Ücretsiz",
-    title: "Kavanozdan çekilişe",
+    title: "Sepetten çekilişe",
     body: "Fikir biriktir, hackathon ve etkinlik aç, oyla veya kurayla seç. Tüm ekipler için.",
     cta: { href: "/register", text: "Başla" },
   },
@@ -99,7 +99,7 @@ export function LandingPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, ease: EASE, delay: 0.16 }}
           >
-            Çalışan fikirlerini üretim kararına hazır prototiplere dönüştür. İmza an: kavanozdan
+            Çalışan fikirlerini üretim kararına hazır prototiplere dönüştür. İmza an: sepetten
             çekiliş — shuffle, reveal, confetti.
           </motion.p>
           <motion.div

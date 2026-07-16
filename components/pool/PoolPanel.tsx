@@ -107,7 +107,7 @@ export function PoolPanel() {
   const promote = async () => {
     if (!tenantId || !selected.size) return;
     const first = ideas.find((i) => selected.has(i.id));
-    const title = first ? `Kavanoz: ${first.text.slice(0, 48)}` : "Kavanoz sepeti";
+    const title = first ? `Sepet: ${first.text.slice(0, 48)}` : "Ortak sepet";
     setBusy(true);
     const res = await promotePoolIdeas({
       pool_idea_ids: [...selected],
@@ -141,7 +141,7 @@ export function PoolPanel() {
         }}
       >
         <p className="text-[0.72rem] font-bold uppercase tracking-[0.22em]" style={{ color: CLAY.base }}>
-          Kavanoza at
+          Sepete at
         </p>
         <textarea
           value={text}
@@ -289,7 +289,7 @@ export function PoolPanel() {
         ))}
         {!filtered.length && (
           <p className="py-16 text-center text-[1rem]" style={{ color: "var(--text-muted)" }}>
-            Kavanoz boş — ilk fikri sen at.
+            Sepet boş — ilk fikri sen at.
           </p>
         )}
       </div>

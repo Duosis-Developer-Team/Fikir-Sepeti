@@ -209,7 +209,7 @@ export function LobbyStage({ data, config, isAdmin, user, refresh }: StageContex
             options={[
               { v: "static", label: "Fikir var", hint: "sen girersin" },
               { v: "pool", label: "Brainstorming", hint: "herkes yazar" },
-              { v: "repo", label: "Kavanoz", hint: "depodan çek" },
+              { v: "repo", label: "Sepet", hint: "sepetten çek" },
             ]}
           />
         </>
@@ -218,7 +218,7 @@ export function LobbyStage({ data, config, isAdmin, user, refresh }: StageContex
       {sub === "poolSelect" && (
         <>
           <StageHeadline
-            pre={config.ideaSource === "repo" ? "Kavanoz nasıl" : "Pool nasıl"}
+            pre={config.ideaSource === "repo" ? "Sepet nasıl" : "Pool nasıl"}
             accent="seçilsin?"
           />
           <Choice
@@ -425,7 +425,7 @@ const EASE = [0.22, 0.85, 0.25, 1] as const;
 const IDEA_LABEL: Record<string, string> = {
   static: "Fikir var",
   pool: "Brainstorming",
-  repo: "Kavanoz",
+  repo: "Sepet",
 };
 const POOL_LABEL: Record<string, string> = { vote: "Oylama", random: "Kura" };
 const TEAM_LABEL: Record<string, string> = { solo: "Herkes tek", groups: "Gruplar", one: "Tek takım" };

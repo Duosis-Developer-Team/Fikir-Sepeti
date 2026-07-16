@@ -11,7 +11,7 @@ export const ACCENTS: Record<string, Accent> = {
   clay: { base: "#D97757", light: "#E4A08A", rgb: "217,119,87" },
 };
 
-/** Kavanoz (fikir deposu) aksanı — DESIGN-SYSTEM --clay */
+/** Sepet (fikir deposu) aksanı — DESIGN-SYSTEM --clay */
 export const POOL_ACCENT = ACCENTS.clay;
 
 const SOCIAL = [ACCENTS.coral, ACCENTS.green, ACCENTS.blue];

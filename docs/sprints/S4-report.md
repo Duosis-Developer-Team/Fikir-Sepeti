@@ -1,9 +1,9 @@
-## S4 — Kavanoz (Fikir Deposu) + üç tab · GEÇTİ
+## S4 — Sepet (Fikir Deposu) + üç tab · GEÇTİ
 
-**Yapıldı:** `--clay` aksanı; `0006_idea_pool` + RLS + realtime; pool API (create/vote/promote/return/mark-winner); `useRealtimePool`; ana sayfa üç tab (Kavanoz · Hackathon · Etkinlik); poll + seçenek ekleme; promote → `ideaSource: 'repo'`; kaybeden → Kavanoza at; Lobby Kavanoz kaynağı
+**Yapıldı:** `--clay` aksanı; `0006_idea_pool` + RLS + realtime; pool API (create/vote/promote/return/mark-winner); `useRealtimePool`; ana sayfa üç tab (Sepet · Hackathon · Etkinlik); poll + seçenek ekleme; promote → `ideaSource: 'repo'`; kaybeden → Sepeta at; Lobby Sepet kaynağı
 **Kapı sonucu:**
   - lint: ⚠️ mevcut set-state-in-effect uyarıları (S0/S3 deseni) / build: ✅ / test: 28 geçti, 0 kaldı
-  - E2E kavanoz create+vote: ✅ tests/pool-kavanoz.spec.ts
+  - E2E sepet create+vote: ✅ tests/pool-sepet.spec.ts
   - E2E poll + ikinci kullanıcı seçenek: ✅
   - E2E promote → resolve → winner etiketi + return: ✅
   - Hızlı yol (Yeni sepet modal): ✅ + S0 smoke ✅

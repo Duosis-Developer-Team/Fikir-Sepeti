@@ -38,6 +38,6 @@ export function ideaStatusLabel(
   const src = config?.ideaSource;
   if (src === "static") return "Fikir belli — admin girecek / girdi.";
   if (src === "pool") return "Fikir birlikte belirlenecek (brainstorm).";
-  if (src === "repo") return "Fikir kavanozdan seçilecek.";
+  if (src === "repo") return "Fikir sepetinden seçilecek.";
   return "Fikir durumu henüz ayarlanmadı.";
 }

@@ -22,10 +22,10 @@ export type DurationUnit = "hour" | "day" | "week";
 
 /** Hackathon config — kod dallanmaz, hangi modülün çalışacağını bu seçer. */
 export type HackathonConfig = {
-  /** static = admin girer; pool = sepet-içi brainstorm; repo = Kavanoz'dan */
+  /** static = admin girer; pool = sepet-içi brainstorm; repo = Sepet'ten */
   ideaSource?: "static" | "pool" | "repo";
   poolSelect?: "vote" | "random";
-  /** Kavanoz fikir id — ideaSource=repo iken */
+  /** Sepet fikir id — ideaSource=repo iken */
   repoPoolIdeaId?: string;
   teamMode?: "solo" | "groups" | "one";
   groups?: {

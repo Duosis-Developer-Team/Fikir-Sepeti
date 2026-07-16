@@ -11,12 +11,12 @@ function headers(email: string) {
   };
 }
 
-test.describe("S4 Kavanoz E2E", () => {
+test.describe("S4 Sepet E2E", () => {
   test("three tabs + create + vote on pool idea", async ({ page }) => {
-    const unique = `E2E kavanoz fikri ${Date.now()}`;
+    const unique = `E2E sepet fikri ${Date.now()}`;
     await loginAs(page);
     await expect(page.getByTestId("home-mode-tabs")).toBeVisible();
-    await expect(page.getByTestId("tab-kavanoz")).toBeVisible();
+    await expect(page.getByTestId("tab-sepet")).toBeVisible();
     await expect(page.getByTestId("tab-hackathon")).toBeVisible();
     await expect(page.getByTestId("tab-etkinlik")).toBeVisible();
 
@@ -113,10 +113,10 @@ test.describe("S4 Kavanoz E2E", () => {
     await expect(page.getByText("Kazanan")).toBeVisible({ timeout: 15_000 });
 
     await page.getByTestId(`return-idea-${loser!.id}`).click();
-    await expect(page.getByText("✓ kavanozda")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText("✓ sepetinde")).toBeVisible({ timeout: 10_000 });
 
     await page.goto("/");
-    await page.getByTestId("tab-kavanoz").click();
+    await page.getByTestId("tab-sepet").click();
     await expect(page.getByTestId(`pool-used-${idea.id}`)).toContainText(/kazanan|kullanıldı/i, {
       timeout: 15_000,
     });
@@ -125,7 +125,7 @@ test.describe("S4 Kavanoz E2E", () => {
     await expect(loserCard.locator("[data-testid^='pool-source-']")).toBeVisible();
   });
 
-  test("fast path still opens basket without visiting kavanoz tab content", async ({ page }) => {
+  test("fast path still opens basket without visiting sepet tab content", async ({ page }) => {
     await loginAs(page);
     await page.getByTestId("tab-etkinlik").click();
     await page.getByRole("button", { name: /Yeni sepet|\+ Yeni/i }).first().click();

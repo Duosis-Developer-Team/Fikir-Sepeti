@@ -122,7 +122,7 @@ export function ProductionStage({ data, user, isAdmin }: StageContext) {
         {done && ideas.length > 1 && (
           <div className="mt-6 text-left" data-testid="return-to-pool">
             <span className="text-[0.7rem] font-semibold uppercase tracking-[0.22em]" style={{ color: dim(0.45) }}>
-              Kaybedenleri kavanoza at
+              Kaybedenleri sepete at
             </span>
             <div className="mt-2 flex flex-col gap-2">
               {ideas
@@ -138,7 +138,7 @@ export function ProductionStage({ data, user, isAdmin }: StageContext) {
                     </span>
                     {returned.has(idea.id) ? (
                       <span className="text-[0.8rem]" style={{ color: "#6FD9B4" }}>
-                        ✓ kavanozda
+                        ✓ sepetinde
                       </span>
                     ) : (
                       <button
@@ -148,7 +148,7 @@ export function ProductionStage({ data, user, isAdmin }: StageContext) {
                         style={{ background: "rgba(217,119,87,0.2)", color: "#D97757" }}
                         data-testid={`return-idea-${idea.id}`}
                       >
-                        Kavanoza at
+                        Sepete at
                       </button>
                     )}
                   </div>

@@ -5,7 +5,7 @@ import {
   userHasPermission,
 } from "@/lib/server-auth";
 
-/** Return a non-winning basket idea back into the Kavanoz. */
+/** Return a non-winning basket idea back into the shared sepet (idea pool). */
 export async function POST(req: Request) {
   const identity = await resolveIdentity(req);
   if (!identity) {

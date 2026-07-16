@@ -88,7 +88,7 @@ export function SocialBasket({ basket: initial, voter, accent }: { basket: Baske
             data-testid="return-to-pool"
           >
             <p className="text-[0.72rem] font-bold uppercase tracking-[0.2em]" style={{ color: "#D97757" }}>
-              Kaybedenleri kavanoza at
+              Kaybedenleri sepete at
             </p>
             <div className="mt-3 flex flex-col gap-2">
               {losers.map((idea) => (
@@ -98,7 +98,7 @@ export function SocialBasket({ basket: initial, voter, accent }: { basket: Baske
                   </span>
                   {returned.has(idea.id) ? (
                     <span className="text-[0.8rem]" style={{ color: "#6FD9B4" }}>
-                      ✓ kavanozda
+                      ✓ sepetinde
                     </span>
                   ) : (
                     <button
@@ -108,7 +108,7 @@ export function SocialBasket({ basket: initial, voter, accent }: { basket: Baske
                       style={{ background: "rgba(217,119,87,0.2)", color: "#D97757" }}
                       data-testid={`return-idea-${idea.id}`}
                     >
-                      Kavanoza at
+                      Sepete at
                     </button>
                   )}
                 </div>
