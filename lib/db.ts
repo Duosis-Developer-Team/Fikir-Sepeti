@@ -73,7 +73,12 @@ export async function deleteBasket(id: string) {
 }
 
 export async function setBasketPhase(id: string, phase: Phase) {
-  await supabase.from("baskets").update({ phase }).eq("id", id);
+  const patch: Record<string, unknown> = { phase };
+  // Leaving lobby locks joins unless allowLateJoin (checked at join time)
+  if (phase !== "lobby") {
+    patch.lobby_locked = true;
+  }
+  await supabase.from("baskets").update(patch).eq("id", id);
 }
 
 export async function setCurrentDemoIdx(id: string, idx: number) {

@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import type { HackathonConfig } from "@/lib/types";
+import type { HackathonConfig, Participant } from "@/lib/types";
 import { setConfig } from "@/lib/hackathon";
+import { ideaStatusLabel } from "@/lib/lobby";
 import { DEFAULT_RUBRIC } from "@/lib/scoring";
 import { setBasketPhase } from "@/lib/db";
 import type { StageContext } from "../contract";
 import { GOLD, GOLD_SOFT, dim } from "../contract";
-import { GoldButton, StageHeadline, NumberStepper, Segmented } from "../ui";
+import { GoldButton, StageHeadline, NumberStepper, Segmented, Avatar } from "../ui";
 import { InvitePanel } from "../InvitePanel";
 
 type Sub = "invite" | "ideaSource" | "poolSelect" | "ideaAssign" | "teamMode" | "groups" | "duration" | "scoring" | "ready";
@@ -19,7 +20,47 @@ const UNITS: { v: "hour" | "day" | "week"; label: string }[] = [
   { v: "week", label: "Hafta" },
 ];
 
-export function LobbyStage({ data, config, isAdmin, refresh }: StageContext) {
+function authHeaders(email: string, tenantId: string) {
+  const h: Record<string, string> = { "Content-Type": "application/json" };
+  if (process.env.NEXT_PUBLIC_AUTH_BYPASS === "1") {
+    h["X-Dev-User"] = JSON.stringify({ email, tenantId });
+  }
+  return h;
+}
+
+function ParticipantChip({ p }: { p: Participant }) {
+  const [open, setOpen] = useState(false);
+  const label = p.display_name || p.email || p.user_id;
+  return (
+    <button
+      type="button"
+      className="relative"
+      onClick={() => setOpen((v) => !v)}
+      data-testid={`participant-avatar-${p.user_id}`}
+    >
+      <Avatar name={label} size={36} />
+      {open && (
+        <span
+          className="absolute left-1/2 top-full z-10 mt-2 w-max max-w-[220px] -translate-x-1/2 rounded-xl px-3 py-2 text-left text-[0.8rem] shadow-lg"
+          style={{ background: "var(--surface-2)", color: "var(--text)", border: "1px solid rgba(var(--border-rgb),0.15)" }}
+          data-testid={`participant-popover-${p.user_id}`}
+        >
+          <span className="block font-semibold">{p.display_name || "—"}</span>
+          <span className="block" style={{ color: dim(0.55) }}>
+            {p.email || p.user_id}
+          </span>
+          {p.approved === false && (
+            <span className="mt-1 block" style={{ color: "#E3A857" }}>
+              onay bekliyor
+            </span>
+          )}
+        </span>
+      )}
+    </button>
+  );
+}
+
+export function LobbyStage({ data, config, isAdmin, user, refresh }: StageContext) {
   const { basket, participants } = data;
   const [sub, setSub] = useState<Sub>("invite");
 
@@ -29,6 +70,22 @@ export function LobbyStage({ data, config, isAdmin, refresh }: StageContext) {
     patch({ groups: { count: 3, size: 4, assignment: "random", ...config.groups, ...g } });
   const patchDuration = (d: Partial<NonNullable<HackathonConfig["duration"]>>) =>
     patch({ duration: { value: 1, unit: "day", ...config.duration, ...d } });
+
+  const approved = participants.filter((p) => p.approved !== false);
+  const pending = participants.filter((p) => p.approved === false);
+
+  const approve = async (userId: string) => {
+    await fetch("/api/lobby/join", {
+      method: "PATCH",
+      headers: authHeaders(user.email, basket.tenant_id),
+      body: JSON.stringify({
+        basket_id: basket.id,
+        action: "approve",
+        user_id: userId,
+      }),
+    });
+    refresh();
+  };
 
   const prevOf = (s: Sub): Sub | null => {
     switch (s) {
@@ -49,12 +106,26 @@ export function LobbyStage({ data, config, isAdmin, refresh }: StageContext) {
 
   const start = () => setBasketPhase(basket.id, "idea").then(refresh);
 
-  // ── katılımcı (admin değil) → sade bekleme ──
+  // ── katılımcı (admin değil) ──
   if (!isAdmin) {
     return (
-      <div className="mx-auto flex min-h-[60vh] max-w-[680px] flex-col justify-center text-center">
-        <StageHeadline pre="Lobide" accent="bekle" sub={`${basket.created_by ?? "Admin"} kuruyor. Başlayınca ekran değişecek.`} />
-        <p className="text-[0.95rem]" style={{ color: dim(0.5) }}>{participants.length} kişi katıldı</p>
+      <div className="mx-auto flex min-h-[60vh] max-w-[680px] flex-col justify-center text-center" data-testid="lobby-member">
+        <StageHeadline
+          pre="Lobide"
+          accent="bekle"
+          sub={`${basket.created_by ?? "Admin"} kuruyor. Başlayınca ekran değişecek.`}
+        />
+        <p className="mt-2 text-[0.95rem]" style={{ color: GOLD_SOFT }} data-testid="lobby-idea-status">
+          {ideaStatusLabel(config)}
+        </p>
+        <p className="mt-3 text-[0.95rem]" style={{ color: dim(0.5) }}>
+          {approved.length} kişi katıldı
+        </p>
+        <div className="mt-5 flex flex-wrap justify-center gap-2">
+          {approved.map((p) => (
+            <ParticipantChip key={p.id} p={p} />
+          ))}
+        </div>
       </div>
     );
   }
@@ -75,7 +146,56 @@ export function LobbyStage({ data, config, isAdmin, refresh }: StageContext) {
         <>
           <StageHeadline pre="Önce ekibi" accent="topla" sub="Linki paylaş — açan herkes iş e-postasıyla lobiye katılır. Sonra akışı kur." />
           <InvitePanel basketId={basket.id} />
-          <p className="mt-5 text-center text-[0.92rem]" style={{ color: dim(0.5) }}>{participants.length} kişi katıldı</p>
+          <div className="mx-auto mt-6 flex max-w-[640px] flex-col gap-3" data-testid="lobby-policy">
+            <Segmented
+              label="Katılım"
+              value={config.lobbyPolicy ?? "open"}
+              onChange={(v) => patch({ lobbyPolicy: v })}
+              options={[
+                { v: "open", label: "Açık" },
+                { v: "approval", label: "Onaylı" },
+              ]}
+            />
+            <Segmented
+              label="Geç katılım"
+              value={config.allowLateJoin ? "on" : "off"}
+              onChange={(v) => patch({ allowLateJoin: v === "on" })}
+              options={[
+                { v: "off", label: "Kapalı" },
+                { v: "on", label: "Açık" },
+              ]}
+            />
+          </div>
+          <p className="mt-5 text-center text-[0.92rem]" style={{ color: dim(0.5) }}>
+            {approved.length} kişi · {pending.length} onay bekliyor
+          </p>
+          <div className="mt-3 flex flex-wrap justify-center gap-2">
+            {participants.map((p) => (
+              <ParticipantChip key={p.id} p={p} />
+            ))}
+          </div>
+          {pending.length > 0 && (
+            <div className="mx-auto mt-4 max-w-[480px]" data-testid="lobby-pending-list">
+              {pending.map((p) => (
+                <div
+                  key={p.id}
+                  className="mb-2 flex items-center justify-between rounded-xl px-3 py-2"
+                  style={{ background: "var(--surface-2)" }}
+                >
+                  <span style={{ color: "var(--text)" }}>{p.display_name || p.email}</span>
+                  <button
+                    type="button"
+                    className="rounded-full px-3 py-1 text-[0.8rem] font-semibold"
+                    style={{ background: GOLD, color: "#17150F" }}
+                    onClick={() => void approve(p.user_id)}
+                    data-testid={`approve-${p.user_id}`}
+                  >
+                    Onayla
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </>
       )}
 

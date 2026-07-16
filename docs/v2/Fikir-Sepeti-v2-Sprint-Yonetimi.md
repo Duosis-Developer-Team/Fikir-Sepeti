@@ -167,7 +167,7 @@ Ajan her sprint sonunda bu tabloyu günceller ve commit eder.
 | S8 | ★ Analitik huni | ✅ geçti | 🚦 Duo | docs/sprints/S8-report.md — teaser + full gate; ürün kapısı ayrı |
 | S9 | Moderasyon + denetim | ✅ geçti | — | docs/sprints/S9-report.md — warn/block + kuyruk + audit |
 | S10 | Proje bazlı feedback | ✅ geçti | — | docs/sprints/S10-report.md — team_id UI + gruplu sonuç |
-| S11 | Lobi kontrolü + davet | ⬜ bekliyor | — | |
+| S11 | Lobi kontrolü + davet | ✅ geçti | — | docs/sprints/S11-report.md — approval/lock + InvitePanel |
 
 **Durum kodları:** ⬜ bekliyor · 🟡 devam · ✅ geçti · 🔴 kapı kırmızı · ⏸️ Duo bekliyor
 

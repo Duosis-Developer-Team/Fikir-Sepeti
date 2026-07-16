@@ -10,6 +10,7 @@ import { ResultScreen } from "@/components/shared/ResultScreen";
 import { Avatars } from "@/components/shared/Avatars";
 import { IdeaInput } from "./IdeaInput";
 import { RaffleReveal } from "./RaffleReveal";
+import { InvitePanel } from "@/components/hackathon/InvitePanel";
 import { soft, type Accent } from "@/lib/accent";
 import type { Basket } from "@/lib/types";
 
@@ -135,6 +136,8 @@ export function SocialBasket({ basket: initial, voter, accent }: { basket: Baske
           {isRaffle ? "kura" : "canlı"}
         </span>
       </div>
+
+      {isOwner && <InvitePanel basketId={b.id} />}
 
       {/* mantık açıklaması */}
       <p className="-mt-2 text-[0.9rem] leading-relaxed" style={{ color: "var(--text-muted)" }}>

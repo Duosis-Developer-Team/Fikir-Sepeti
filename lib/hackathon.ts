@@ -22,6 +22,7 @@ export async function joinLobby(input: {
   email: string | null;
   display_name: string | null;
   role?: "admin" | "member";
+  approved?: boolean;
 }) {
   await supabase.from("hackathon_participants").upsert(
     {
@@ -31,9 +32,42 @@ export async function joinLobby(input: {
       email: input.email,
       display_name: input.display_name,
       role: input.role ?? "member",
+      approved: input.approved ?? true,
     },
     { onConflict: "basket_id,user_id" }
   );
+}
+
+/** Server-gated join via /api/lobby/join. */
+export async function joinLobbyGated(input: {
+  basket_id: string;
+  email: string;
+  tenant_id: string;
+  display_name: string | null;
+}): Promise<{ ok: boolean; approved?: boolean; error?: string }> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (process.env.NEXT_PUBLIC_AUTH_BYPASS === "1") {
+    headers["X-Dev-User"] = JSON.stringify({
+      email: input.email,
+      tenantId: input.tenant_id,
+    });
+  }
+  const res = await fetch("/api/lobby/join", {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      basket_id: input.basket_id,
+      display_name: input.display_name,
+    }),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    return { ok: false, error: (json as { error?: string }).error ?? "join_failed" };
+  }
+  return {
+    ok: true,
+    approved: (json as { approved?: boolean }).approved,
+  };
 }
 
 export async function listParticipants(basketId: string): Promise<Participant[]> {

@@ -4,7 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { supabase } from "@/lib/supabase";
 import { setBasketPhase } from "@/lib/db";
-import { joinLobby, listParticipants, listScores, listTeamMembers, listTeamVotes, listTeams, startHackathonTimer } from "@/lib/hackathon";
+import { joinLobbyGated, listParticipants, listScores, listTeamMembers, listTeamVotes, listTeams, startHackathonTimer } from "@/lib/hackathon";
+import { decideLobbyJoin } from "@/lib/lobby";
 import { useSession } from "@/components/AuthGate";
 import type { Basket, Idea, Score } from "@/lib/types";
 import type { HackData, StageContext, StageDef, StagePhase } from "./contract";
@@ -33,6 +34,9 @@ export function HackathonRunner({ basketId }: { basketId: string }) {
   const { user } = useSession();
   const [data, setData] = useState<HackData | null>(null);
   const joined = useRef(false);
+
+  const [joinBlocked, setJoinBlocked] = useState(false);
+  const [joinPending, setJoinPending] = useState(false);
 
   const load = useCallback(async () => {
     const [basketRes, ideasRes, participants, teams, members, teamVotes, scores] = await Promise.all([
@@ -72,25 +76,68 @@ export function HackathonRunner({ basketId }: { basketId: string }) {
     return () => { supabase.removeChannel(ch); };
   }, [basketId, load]);
 
-  // lobiye katıl (bir kez) — açan admin, diğerleri member
+  // lobiye katıl (bir kez) — gated API
   useEffect(() => {
     if (!user || !data || joined.current) return;
     joined.current = true;
     const isOwner = data.basket.created_by === user.email;
-    if (!data.participants.some((p) => p.user_id === user.email)) {
-      void joinLobby({
-        basket_id: basketId,
-        tenant_id: data.basket.tenant_id,
-        user_id: user.email,
-        email: user.email,
-        display_name: user.name,
-        role: isOwner ? "admin" : "member",
-      }).then(load);
+    const already = data.participants.some((p) => p.user_id === user.email);
+    if (already) {
+      const me = data.participants.find((p) => p.user_id === user.email);
+      if (me && me.approved === false) setJoinPending(true);
+      return;
     }
+    const preview = decideLobbyJoin({
+      basket: data.basket,
+      isOwner,
+    });
+    if (!preview.ok) {
+      setJoinBlocked(true);
+      return;
+    }
+    void joinLobbyGated({
+      basket_id: basketId,
+      email: user.email,
+      tenant_id: data.basket.tenant_id,
+      display_name: user.name,
+    }).then((r) => {
+      if (!r.ok) {
+        setJoinBlocked(true);
+        return;
+      }
+      if (r.approved === false) setJoinPending(true);
+      void load();
+    });
   }, [user, data, basketId, load]);
 
   if (!user || !data) {
     return <div className="mx-auto mt-20 h-40 max-w-[760px] animate-pulse rounded-[22px]" style={{ background: "var(--card)" }} />;
+  }
+
+  if (joinBlocked) {
+    return (
+      <div className="mx-auto mt-24 max-w-[520px] px-6 text-center" data-testid="lobby-locked">
+        <p className="font-display text-[1.6rem] font-bold" style={{ color: "var(--text)" }}>
+          Lobi kilitli
+        </p>
+        <p className="mt-2 text-[0.95rem]" style={{ color: dim(0.55) }}>
+          Bu hackathon başlamış veya katılım kapalı. Geç katılım açıksa admin ayarından girebilirsin.
+        </p>
+      </div>
+    );
+  }
+
+  if (joinPending) {
+    return (
+      <div className="mx-auto mt-24 max-w-[520px] px-6 text-center" data-testid="lobby-pending">
+        <p className="font-display text-[1.6rem] font-bold" style={{ color: "var(--text)" }}>
+          Onay bekleniyor
+        </p>
+        <p className="mt-2 text-[0.95rem]" style={{ color: dim(0.55) }}>
+          Admin seni onaylayınca lobiye gireceksin.
+        </p>
+      </div>
+    );
   }
 
   const phase = (PHASE_ORDER.includes(data.basket.phase as StagePhase) ? data.basket.phase : "lobby") as StagePhase;

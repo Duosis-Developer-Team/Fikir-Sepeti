@@ -51,6 +51,10 @@ export type HackathonConfig = {
   juryEnabled?: boolean;
   /** Multiplier for jury scores when juryEnabled (default 2). */
   juryWeight?: number;
+  /** S11: open = auto join; approval = admin must approve. */
+  lobbyPolicy?: "open" | "approval";
+  /** S11: allow join after lobby phase when locked. */
+  allowLateJoin?: boolean;
 };
 
 export type PoolStatus = "new" | "voting" | "promoted" | "archived" | "rejected";
@@ -92,6 +96,8 @@ export type Basket = {
   production_note?: string | null;
   /** S8: estimated person-days. */
   effort_estimate?: number | null;
+  /** S11: new joins blocked when true (unless allowLateJoin). */
+  lobby_locked?: boolean;
 };
 
 export type Tenant = {
@@ -111,6 +117,8 @@ export type Participant = {
   display_name: string | null;
   role: "admin" | "member";
   joined_at: string;
+  /** S11: false when lobbyPolicy=approval and pending. */
+  approved?: boolean;
 };
 
 export type Team = {
