@@ -20,7 +20,7 @@ export default function LoginPage() {
   const [draft, setDraft] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  if (!ready || user) {
+  if (!ready || user?.tenantId) {
     return (
       <div className="flex min-h-screen items-center justify-center px-6" style={{ background: "var(--bg)" }}>
         <p className="text-sm" style={{ color: "var(--text-faint)" }}>
@@ -74,12 +74,19 @@ export default function LoginPage() {
               </p>
             )}
             <p className="mt-2 text-[0.8rem]" style={{ color: "var(--text-muted)" }}>
-              Domain&apos;iniz tenant listesinde kayıtlı değil. Erişim reddedildi.
+              Domain&apos;iniz kayıtlı değil. Çalışma alanı oluşturabilir veya davet koduyla katılabilirsin.
             </p>
+            <a
+              href="/register"
+              className="mt-3 flex w-full items-center justify-center rounded-full py-2 text-[0.85rem] font-semibold transition hover:opacity-90"
+              style={{ background: "var(--clay)", color: "#161616" }}
+            >
+              Kayıt / çalışma alanı
+            </a>
             <button
               type="button"
               onClick={signOut}
-              className="mt-3 w-full rounded-full py-2 text-[0.85rem] font-semibold transition hover:opacity-90"
+              className="mt-2 w-full rounded-full py-2 text-[0.85rem] font-semibold transition hover:opacity-90"
               style={{ background: "rgba(242,121,95,0.2)", color: "#F2795F" }}
             >
               Çıkış yap / farklı hesap dene

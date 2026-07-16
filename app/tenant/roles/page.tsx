@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useNameContext, useSession } from "@/components/AuthGate";
 import { PERMISSIONS } from "@/lib/permissions";
+import { supabase } from "@/lib/supabase";
 
 type Role = { id: string; key: string; label: string; is_system: boolean };
 type Assignment = { id: string; user_id: string; role_id: string; scope_basket_id: string | null };
@@ -26,6 +27,8 @@ export default function TenantRolesPage() {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [inviteCode, setInviteCode] = useState<string | null>(null);
+  const [inviteBusy, setInviteBusy] = useState(false);
 
   const load = useCallback(async () => {
     if (!tenantId || !name) return;
@@ -68,6 +71,22 @@ export default function TenantRolesPage() {
     setBusy(false);
   };
 
+  const createInvite = async () => {
+    if (!tenantId) return;
+    setInviteBusy(true);
+    setInviteCode(null);
+    const { data, error: invErr } = await supabase.rpc("create_tenant_invite", {
+      p_tenant_id: tenantId,
+    });
+    if (invErr) {
+      setError(invErr.message);
+    } else {
+      setInviteCode(data as string);
+      setError(null);
+    }
+    setInviteBusy(false);
+  };
+
   if (!user) return null;
 
   return (
@@ -90,6 +109,33 @@ export default function TenantRolesPage() {
 
       {!error && (
         <>
+          <section className="mt-8 rounded-[22px] p-6" style={{ background: "var(--card)", border: "1px solid rgba(var(--border-rgb),0.09)" }}>
+            <h2 className="font-display text-[1.2rem] font-bold" style={{ color: "var(--text)" }}>
+              Davet kodu
+            </h2>
+            <p className="mt-2 text-[0.9rem]" style={{ color: "var(--text-muted)" }}>
+              Domain dışı kullanıcıları bu kodla çalışma alanına al.
+            </p>
+            <button
+              type="button"
+              disabled={inviteBusy}
+              onClick={() => void createInvite()}
+              className="mt-4 rounded-full px-4 py-2 text-[0.9rem] font-semibold disabled:opacity-40"
+              style={{ background: "var(--text)", color: "var(--bg)" }}
+            >
+              {inviteBusy ? "…" : "Kod üret"}
+            </button>
+            {inviteCode && (
+              <p
+                className="mt-3 font-display text-2xl font-bold tracking-[0.2em]"
+                style={{ color: "var(--clay)" }}
+                data-testid="invite-code"
+              >
+                {inviteCode}
+              </p>
+            )}
+          </section>
+
           <section className="mt-8 rounded-[22px] p-6" style={{ background: "var(--card)", border: "1px solid rgba(var(--border-rgb),0.09)" }}>
             <h2 className="font-display text-[1.2rem] font-bold" style={{ color: "var(--text)" }}>İzin matrisi</h2>
             <div className="mt-4 overflow-x-auto">

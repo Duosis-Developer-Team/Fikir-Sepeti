@@ -28,7 +28,7 @@ test.describe("login page + tenant gate", () => {
     await expect(page.getByRole("button", { name: /Yeni sepet|\+ Yeni/i }).first()).toBeVisible();
   });
 
-  test("unknown domain shows tenant denied", async ({ page }) => {
+  test("unknown domain on login goes to register onboarding", async ({ page }) => {
     await page.goto("/login");
     await page.evaluate(() => {
       for (const k of Object.keys(localStorage)) localStorage.removeItem(k);
@@ -37,11 +37,12 @@ test.describe("login page + tenant gate", () => {
 
     const input = page.getByPlaceholder(/Adın ya da iş e-postan/i);
     await expect(input).toBeVisible({ timeout: 15_000 });
-    await input.fill("x@unknown.com");
+    await input.fill(`x_${Date.now()}@unknown.com`);
     await page.getByRole("button", { name: "Devam" }).click();
 
-    await expect(page.getByText(/tanımlı çalışma alanı yok/i)).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText("x@unknown.com")).toBeVisible();
-    await expect(page.getByRole("button", { name: /Yeni sepet|\+ Yeni/i })).toHaveCount(0);
+    await expect(page).toHaveURL(/\/register/, { timeout: 20_000 });
+    await expect(page.getByRole("button", { name: /Çalışma alanı oluştur|Davet koduyla katıl/i }).first()).toBeVisible({
+      timeout: 15_000,
+    });
   });
 });

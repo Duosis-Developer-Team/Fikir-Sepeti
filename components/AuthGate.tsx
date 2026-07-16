@@ -13,6 +13,7 @@ import { supabase } from "@/lib/supabase";
 import { DEV_AUTH_PASSWORD } from "@/lib/dev-auth";
 import { azureTenantIdFromUser } from "@/lib/azure-claims";
 import { isPublicPath } from "@/lib/public-paths";
+import { normalizeInviteCode } from "@/lib/register";
 
 export type SessionUser = {
   id: string;
@@ -28,10 +29,17 @@ type Ctx = {
   tenantDenied: boolean;
   deniedEmail: string | null;
   loginError: string | null;
+  needsWorkspace: boolean;
   bypass: boolean;
   loginAzure: () => void;
+  /** Bypass/dev password login (seed or known domain). */
   devLogin: (draft: string) => Promise<void>;
+  /** Email+password sign-up / sign-in for /register. */
+  registerWithPassword: (email: string, password: string) => Promise<void>;
+  createWorkspace: (name: string, domain?: string | null) => Promise<void>;
+  joinWithInvite: (code: string) => Promise<void>;
   clearLoginError: () => void;
+  refreshBinding: () => Promise<void>;
 };
 
 const SessionContext = createContext<Ctx>({
@@ -41,10 +49,15 @@ const SessionContext = createContext<Ctx>({
   tenantDenied: false,
   deniedEmail: null,
   loginError: null,
+  needsWorkspace: false,
   bypass: false,
   loginAzure: () => {},
   devLogin: async () => {},
+  registerWithPassword: async () => {},
+  createWorkspace: async () => {},
+  joinWithInvite: async () => {},
   clearLoginError: () => {},
+  refreshBinding: async () => {},
 });
 
 export function useSession() {
@@ -74,7 +87,6 @@ async function resolveTenantForClaims(
     p_azure_tid: azureTid,
   });
   if (error) {
-    // Fallback for DBs that have not applied 0007 yet
     console.warn("resolve_tenant_for_claims", error);
     const legacy = await supabase.rpc("resolve_tenant_id_for_email", {
       p_email: email,
@@ -136,13 +148,14 @@ async function bindAfterAuth(
 function toUserBase(session: Session | null): Omit<SessionUser, "tenantId"> | null {
   const u = session?.user;
   if (!u) return null;
-  const email = u.email ?? "";
+  const email = (u.email ?? "").toLowerCase();
   const meta = u.user_metadata ?? {};
   const name = (meta.name as string) || (meta.full_name as string) || email;
   return { id: u.id, email, name };
 }
 
 const LOGIN_PATH = "/login";
+const REGISTER_PATH = "/register";
 
 export default function AuthGate({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<SessionUser | null>(null);
@@ -158,13 +171,16 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     const base = toUserBase(session);
     if (!base) {
       setUser(null);
+      setTenantDenied(false);
+      setDeniedEmail(null);
       return;
     }
     const azureTid = azureTenantIdFromUser(session?.user);
     const { tenantId, denied } = await bindAfterAuth(base.email, azureTid);
     setTenantDenied(denied);
     setDeniedEmail(denied ? base.email : null);
-    setUser(tenantId ? { ...base, tenantId } : null);
+    // Keep session identity even without a tenant (SG2 onboarding).
+    setUser({ ...base, tenantId });
   }, []);
 
   useEffect(() => {
@@ -183,18 +199,22 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     return () => sub.subscription.unsubscribe();
   }, [applySession]);
 
-  // Public: / landing, /login, /register. Else unauthenticated → /login.
-  // Authenticated on /login|/register → home.
+  const needsWorkspace = !!user && !user.tenantId;
+
   useEffect(() => {
     if (!ready) return;
     if (!user && !isPublicPath(pathname)) {
       router.replace(LOGIN_PATH);
       return;
     }
-    if (user && (pathname === LOGIN_PATH || pathname === "/register")) {
+    if (needsWorkspace && pathname !== REGISTER_PATH) {
+      router.replace(REGISTER_PATH);
+      return;
+    }
+    if (user?.tenantId && (pathname === LOGIN_PATH || pathname === REGISTER_PATH)) {
       router.replace("/");
     }
-  }, [ready, user, pathname, router]);
+  }, [ready, user, needsWorkspace, pathname, router]);
 
   const loginAzure = () => {
     setLoginError(null);
@@ -202,6 +222,88 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       provider: "azure",
       options: { scopes: "email openid profile", redirectTo: window.location.origin },
     });
+  };
+
+  const refreshBinding = async () => {
+    const { data } = await supabase.auth.getSession();
+    await applySession(data.session);
+  };
+
+  const ensurePasswordSession = async (email: string, password: string) => {
+    const lower = email.toLowerCase();
+    const first = await supabase.auth.signInWithPassword({ email: lower, password });
+    if (first.data.session) return first.data.session;
+    const { error: upErr } = await supabase.auth.signUp({
+      email: lower,
+      password,
+      options: { data: { name: lower.split("@")[0] } },
+    });
+    if (upErr && !/already|registered/i.test(upErr.message)) {
+      throw new Error(upErr.message);
+    }
+    const second = await supabase.auth.signInWithPassword({ email: lower, password });
+    if (!second.data.session) {
+      throw new Error(second.error?.message ?? "Giriş başarısız");
+    }
+    return second.data.session;
+  };
+
+  const registerWithPassword = async (email: string, password: string) => {
+    setLoginError(null);
+    setTenantDenied(false);
+    setDeniedEmail(null);
+    try {
+      const session = await ensurePasswordSession(email.trim(), password);
+      await applySession(session);
+    } catch (e) {
+      setLoginError(e instanceof Error ? e.message : "Kayıt başarısız");
+      throw e;
+    }
+  };
+
+  const createWorkspace = async (name: string, domain?: string | null) => {
+    setLoginError(null);
+    const email = user?.email;
+    if (!email) {
+      setLoginError("Önce hesap oluştur");
+      throw new Error("no session");
+    }
+    const { data, error } = await supabase.rpc("create_tenant_for_user", {
+      p_name: name,
+      p_domain: domain ?? null,
+      p_email: email,
+    });
+    if (error) {
+      setLoginError(error.message);
+      throw error;
+    }
+    if (!data) {
+      setLoginError("Çalışma alanı oluşturulamadı");
+      throw new Error("no tenant");
+    }
+    await applySession((await supabase.auth.getSession()).data.session);
+  };
+
+  const joinWithInvite = async (code: string) => {
+    setLoginError(null);
+    const email = user?.email;
+    if (!email) {
+      setLoginError("Önce hesap oluştur");
+      throw new Error("no session");
+    }
+    const { data, error } = await supabase.rpc("join_tenant_by_invite", {
+      p_code: normalizeInviteCode(code),
+      p_email: email,
+    });
+    if (error) {
+      setLoginError(error.message);
+      throw error;
+    }
+    if (!data) {
+      setLoginError("Davet geçersiz");
+      throw new Error("no tenant");
+    }
+    await applySession((await supabase.auth.getSession()).data.session);
   };
 
   const devLogin = async (draft: string) => {
@@ -212,30 +314,18 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     setTenantDenied(false);
     setDeniedEmail(null);
 
-    const tenantIdPre = await resolveTenantForClaims(email, null);
-    if (!tenantIdPre) {
-      setTenantDenied(true);
-      setDeniedEmail(email);
-      setUser(null);
-      return;
+    try {
+      const session = await ensurePasswordSession(email, DEV_AUTH_PASSWORD);
+      const base = toUserBase(session);
+      if (!base) return;
+      const azureTid = azureTenantIdFromUser(session.user);
+      const { tenantId, denied } = await bindAfterAuth(base.email, azureTid);
+      setTenantDenied(denied);
+      setDeniedEmail(denied ? base.email : null);
+      setUser({ ...base, name: clean.includes("@") ? base.name : clean, tenantId });
+    } catch (e) {
+      setLoginError(e instanceof Error ? e.message : "Giriş başarısız — seed kullanıcı mı?");
     }
-
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password: DEV_AUTH_PASSWORD,
-    });
-    if (error || !data.session) {
-      setLoginError(error?.message ?? "Giriş başarısız — seed kullanıcı mı?");
-      return;
-    }
-
-    const base = toUserBase(data.session);
-    if (!base) return;
-    const azureTid = azureTenantIdFromUser(data.session.user);
-    const { tenantId, denied } = await bindAfterAuth(base.email, azureTid);
-    setTenantDenied(denied);
-    setDeniedEmail(denied ? base.email : null);
-    setUser(tenantId ? { ...base, name: clean, tenantId } : null);
   };
 
   const signOut = () => {
@@ -255,14 +345,20 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     tenantDenied,
     deniedEmail,
     loginError,
+    needsWorkspace,
     bypass,
     loginAzure,
     devLogin,
+    registerWithPassword,
+    createWorkspace,
+    joinWithInvite,
     clearLoginError,
+    refreshBinding,
   };
 
-  // While redirecting away from protected routes, render nothing for content
-  const showApp = ready && (!!user || isPublicPath(pathname));
+  const showApp =
+    ready &&
+    (!!user || isPublicPath(pathname) || (needsWorkspace && pathname === REGISTER_PATH));
 
   return (
     <SessionContext.Provider value={value}>

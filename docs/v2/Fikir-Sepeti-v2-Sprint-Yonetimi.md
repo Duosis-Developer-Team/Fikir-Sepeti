@@ -162,7 +162,7 @@ Ajan her sprint sonunda bu tabloyu günceller ve commit eder.
 | S7 | Puanlama (rubrik + jüri) | ⏸️ Duo bekliyor | 🚦 Duo basitlik | docs/sprints/S7-report.md — kod geçti, basitlik kapısı bekliyor |
 | D1 | ★ Production yayın | ✅ geçti | — | docs/sprints/D1-report.md — MCP 0002–0009; duosis.com resolve ✅ |
 | SG1 | Landing + giriş noktaları | ✅ geçti | — | docs/sprints/SG1-report.md — oturumsuz `/` landing; /register stub |
-| SG2 | Kayıt + self-serve tenant | ⬜ bekliyor | — | e-posta+Azure kayıt; domain'siz bireysel tenant; davet |
+| SG2 | Kayıt + self-serve tenant | ✅ geçti | — | docs/sprints/SG2-report.md — 0010 + /register + davet |
 | SG3 | Platform yönetim paneli | ⬜ bekliyor | — | `/admin`: tenant/plan/askıya alma; platform→tenant→kullanıcı |
 | S8 | ★ Analitik huni | ⬜ bekliyor | 🚦 Duo | v2'nin asıl sınavı; giriş: SG serisi tamam |
 | S9 | Moderasyon + denetim | ⬜ bekliyor | — | |

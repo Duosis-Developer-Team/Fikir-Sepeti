@@ -378,6 +378,16 @@ export default function Home() {
     return <LandingPage />;
   }
 
+  if (!user.tenantId) {
+    return (
+      <div className="flex min-h-screen items-center justify-center" style={{ background: "var(--bg)" }}>
+        <p className="text-sm" style={{ color: "var(--text-faint)" }}>
+          Çalışma alanına yönlendiriliyor…
+        </p>
+      </div>
+    );
+  }
+
   const onCreate = async (input: { title: string; type: BasketType; resolve_method: ResolveMethod }) => {
     if (!tenantId) return;
     const created = await createBasket({ ...input, created_by: name, tenant_id: tenantId });
