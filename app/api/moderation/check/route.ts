@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { evaluateText } from "@/lib/server-moderation";
 import { warnMessage } from "@/lib/moderation";
-import { resolveIdentity, supabaseAdmin } from "@/lib/server-auth";
+import { resolveIdentity, getDb } from "@/lib/server-auth";
 
 /** POST /api/moderation/check — preview matches without writing. */
 export async function POST(req: Request) {
@@ -16,7 +16,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "text_required" }, { status: 400 });
   }
 
-  const result = await evaluateText(supabaseAdmin(), identity.tenantId, text);
+  const result = await evaluateText(getDb(req), identity.tenantId, text);
   return NextResponse.json({
     ...result,
     message: result.action === "warn" ? warnMessage(result.hits) : null,

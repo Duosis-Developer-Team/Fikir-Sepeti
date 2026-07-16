@@ -1,22 +1,29 @@
 import { NextResponse } from "next/server";
 import {
   resolveIdentity,
-  supabaseAdmin,
+  getDb,
   userHasPermission,
 } from "@/lib/server-auth";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 async function canViewBasket(
+  sb: SupabaseClient,
+  req: Request,
   tenantId: string,
   userId: string,
   email: string,
   basket: { id: string; created_by: string | null; tenant_id: string }
 ): Promise<boolean> {
   if (basket.tenant_id !== tenantId) return false;
-  const viewAll = await userHasPermission(tenantId, userId, "archive.view_all");
+  const viewAll = await userHasPermission(
+    tenantId,
+    userId,
+    "archive.view_all",
+    req
+  );
   if (viewAll) return true;
   if (basket.created_by === email || basket.created_by === userId) return true;
 
-  const sb = supabaseAdmin();
   const { data: part } = await sb
     .from("hackathon_participants")
     .select("id")
@@ -45,7 +52,7 @@ export async function GET(
   }
 
   const { basketId } = await ctx.params;
-  const sb = supabaseAdmin();
+  const sb = getDb(req);
   const { data: basket, error } = await sb
     .from("baskets")
     .select("*")
@@ -57,6 +64,8 @@ export async function GET(
   }
 
   const ok = await canViewBasket(
+    sb,
+    req,
     identity.tenantId,
     identity.userId,
     identity.email,
@@ -73,7 +82,10 @@ export async function GET(
         .select("*")
         .eq("basket_id", basketId)
         .order("vote_count", { ascending: false }),
-      sb.from("votes").select("id, idea_id, phase, voter, created_at").eq("basket_id", basketId),
+      sb
+        .from("votes")
+        .select("id, idea_id, phase, voter, created_at")
+        .eq("basket_id", basketId),
       sb.from("hackathon_participants").select("*").eq("basket_id", basketId),
       sb.from("teams").select("*").eq("basket_id", basketId),
       sb.from("team_members").select("*").eq("basket_id", basketId),
@@ -88,12 +100,14 @@ export async function GET(
   const canModerate = await userHasPermission(
     identity.tenantId,
     identity.userId,
-    "content.moderate"
+    "content.moderate",
+    req
   );
   const canViewVotes = await userHasPermission(
     identity.tenantId,
     identity.userId,
-    "vote.view_all"
+    "vote.view_all",
+    req
   );
 
   const ideaRows = (ideas.data ?? []).filter(

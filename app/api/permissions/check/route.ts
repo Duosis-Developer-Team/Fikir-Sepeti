@@ -20,7 +20,7 @@ export async function GET(req: Request) {
     identity.tenantId,
     identity.userId,
     permission,
-    basketId
-  );
+    basketId,
+    req);
   return NextResponse.json({ allowed });
 }

@@ -257,6 +257,7 @@ export async function listScores(basketId: string): Promise<Score[]> {
   return (data as Score[]) ?? [];
 }
 
+/** Upsert via /api/scores so is_jury is derived server-side from hackathon.jury. */
 export async function upsertScore(input: {
   basket_id: string;
   tenant_id: string;
@@ -264,18 +265,20 @@ export async function upsertScore(input: {
   voter: string;
   category_key: string;
   stars: number;
-  is_jury: boolean;
 }) {
-  await supabase.from("scores").upsert(
-    {
+  const { apiAuthHeaders } = await import("./api-headers");
+  const res = await fetch("/api/scores", {
+    method: "POST",
+    headers: await apiAuthHeaders(input.voter, input.tenant_id),
+    body: JSON.stringify({
       basket_id: input.basket_id,
-      tenant_id: input.tenant_id,
       team_id: input.team_id,
-      voter: input.voter,
       category_key: input.category_key,
       stars: input.stars,
-      is_jury: input.is_jury,
-    },
-    { onConflict: "basket_id,team_id,voter,category_key" }
-  );
+    }),
+  });
+  if (!res.ok) {
+    const json = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(json.error ?? "score_failed");
+  }
 }

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   resolveIdentity,
-  supabaseAdmin,
+  getDb,
   userHasPermission,
 } from "@/lib/server-auth";
 import { writeAudit } from "@/lib/server-moderation";
@@ -15,14 +15,14 @@ export async function GET(req: Request) {
   const can = await userHasPermission(
     identity.tenantId,
     identity.userId,
-    "content.moderate"
-  );
+    "content.moderate",
+    req);
   if (!can) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
   const status = new URL(req.url).searchParams.get("status") ?? "pending";
-  const sb = supabaseAdmin();
+  const sb = getDb(req);
   const { data, error } = await sb
     .from("content_flags")
     .select("*")
@@ -48,8 +48,8 @@ export async function PATCH(req: Request) {
   const can = await userHasPermission(
     identity.tenantId,
     identity.userId,
-    "content.moderate"
-  );
+    "content.moderate",
+    req);
   if (!can) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
@@ -62,7 +62,7 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: "invalid_body" }, { status: 400 });
   }
 
-  const sb = supabaseAdmin();
+  const sb = getDb(req);
   const { data: flag, error: fetchErr } = await sb
     .from("content_flags")
     .select("*")

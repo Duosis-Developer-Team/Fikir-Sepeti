@@ -8,7 +8,7 @@ import {
 } from "@/lib/analytics";
 import {
   resolveIdentity,
-  supabaseAdmin,
+  getDb,
   userHasPermission,
 } from "@/lib/server-auth";
 
@@ -43,8 +43,8 @@ export async function GET(req: Request) {
   const canView = await userHasPermission(
     identity.tenantId,
     identity.userId,
-    "analytics.view"
-  );
+    "analytics.view",
+    req);
 
   if (wantFull && !canView) {
     return NextResponse.json(
@@ -53,7 +53,7 @@ export async function GET(req: Request) {
     );
   }
 
-  const sb = supabaseAdmin();
+  const sb = getDb(req);
   const tenantId = identity.tenantId;
 
   const [
@@ -64,6 +64,7 @@ export async function GET(req: Request) {
     { data: poolRows },
     { data: votes },
     { data: participants },
+    { count: memberCount },
   ] = await Promise.all([
     sb
       .from("ideas")
@@ -90,7 +91,13 @@ export async function GET(req: Request) {
       .from("hackathon_participants")
       .select("user_id, email, joined_at, basket_id")
       .eq("tenant_id", tenantId),
+    sb
+      .from("app_users")
+      .select("*", { count: "exact", head: true })
+      .eq("tenant_id", tenantId),
   ]);
+
+  const tenantCapacity = Math.max(memberCount ?? 1, 1);
 
   const votedIdeaIds = new Set<string>();
   for (const v of ideaIdsWithVotes ?? []) {
@@ -148,7 +155,7 @@ export async function GET(req: Request) {
     lastEtkinlik.map((b) => ({
       basketId: b.id,
       participantCount: voteByBasket.get(b.id)?.size ?? 0,
-      capacityHint: Math.max(voteByBasket.get(b.id)?.size ?? 0, 1),
+      capacityHint: tenantCapacity,
     }))
   );
 

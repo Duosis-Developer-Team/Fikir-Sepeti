@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   resolveIdentity,
-  supabaseAdmin,
+  getDb,
   userHasPermission,
 } from "@/lib/server-auth";
 
@@ -28,18 +28,18 @@ export async function PATCH(req: Request) {
   const canManage = await userHasPermission(
     identity.tenantId,
     identity.userId,
-    "hackathon.manage"
-  );
+    "hackathon.manage",
+    req);
   const canAnalytics = await userHasPermission(
     identity.tenantId,
     identity.userId,
-    "analytics.view"
-  );
+    "analytics.view",
+    req);
   if (!canManage && !canAnalytics) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
-  const sb = supabaseAdmin();
+  const sb = getDb(req);
   const { data: basket, error: fetchErr } = await sb
     .from("baskets")
     .select("id, tenant_id, status")

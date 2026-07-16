@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   resolveIdentity,
-  supabaseAdmin,
+  getDb,
   userHasPermission,
 } from "@/lib/server-auth";
 
@@ -16,7 +16,7 @@ export async function GET(req: Request) {
   const type = url.searchParams.get("type"); // etkinlik | hackathon | null
   const q = (url.searchParams.get("q") ?? "").trim().toLowerCase();
 
-  const sb = supabaseAdmin();
+  const sb = getDb(req);
   let query = sb
     .from("baskets")
     .select("id, title, type, phase, status, winner_idea_id, selected_idea_id, created_by, created_at, hackathon_ends_at, tenant_id, config")
@@ -36,8 +36,8 @@ export async function GET(req: Request) {
   const viewAll = await userHasPermission(
     identity.tenantId,
     identity.userId,
-    "archive.view_all"
-  );
+    "archive.view_all",
+    req);
 
   let rows = baskets ?? [];
 

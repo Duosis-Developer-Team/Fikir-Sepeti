@@ -5,7 +5,7 @@ import {
   writeAudit,
 } from "@/lib/server-moderation";
 import { warnMessage } from "@/lib/moderation";
-import { resolveIdentity, supabaseAdmin } from "@/lib/server-auth";
+import { resolveIdentity, getDb } from "@/lib/server-auth";
 
 /** POST /api/content/feedback — moderated feedback create. */
 export async function POST(req: Request) {
@@ -27,7 +27,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "invalid_body" }, { status: 400 });
   }
 
-  const sb = supabaseAdmin();
+  const sb = getDb(req);
   const { data: basket } = await sb
     .from("baskets")
     .select("id, tenant_id")

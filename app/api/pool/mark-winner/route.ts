@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   resolveIdentity,
-  supabaseAdmin,
+  getDb,
   userHasPermission,
 } from "@/lib/server-auth";
 
@@ -15,8 +15,8 @@ export async function POST(req: Request) {
   const allowed = await userHasPermission(
     identity.tenantId,
     identity.userId,
-    "pool.promote"
-  );
+    "pool.promote",
+    req);
   if (!allowed) {
     return NextResponse.json({ error: "forbidden", permission: "pool.promote" }, { status: 403 });
   }
@@ -32,7 +32,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "invalid_input" }, { status: 400 });
   }
 
-  const sb = supabaseAdmin();
+  const sb = getDb(req);
   const { data, error } = await sb
     .from("idea_pool")
     .update({ winner_label: body.winner_label.trim() })

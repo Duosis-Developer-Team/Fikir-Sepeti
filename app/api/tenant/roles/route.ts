@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   resolveIdentity,
-  supabaseAdmin,
+  getDb,
   userHasPermission,
 } from "@/lib/server-auth";
 
@@ -13,11 +13,11 @@ export async function GET(req: Request) {
   const can = await userHasPermission(
     identity.tenantId,
     identity.userId,
-    "tenant.manage_roles"
-  );
+    "tenant.manage_roles",
+    req);
   if (!can) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
-  const sb = supabaseAdmin();
+  const sb = getDb(req);
   const [{ data: roles }, { data: assignments }, { data: users }] = await Promise.all([
     sb.from("roles").select("id, key, label, is_system, tenant_id").or(`tenant_id.is.null,tenant_id.eq.${identity.tenantId}`),
     sb.from("user_roles").select("id, user_id, role_id, scope_basket_id").eq("tenant_id", identity.tenantId),
@@ -48,8 +48,8 @@ export async function POST(req: Request) {
   const can = await userHasPermission(
     identity.tenantId,
     identity.userId,
-    "tenant.manage_roles"
-  );
+    "tenant.manage_roles",
+    req);
   if (!can) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
   const body = (await req.json()) as {
@@ -59,7 +59,7 @@ export async function POST(req: Request) {
     scopeBasketId?: string | null;
   };
 
-  const sb = supabaseAdmin();
+  const sb = getDb(req);
   if (body.action === "assign") {
     const { error } = await sb.from("user_roles").insert({
       tenant_id: identity.tenantId,

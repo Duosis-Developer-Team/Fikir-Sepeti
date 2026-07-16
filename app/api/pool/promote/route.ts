@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   resolveIdentity,
-  supabaseAdmin,
+  getDb,
   userHasPermission,
 } from "@/lib/server-auth";
 import type { BasketType } from "@/lib/types";
@@ -15,8 +15,8 @@ export async function POST(req: Request) {
   const allowed = await userHasPermission(
     identity.tenantId,
     identity.userId,
-    "pool.promote"
-  );
+    "pool.promote",
+    req);
   if (!allowed) {
     return NextResponse.json({ error: "forbidden", permission: "pool.promote" }, { status: 403 });
   }
@@ -43,13 +43,13 @@ export async function POST(req: Request) {
   const canCreate = await userHasPermission(
     identity.tenantId,
     identity.userId,
-    createPerm
-  );
+    createPerm,
+    req);
   if (!canCreate) {
     return NextResponse.json({ error: "forbidden", permission: createPerm }, { status: 403 });
   }
 
-  const sb = supabaseAdmin();
+  const sb = getDb(req);
   const { data: poolRows, error: pErr } = await sb
     .from("idea_pool")
     .select("*")

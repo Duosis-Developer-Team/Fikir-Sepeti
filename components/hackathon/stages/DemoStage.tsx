@@ -16,8 +16,6 @@ export function DemoStage({ data, user, config, refresh }: StageContext) {
   const rubric: RubricCategory[] = config.rubric?.length ? config.rubric : DEFAULT_RUBRIC;
   const [activeTeam, setActiveTeam] = useState<string | null>(teams[0]?.id ?? null);
 
-  const isJury = false; // jury flag set by role assignment in future; weight tested via seeded is_jury rows
-
   const votesOf = (teamId: string) => teamVotes.filter((v) => v.team_id === teamId).length;
   const sorted = [...teams].sort((a, b) => votesOf(b.id) - votesOf(a.id));
   const max = Math.max(1, ...teams.map((t) => votesOf(t.id)));
@@ -48,7 +46,6 @@ export function DemoStage({ data, user, config, refresh }: StageContext) {
       voter: user.email,
       category_key: key,
       stars,
-      is_jury: isJury,
     });
     refresh();
   };

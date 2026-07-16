@@ -4,8 +4,8 @@ import { supabase } from "./supabase";
 
 /**
  * Headers for browser → Next API routes.
- * Prod: Authorization Bearer from Supabase session.
- * CI/dev bypass: X-Dev-User (NEXT_PUBLIC_AUTH_BYPASS=1).
+ * Always attach Authorization Bearer when a session exists.
+ * CI/dev bypass: also set X-Dev-User when NEXT_PUBLIC_AUTH_BYPASS=1.
  */
 export async function apiAuthHeaders(
   email?: string,
@@ -17,11 +17,18 @@ export async function apiAuthHeaders(
 
   if (process.env.NEXT_PUBLIC_AUTH_BYPASS === "1" && email && tenantId) {
     headers["X-Dev-User"] = JSON.stringify({ email, tenantId });
-    return headers;
   }
 
-  const { data } = await supabase.auth.getSession();
-  const token = data.session?.access_token;
+  let {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session?.access_token) {
+    const refreshed = await supabase.auth.refreshSession();
+    session = refreshed.data.session;
+  }
+
+  const token = session?.access_token;
   if (token) {
     headers.Authorization = `Bearer ${token}`;
   }

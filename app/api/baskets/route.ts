@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   resolveIdentity,
-  supabaseAdmin,
+  getDb,
   userHasPermission,
 } from "@/lib/server-auth";
 import type { BasketType, ResolveMethod } from "@/lib/types";
@@ -33,14 +33,14 @@ export async function POST(req: Request) {
   const allowed = await userHasPermission(
     identity.tenantId,
     identity.userId,
-    permission
-  );
+    permission,
+    req);
   if (!allowed) {
     return NextResponse.json({ error: "forbidden", permission }, { status: 403 });
   }
 
   const isHackathon = type === "hackathon";
-  const sb = supabaseAdmin();
+  const sb = getDb(req);
   const { data, error } = await sb
     .from("baskets")
     .insert({

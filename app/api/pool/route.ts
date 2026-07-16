@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   resolveIdentity,
-  supabaseAdmin,
+  getDb,
   userHasPermission,
 } from "@/lib/server-auth";
 
@@ -11,7 +11,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const sb = supabaseAdmin();
+  const sb = getDb(req);
   const { data, error } = await sb
     .from("idea_pool")
     .select("*")
@@ -33,8 +33,8 @@ export async function POST(req: Request) {
   const allowed = await userHasPermission(
     identity.tenantId,
     identity.userId,
-    "pool.create"
-  );
+    "pool.create",
+    req);
   if (!allowed) {
     return NextResponse.json({ error: "forbidden", permission: "pool.create" }, { status: 403 });
   }
@@ -63,7 +63,7 @@ export async function POST(req: Request) {
     "@/lib/server-moderation"
   );
   const { warnMessage } = await import("@/lib/moderation");
-  const sb = supabaseAdmin();
+  const sb = getDb(req);
   const check = await evaluateText(sb, identity.tenantId, text);
   if (check.action === "block") {
     return NextResponse.json(

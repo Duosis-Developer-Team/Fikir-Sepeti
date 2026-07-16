@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   resolveIdentity,
-  supabaseAdmin,
+  getDb,
   userHasPermission,
 } from "@/lib/server-auth";
 
@@ -21,7 +21,7 @@ export async function GET(
   }
 
   const { basketId } = await ctx.params;
-  const sb = supabaseAdmin();
+  const sb = getDb(req);
   const { data: basket } = await sb.from("baskets").select("*").eq("id", basketId).maybeSingle();
   if (!basket || basket.tenant_id !== identity.tenantId) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
@@ -30,8 +30,8 @@ export async function GET(
   const viewAll = await userHasPermission(
     identity.tenantId,
     identity.userId,
-    "archive.view_all"
-  );
+    "archive.view_all",
+    req);
   const isOwner =
     basket.created_by === identity.email || basket.created_by === identity.userId;
   if (!viewAll && !isOwner) {

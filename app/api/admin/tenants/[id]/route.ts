@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   resolveIdentity,
-  supabaseAdmin,
+  getDb,
   userHasPermission,
   userHasPermissionAnyTenant,
 } from "@/lib/server-auth";
@@ -15,9 +15,9 @@ async function requirePlatformAdmin(req: Request) {
     (await userHasPermission(
       identity.tenantId,
       identity.userId,
-      "platform.manage_tenants"
-    )) ||
-    (await userHasPermissionAnyTenant(identity.userId, "platform.manage_tenants"));
+      "platform.manage_tenants",
+    req)) ||
+    (await userHasPermissionAnyTenant(identity.userId, "platform.manage_tenants", req));
   if (!can) return { error: NextResponse.json({ error: "forbidden" }, { status: 403 }) };
   return { identity };
 }
@@ -27,7 +27,7 @@ export async function GET(req: Request, ctx: Ctx) {
   if ("error" in gate && gate.error) return gate.error;
 
   const { id } = await ctx.params;
-  const sb = supabaseAdmin();
+  const sb = getDb(req);
   const { data: tenant, error } = await sb
     .from("tenants")
     .select("id, name, email_domain, plan, status, created_at, azure_tenant_id, settings")

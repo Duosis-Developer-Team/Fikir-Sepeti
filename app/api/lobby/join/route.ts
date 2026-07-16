@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { decideLobbyJoin } from "@/lib/lobby";
 import {
   resolveIdentity,
-  supabaseAdmin,
+  getDb,
   userHasPermission,
 } from "@/lib/server-auth";
 
@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "basket_id required" }, { status: 400 });
   }
 
-  const sb = supabaseAdmin();
+  const sb = getDb(req);
   const { data: basket } = await sb
     .from("baskets")
     .select("id, tenant_id, phase, status, lobby_locked, config, created_by")
@@ -96,7 +96,7 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: "invalid_body" }, { status: 400 });
   }
 
-  const sb = supabaseAdmin();
+  const sb = getDb(req);
   const { data: basket } = await sb
     .from("baskets")
     .select("id, tenant_id, created_by, config")
@@ -113,8 +113,8 @@ export async function PATCH(req: Request) {
     (await userHasPermission(
       identity.tenantId,
       identity.userId,
-      "hackathon.manage"
-    ));
+      "hackathon.manage",
+    req));
   if (!canManage) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }

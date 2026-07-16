@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { resolveIdentity, supabaseAdmin } from "@/lib/server-auth";
+import { resolveIdentity, getDb } from "@/lib/server-auth";
 
 export async function POST(req: Request) {
   const identity = await resolveIdentity(req);
@@ -19,7 +19,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "pool_idea_id_required" }, { status: 400 });
   }
 
-  const sb = supabaseAdmin();
+  const sb = getDb(req);
   const { data: idea } = await sb
     .from("idea_pool")
     .select("id, tenant_id, status, poll_closes_at")

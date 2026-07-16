@@ -1,15 +1,20 @@
 import { NextResponse } from "next/server";
 import {
   resolveIdentity,
-  supabaseAdmin,
+  getDb,
   userHasPermission,
 } from "@/lib/server-auth";
 import { writeAudit } from "@/lib/server-moderation";
 
-async function canManageRules(tenantId: string, userId: string) {
-  const a = await userHasPermission(tenantId, userId, "tenant.manage_settings");
+async function canManageRules(req: Request, tenantId: string, userId: string) {
+  const a = await userHasPermission(
+    tenantId,
+    userId,
+    "tenant.manage_settings",
+    req
+  );
   if (a) return true;
-  return userHasPermission(tenantId, userId, "content.moderate");
+  return userHasPermission(tenantId, userId, "content.moderate", req);
 }
 
 /** GET /api/moderation/rules */
@@ -19,7 +24,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const sb = supabaseAdmin();
+  const sb = getDb(req);
   const { data, error } = await sb
     .from("content_rules")
     .select("*")
@@ -38,7 +43,7 @@ export async function POST(req: Request) {
   if (!identity) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
-  if (!(await canManageRules(identity.tenantId, identity.userId))) {
+  if (!(await canManageRules(req, identity.tenantId, identity.userId))) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
@@ -52,7 +57,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "pattern_required" }, { status: 400 });
   }
 
-  const sb = supabaseAdmin();
+  const sb = getDb(req);
   const { data, error } = await sb
     .from("content_rules")
     .insert({
@@ -87,7 +92,7 @@ export async function PATCH(req: Request) {
   if (!identity) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
-  if (!(await canManageRules(identity.tenantId, identity.userId))) {
+  if (!(await canManageRules(req, identity.tenantId, identity.userId))) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
@@ -108,7 +113,7 @@ export async function PATCH(req: Request) {
   if (body.action !== undefined) patch.action = body.action;
   if (body.enabled !== undefined) patch.enabled = body.enabled;
 
-  const sb = supabaseAdmin();
+  const sb = getDb(req);
   const { data, error } = await sb
     .from("content_rules")
     .update(patch)
@@ -139,7 +144,7 @@ export async function DELETE(req: Request) {
   if (!identity) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
-  if (!(await canManageRules(identity.tenantId, identity.userId))) {
+  if (!(await canManageRules(req, identity.tenantId, identity.userId))) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
@@ -148,7 +153,7 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: "id_required" }, { status: 400 });
   }
 
-  const sb = supabaseAdmin();
+  const sb = getDb(req);
   const { error } = await sb
     .from("content_rules")
     .delete()
