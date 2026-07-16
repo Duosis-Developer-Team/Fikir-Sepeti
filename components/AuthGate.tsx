@@ -101,37 +101,22 @@ async function resolveTenantForClaims(
 }
 
 async function ensureMembership(email: string, tenantId: string) {
-  await supabase.from("app_users").upsert(
-    {
-      tenant_id: tenantId,
-      user_id: email,
-      email,
-      display_name: email.split("@")[0],
-    },
-    { onConflict: "tenant_id,user_id" }
-  );
-  const { data: mem } = await supabase
-    .from("roles")
-    .select("id")
-    .eq("key", "member")
-    .is("tenant_id", null)
-    .maybeSingle();
-  if (!mem) return;
-  const { data: existing } = await supabase
-    .from("user_roles")
-    .select("id")
-    .eq("tenant_id", tenantId)
-    .eq("user_id", email)
-    .eq("role_id", mem.id)
-    .is("scope_basket_id", null)
-    .maybeSingle();
-  if (!existing) {
-    await supabase.from("user_roles").insert({
-      tenant_id: tenantId,
-      user_id: email,
-      role_id: mem.id,
-      scope_basket_id: null,
-    });
+  const { error } = await supabase.rpc("ensure_app_membership", {
+    p_email: email.toLowerCase(),
+    p_tenant_id: tenantId,
+  });
+  if (error) {
+    console.error("ensure_app_membership", error);
+    // Fallback for DBs without 0012 (best-effort; may fail under RLS)
+    await supabase.from("app_users").upsert(
+      {
+        tenant_id: tenantId,
+        user_id: email.toLowerCase(),
+        email: email.toLowerCase(),
+        display_name: email.split("@")[0],
+      },
+      { onConflict: "tenant_id,user_id" }
+    );
   }
 }
 

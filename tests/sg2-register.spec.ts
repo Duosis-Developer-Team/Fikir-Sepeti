@@ -76,12 +76,19 @@ test.describe("SG2 self-serve register", () => {
       timeout: 25_000,
     });
 
-    const { data: au } = await sb
-      .from("app_users")
-      .select("tenant_id")
-      .eq("email", email)
-      .maybeSingle();
-    expect(au?.tenant_id).toBe(DUOSIS_TENANT_ID);
+    // Membership is written via ensure_app_membership RPC; poll briefly for assert.
+    let tenantId: string | null = null;
+    for (let i = 0; i < 10; i++) {
+      const { data: au } = await sb
+        .from("app_users")
+        .select("tenant_id")
+        .ilike("email", email)
+        .maybeSingle();
+      tenantId = (au?.tenant_id as string) ?? null;
+      if (tenantId) break;
+      await page.waitForTimeout(200);
+    }
+    expect(tenantId).toBe(DUOSIS_TENANT_ID);
   });
 
   test("invite code joins existing tenant", async ({ page }) => {
