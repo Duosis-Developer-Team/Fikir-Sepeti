@@ -12,6 +12,7 @@ type ResultPayload = {
   basket: Basket;
   ideas: Idea[];
   votes: { idea_id: string; phase: string; voter: string }[];
+  canViewVotes?: boolean;
   participants: Participant[];
   teams: Team[];
   members: TeamMember[];
@@ -127,19 +128,34 @@ export default function BasketResultPage() {
           Fikirler & oylar
         </h2>
         <div className="mt-3 flex flex-col gap-2">
-          {ideas.map((idea) => (
-            <div
-              key={idea.id}
-              className="flex items-center justify-between gap-3 rounded-xl px-4 py-3"
-              style={{ background: "var(--card)", border: "1px solid rgba(var(--border-rgb),0.08)" }}
-            >
-              <span style={{ color: "var(--text)" }}>{idea.text}</span>
-              <span className="tnum font-bold" style={{ color: a.base }}>
-                {idea.vote_count}
-              </span>
-            </div>
-          ))}
+          {ideas.map((idea) => {
+            const ideaVoters = votes.filter((v) => v.idea_id === idea.id).map((v) => v.voter);
+            return (
+              <div
+                key={idea.id}
+                className="flex items-center justify-between gap-3 rounded-xl px-4 py-3"
+                style={{ background: "var(--card)", border: "1px solid rgba(var(--border-rgb),0.08)" }}
+              >
+                <div>
+                  <span style={{ color: "var(--text)" }}>{idea.text}</span>
+                  {data.canViewVotes && ideaVoters.length > 0 && (
+                    <p className="mt-1 text-[0.78rem]" style={{ color: "var(--text-faint)" }} data-testid={`voters-${idea.id}`}>
+                      Oy verenler: {ideaVoters.join(", ")}
+                    </p>
+                  )}
+                </div>
+                <span className="tnum font-bold" style={{ color: a.base }}>
+                  {idea.vote_count}
+                </span>
+              </div>
+            );
+          })}
         </div>
+        {!data.canViewVotes && (
+          <p className="mt-2 text-[0.75rem]" style={{ color: "var(--text-faint)" }} data-testid="votes-masked">
+            Oy verenler gizli · vote.view_all gerekir
+          </p>
+        )}
         <p className="mt-2 text-[0.8rem]" style={{ color: "var(--text-faint)" }} data-testid="result-vote-count">
           {votes.length} oy kaydı
         </p>

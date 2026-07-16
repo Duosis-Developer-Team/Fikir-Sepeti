@@ -46,6 +46,7 @@ export async function POST(req: Request) {
     track_hint?: "hackathon" | "etkinlik" | null;
     poll_closes_at?: string | null;
     status?: string;
+    acknowledge?: boolean;
   };
   try {
     body = await req.json();
@@ -58,10 +59,32 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "text_required" }, { status: 400 });
   }
 
+  const { createFlags, evaluateText, writeAudit } = await import(
+    "@/lib/server-moderation"
+  );
+  const { warnMessage } = await import("@/lib/moderation");
+  const sb = supabaseAdmin();
+  const check = await evaluateText(sb, identity.tenantId, text);
+  if (check.action === "block") {
+    return NextResponse.json(
+      { error: "blocked", hits: check.hits },
+      { status: 422 }
+    );
+  }
+  if (check.action === "warn" && !body.acknowledge) {
+    return NextResponse.json(
+      {
+        error: "warn",
+        message: warnMessage(check.hits),
+        hits: check.hits,
+      },
+      { status: 409 }
+    );
+  }
+
   const status =
     body.poll_closes_at || body.status === "voting" ? "voting" : body.status === "new" ? "new" : body.poll_closes_at ? "voting" : "new";
 
-  const sb = supabaseAdmin();
   const { data, error } = await sb
     .from("idea_pool")
     .insert({
@@ -80,5 +103,23 @@ export async function POST(req: Request) {
   if (error || !data) {
     return NextResponse.json({ error: error?.message ?? "insert_failed" }, { status: 500 });
   }
+
+  if (check.hits.length) {
+    await createFlags(sb, {
+      tenant_id: identity.tenantId,
+      entity_type: "pool",
+      entity_id: data.id as string,
+      created_by: identity.email,
+      hits: check.hits.map((h) => ({ ruleId: h.ruleId, matched: h.matched })),
+    });
+    await writeAudit(sb, {
+      tenant_id: identity.tenantId,
+      actor: identity.email,
+      action: "content.warn_submit",
+      entity_type: "pool",
+      entity_id: data.id as string,
+    });
+  }
+
   return NextResponse.json({ idea: data }, { status: 200 });
 }

@@ -414,6 +414,9 @@ export default function Home() {
               <Link href="/analytics" className="hidden text-[0.82rem] font-semibold sm:inline" style={{ color: T.muted }} data-testid="nav-analytics">
                 Analitik
               </Link>
+              <Link href="/moderation" className="hidden text-[0.82rem] font-semibold sm:inline" style={{ color: T.muted }} data-testid="nav-moderation">
+                Moderasyon
+              </Link>
               <Link href="/admin" className="hidden text-[0.82rem] font-semibold sm:inline" style={{ color: T.muted }} data-testid="nav-admin">
                 Admin
               </Link>

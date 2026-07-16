@@ -165,7 +165,7 @@ Ajan her sprint sonunda bu tabloyu günceller ve commit eder.
 | SG2 | Kayıt + self-serve tenant | ✅ geçti | — | docs/sprints/SG2-report.md — 0010 + /register + davet |
 | SG3 | Platform yönetim paneli | ✅ geçti | — | docs/sprints/SG3-report.md — /admin + platform.manage_tenants |
 | S8 | ★ Analitik huni | ✅ geçti | 🚦 Duo | docs/sprints/S8-report.md — teaser + full gate; ürün kapısı ayrı |
-| S9 | Moderasyon + denetim | ⬜ bekliyor | — | |
+| S9 | Moderasyon + denetim | ✅ geçti | — | docs/sprints/S9-report.md — warn/block + kuyruk + audit |
 | S10 | Proje bazlı feedback | ⬜ bekliyor | — | |
 | S11 | Lobi kontrolü + davet | ⬜ bekliyor | — | |
 

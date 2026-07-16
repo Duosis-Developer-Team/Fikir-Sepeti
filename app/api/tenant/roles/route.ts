@@ -70,6 +70,19 @@ export async function POST(req: Request) {
     if (error && error.code !== "23505") {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
+    const { writeAudit } = await import("@/lib/server-moderation");
+    await writeAudit(sb, {
+      tenant_id: identity.tenantId,
+      actor: identity.email,
+      action: "role.assign",
+      entity_type: "user_role",
+      entity_id: null,
+      meta: {
+        user_id: body.userId,
+        role_id: body.roleId,
+        scope_basket_id: body.scopeBasketId ?? null,
+      },
+    });
   } else {
     let q = sb
       .from("user_roles")
@@ -81,6 +94,18 @@ export async function POST(req: Request) {
     else q = q.is("scope_basket_id", null);
     const { error } = await q;
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    const { writeAudit } = await import("@/lib/server-moderation");
+    await writeAudit(sb, {
+      tenant_id: identity.tenantId,
+      actor: identity.email,
+      action: "role.revoke",
+      entity_type: "user_role",
+      entity_id: null,
+      meta: {
+        user_id: body.userId,
+        role_id: body.roleId,
+      },
+    });
   }
 
   return NextResponse.json({ ok: true });

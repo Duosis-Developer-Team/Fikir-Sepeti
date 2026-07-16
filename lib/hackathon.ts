@@ -201,14 +201,15 @@ export async function addFeedback(input: {
   author_name: string | null;
   text: string;
 }) {
-  await supabase.from("feedback").insert({
+  const { addFeedbackModerated } = await import("./client-moderation");
+  await addFeedbackModerated({
+    email: input.author_id || "anonymous",
+    tenantId: input.tenant_id,
     basket_id: input.basket_id,
-    tenant_id: input.tenant_id,
-    team_id: input.team_id ?? null,
-    idea_id: input.idea_id ?? null,
-    author_id: input.author_id,
-    author_name: input.author_name,
     text: input.text,
+    team_id: input.team_id,
+    idea_id: input.idea_id,
+    author_name: input.author_name,
   });
 }
 

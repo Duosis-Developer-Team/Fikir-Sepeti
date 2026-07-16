@@ -29,6 +29,7 @@ export async function createPoolIdea(input: {
   status?: PoolIdea["status"];
   created_by: string;
   tenant_id: string;
+  acknowledge?: boolean;
 }): Promise<PoolIdea | null> {
   const res = await fetch("/api/pool", {
     method: "POST",
@@ -40,10 +41,32 @@ export async function createPoolIdea(input: {
       track_hint: input.track_hint,
       poll_closes_at: input.poll_closes_at,
       status: input.status,
+      acknowledge: input.acknowledge,
     }),
   });
+  const json = (await res.json().catch(() => ({}))) as {
+    idea?: PoolIdea;
+    error?: string;
+    message?: string;
+  };
+  if (res.status === 422) {
+    if (typeof window !== "undefined") {
+      window.alert("Bu metin kurallara takıldı ve gönderilemiyor.");
+    }
+    return null;
+  }
+  if (res.status === 409 && json.error === "warn") {
+    if (typeof window !== "undefined") {
+      const ok = window.confirm(
+        json.message ||
+          "Metinde uyarılan kelimeler var. Göndermek istediğine emin misin?"
+      );
+      if (!ok) return null;
+      return createPoolIdea({ ...input, acknowledge: true });
+    }
+    return null;
+  }
   if (!res.ok) return null;
-  const json = (await res.json()) as { idea: PoolIdea };
   return json.idea ?? null;
 }
 

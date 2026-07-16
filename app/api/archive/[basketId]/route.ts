@@ -68,27 +68,57 @@ export async function GET(
 
   const [ideas, votes, participants, teams, members, teamVotes, feedback] =
     await Promise.all([
-      sb.from("ideas").select("*").eq("basket_id", basketId).order("vote_count", { ascending: false }),
+      sb
+        .from("ideas")
+        .select("*")
+        .eq("basket_id", basketId)
+        .order("vote_count", { ascending: false }),
       sb.from("votes").select("id, idea_id, phase, voter, created_at").eq("basket_id", basketId),
       sb.from("hackathon_participants").select("*").eq("basket_id", basketId),
       sb.from("teams").select("*").eq("basket_id", basketId),
       sb.from("team_members").select("*").eq("basket_id", basketId),
       sb.from("team_votes").select("*").eq("basket_id", basketId),
-      sb.from("feedback").select("*").eq("basket_id", basketId).order("created_at", { ascending: true }),
+      sb
+        .from("feedback")
+        .select("*")
+        .eq("basket_id", basketId)
+        .order("created_at", { ascending: true }),
     ]);
 
+  const canModerate = await userHasPermission(
+    identity.tenantId,
+    identity.userId,
+    "content.moderate"
+  );
+  const canViewVotes = await userHasPermission(
+    identity.tenantId,
+    identity.userId,
+    "vote.view_all"
+  );
+
+  const ideaRows = (ideas.data ?? []).filter(
+    (i) => canModerate || !(i as { hidden?: boolean }).hidden
+  );
+  const feedbackRows = (feedback.data ?? []).filter(
+    (f) => canModerate || !(f as { hidden?: boolean }).hidden
+  );
+  const voteRows = canViewVotes
+    ? (votes.data ?? [])
+    : (votes.data ?? []).filter((v) => v.voter === identity.email);
+
   const winnerIdeaId = basket.winner_idea_id ?? basket.selected_idea_id;
-  const winner = (ideas.data ?? []).find((i) => i.id === winnerIdeaId) ?? null;
+  const winner = ideaRows.find((i) => i.id === winnerIdeaId) ?? null;
 
   return NextResponse.json({
     basket,
-    ideas: ideas.data ?? [],
-    votes: votes.data ?? [],
+    ideas: ideaRows,
+    votes: voteRows,
+    canViewVotes,
     participants: participants.data ?? [],
     teams: teams.data ?? [],
     members: members.data ?? [],
     teamVotes: teamVotes.data ?? [],
-    feedback: feedback.data ?? [],
+    feedback: feedbackRows,
     winner,
   });
 }

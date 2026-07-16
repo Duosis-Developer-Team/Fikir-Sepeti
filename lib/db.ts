@@ -96,18 +96,15 @@ export async function addIdea(input: {
   created_by: string;
   tenant_id: string;
 }): Promise<Idea | null> {
-  const { data } = await supabase
-    .from("ideas")
-    .insert({
-      basket_id: input.basket_id,
-      text: input.text,
-      tag: input.tag ?? null,
-      created_by: input.created_by,
-      tenant_id: input.tenant_id,
-    })
-    .select()
-    .single();
-  return (data as Idea) ?? null;
+  const { addIdeaModerated } = await import("./client-moderation");
+  const idea = await addIdeaModerated({
+    email: input.created_by,
+    tenantId: input.tenant_id,
+    basket_id: input.basket_id,
+    text: input.text,
+    tag: input.tag,
+  });
+  return (idea as Idea) ?? null;
 }
 
 export async function deleteIdea(ideaId: string) {
