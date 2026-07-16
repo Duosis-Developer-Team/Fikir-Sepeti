@@ -18,11 +18,13 @@ export function decideLobbyJoin(input: {
   const config = input.basket.config ?? {};
   const phase = input.basket.phase as Phase;
   const inLobby = phase === "lobby";
-  const locked =
-    input.basket.lobby_locked === true ||
-    (!inLobby && config.allowLateJoin !== true);
+  const allowLate = config.allowLateJoin === true;
 
-  if (locked) {
+  // Started (or explicitly locked) without late-join → blocked
+  if (!inLobby && !allowLate) {
+    return { ok: false, reason: "locked" };
+  }
+  if (inLobby && input.basket.lobby_locked === true && !allowLate) {
     return { ok: false, reason: "locked" };
   }
 

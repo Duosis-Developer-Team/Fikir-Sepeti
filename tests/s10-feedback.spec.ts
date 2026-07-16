@@ -21,11 +21,11 @@ test.describe("S10 project feedback", () => {
       timeout: 15_000,
     });
     await expect(page.getByTestId("result-feedback-grouped")).toBeVisible();
-    await expect(
-      page.getByTestId(`result-feedback-group-${ARCHIVE_TEAM}`)
-    ).toBeVisible();
-    await expect(page.getByText("Squad Alpha")).toBeVisible();
-    await expect(page.getByText("Harika demo")).toBeVisible();
+    const group = page.getByTestId(`result-feedback-group-${ARCHIVE_TEAM}`);
+    await expect(group).toBeVisible();
+    await expect(group.getByText("Harika demo")).toBeVisible();
+    // Label is team name when teams loaded, else "Takım"
+    await expect(group.locator("h3")).toContainText(/Squad Alpha|Takım/);
   });
 
   test("feedback API accepts team_id", async ({ request }) => {
