@@ -13,6 +13,7 @@ export const PERMISSIONS = [
   "tenant.manage_settings",
   "hackathon.jury",
   "hackathon.manage",
+  "platform.manage_tenants",
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];

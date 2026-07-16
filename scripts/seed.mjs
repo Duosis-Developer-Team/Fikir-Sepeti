@@ -97,6 +97,8 @@ async function main() {
         id: IDS.duoTenant,
         name: "DuoSis",
         email_domain: "duosis.dev",
+        plan: "free",
+        status: "active",
         settings: {
           moderation: "warn",
           voteVisibility: "moderators",
@@ -109,6 +111,8 @@ async function main() {
         id: IDS.otherTenant,
         name: "Other Corp",
         email_domain: "other.com",
+        plan: "free",
+        status: "active",
         settings: {},
       },
     ],
@@ -364,6 +368,7 @@ async function main() {
 
   // Roles (system ids from 0004_rbac)
   const ROLE = {
+    platform_owner: "c0000000-0000-4000-8000-000000000001",
     tenant_admin: "c0000000-0000-4000-8000-000000000002",
     organizer: "c0000000-0000-4000-8000-000000000004",
     member: "c0000000-0000-4000-8000-000000000006",
@@ -385,6 +390,7 @@ async function main() {
     { tenant_id: IDS.duoTenant, user_id: ADMIN, role_id: ROLE.member },
     { tenant_id: IDS.duoTenant, user_id: ADMIN, role_id: ROLE.organizer },
     { tenant_id: IDS.duoTenant, user_id: ADMIN, role_id: ROLE.tenant_admin },
+    { tenant_id: IDS.duoTenant, user_id: ADMIN, role_id: ROLE.platform_owner },
     { tenant_id: IDS.duoTenant, user_id: "member@duosis.dev", role_id: ROLE.member },
     { tenant_id: IDS.otherTenant, user_id: OTHER_ADMIN, role_id: ROLE.member },
     { tenant_id: IDS.otherTenant, user_id: OTHER_ADMIN, role_id: ROLE.organizer },

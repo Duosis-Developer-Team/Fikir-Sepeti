@@ -93,3 +93,26 @@ export async function userHasPermission(
 
   return (perms?.length ?? 0) > 0;
 }
+
+/** True if the user holds the permission on any tenant (platform_owner). */
+export async function userHasPermissionAnyTenant(
+  userId: string,
+  permission: Permission
+): Promise<boolean> {
+  const sb = supabaseAdmin();
+  const { data: rows } = await sb
+    .from("user_roles")
+    .select("role_id")
+    .eq("user_id", userId)
+    .is("scope_basket_id", null);
+
+  if (!rows?.length) return false;
+  const roleIds = rows.map((r) => r.role_id as string);
+  const { data: perms } = await sb
+    .from("role_permissions")
+    .select("permission_key")
+    .in("role_id", roleIds)
+    .eq("permission_key", permission);
+
+  return (perms?.length ?? 0) > 0;
+}
