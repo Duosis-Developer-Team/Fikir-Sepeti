@@ -206,9 +206,20 @@ async function main() {
       config: { ideaSource: "static", teamMode: "solo" },
       created_by: ADMIN,
       tenant_id: IDS.duoTenant,
+      production_note: "Squad Alpha live aldı",
+      effort_estimate: 3,
     },
   ]);
   if (bErr) throw bErr;
+
+  // Ensure columns exist even if insert ignored extras on older schema
+  await sb
+    .from("baskets")
+    .update({
+      production_note: "Squad Alpha live aldı",
+      effort_estimate: 3,
+    })
+    .eq("id", IDS.archiveHackathon);
 
   const { error: iErr } = await sb.from("ideas").insert([
     {

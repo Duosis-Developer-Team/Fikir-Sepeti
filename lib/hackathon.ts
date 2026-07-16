@@ -46,10 +46,24 @@ export async function listParticipants(basketId: string): Promise<Participant[]>
 }
 
 /** Hackathon'u kapat — kazanan fikri işaretle, üretime alındı. */
-export async function markDone(basketId: string, winnerIdeaId: string | null) {
+export async function markDone(
+  basketId: string,
+  winnerIdeaId: string | null,
+  meta?: { production_note?: string | null; effort_estimate?: number | null }
+) {
   await supabase
     .from("baskets")
-    .update({ status: "resolved", phase: "done", winner_idea_id: winnerIdeaId })
+    .update({
+      status: "resolved",
+      phase: "done",
+      winner_idea_id: winnerIdeaId,
+      ...(meta?.production_note !== undefined
+        ? { production_note: meta.production_note }
+        : {}),
+      ...(meta?.effort_estimate !== undefined
+        ? { effort_estimate: meta.effort_estimate }
+        : {}),
+    })
     .eq("id", basketId);
 }
 

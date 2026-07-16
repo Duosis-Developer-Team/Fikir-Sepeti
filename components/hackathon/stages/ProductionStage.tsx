@@ -16,13 +16,21 @@ export function ProductionStage({ data, user, isAdmin }: StageContext) {
   const winnerMembers = winner ? members.filter((m) => m.team_id === winner.id) : [];
   const done = basket.status === "resolved" || basket.phase === "done";
   const [returned, setReturned] = useState<Set<string>>(new Set());
+  const [productionNote, setProductionNote] = useState(basket.production_note ?? "");
+  const [effortEstimate, setEffortEstimate] = useState(
+    basket.effort_estimate != null ? String(basket.effort_estimate) : ""
+  );
   const nameOf = (uid: string) => {
     const p = participants.find((x) => x.user_id === uid);
     return p?.display_name || p?.email || uid;
   };
 
   const finalize = async () => {
-    await markDone(basket.id, selected?.id ?? null);
+    await markDone(basket.id, selected?.id ?? null, {
+      production_note: productionNote.trim() || null,
+      effort_estimate:
+        effortEstimate.trim() === "" ? null : Number(effortEstimate),
+    });
     const poolId = basket.config?.repoPoolIdeaId;
     if (poolId && winner) {
       await markPoolWinner({
@@ -146,6 +154,33 @@ export function ProductionStage({ data, user, isAdmin }: StageContext) {
                   </div>
                 ))}
             </div>
+          </div>
+        )}
+
+        {!done && isAdmin && (
+          <div className="mt-6 text-left" data-testid="production-meta">
+            <span className="text-[0.7rem] font-semibold uppercase tracking-[0.22em]" style={{ color: dim(0.45) }}>
+              Üretim notu / efor
+            </span>
+            <input
+              value={productionNote}
+              onChange={(e) => setProductionNote(e.target.value)}
+              placeholder="Ne yapıldı, kim yaptı"
+              className="mt-2 w-full rounded-xl px-3 py-2.5 text-[0.95rem]"
+              style={{ background: "var(--surface-2)", color: "var(--text)", border: "1px solid rgba(var(--border-rgb),0.1)" }}
+              data-testid="production-note"
+            />
+            <input
+              value={effortEstimate}
+              onChange={(e) => setEffortEstimate(e.target.value)}
+              placeholder="Tahmini adam-gün"
+              type="number"
+              min={0}
+              step={0.5}
+              className="mt-2 w-full rounded-xl px-3 py-2.5 text-[0.95rem]"
+              style={{ background: "var(--surface-2)", color: "var(--text)", border: "1px solid rgba(var(--border-rgb),0.1)" }}
+              data-testid="production-effort"
+            />
           </div>
         )}
 

@@ -88,6 +88,10 @@ export type Basket = {
   created_by: string | null;
   created_at: string;
   tenant_id: string;
+  /** S8: what shipped / who — Hermes bridge later. */
+  production_note?: string | null;
+  /** S8: estimated person-days. */
+  effort_estimate?: number | null;
 };
 
 export type Tenant = {
