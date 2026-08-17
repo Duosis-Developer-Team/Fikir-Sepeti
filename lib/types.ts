@@ -191,6 +191,14 @@ export type Score = {
   created_at: string;
 };
 
+export type Suggestion = {
+  id: string;
+  tenant_id: string;
+  text: string;
+  created_by: string;
+  created_at: string;
+};
+
 export type VoteRow = {
   id: string;
   idea_id: string;

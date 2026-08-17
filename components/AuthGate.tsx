@@ -9,6 +9,7 @@ import {
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import type { Session } from "@supabase/supabase-js";
+import { BrandIcon } from "@/components/BrandIcon";
 import { supabase } from "@/lib/supabase";
 import { DEV_AUTH_PASSWORD } from "@/lib/dev-auth";
 import { azureTenantIdFromUser } from "@/lib/azure-claims";
@@ -342,12 +343,23 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   };
 
   const showApp =
-    ready &&
-    (!!user || isPublicPath(pathname) || (needsWorkspace && pathname === REGISTER_PATH));
+    !!user || isPublicPath(pathname) || (needsWorkspace && pathname === REGISTER_PATH);
 
   return (
     <SessionContext.Provider value={value}>
-      {showApp ? children : null}
+      {!ready ? <AuthLoadingSkeleton /> : showApp ? children : null}
     </SessionContext.Provider>
+  );
+}
+
+/** Oturum kontrolü sürerken gösterilir — app/loading.tsx ile aynı görsel dil, boş ekran yok. */
+function AuthLoadingSkeleton() {
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-bg px-6 text-text">
+      <div className="flex flex-col items-center gap-4">
+        <BrandIcon size="lg" priority className="animate-pulse" />
+        <p className="text-sm font-medium text-text-muted">Sepet hazırlanıyor…</p>
+      </div>
+    </main>
   );
 }

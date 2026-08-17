@@ -60,17 +60,27 @@ export default function PresenterPage() {
         <header className="flex shrink-0 items-center justify-between gap-8">
           <div className="min-w-0">
             <span className="text-[0.9rem] font-semibold uppercase tracking-[0.28em]" style={{ color: GOLD }}>Şu an sahnede · {finalists.length ? `${idx + 1}/${finalists.length}` : "—"}</span>
-            <h1 className="font-display mt-3 truncate text-[clamp(2.4rem,4.25vw,3.75rem)] font-extrabold leading-none tracking-tight" style={{ color: PAPER }}>
-              {current?.text ?? "Finalist demosu yok"}
-            </h1>
-            {current && (
-              <div className="mt-2.5 flex flex-wrap items-center gap-3.5 text-[1.25rem]" style={{ color: dim(0.55) }}>
-                <span style={{ color: dim(0.8) }}>{current.presenter ?? "—"}</span>
-                {current.live_at && <><span className="opacity-40">·</span><span>{current.live_at}</span></>}
-                {current.tag && <span className="rounded-full px-3.5 py-1 text-[1.06rem] font-semibold" style={{ background: "rgba(231,169,63,0.15)", color: GOLD_SOFT }}>{current.tag}</span>}
-                {current.demo_url && <a href={current.demo_url} target="_blank" rel="noreferrer" className="rounded-full border px-4 py-1.5 text-[1.06rem] transition hover:bg-white/10" style={{ borderColor: "rgba(255,255,255,0.22)", color: dim(0.85) }}>Demoyu aç ↗</a>}
-              </div>
-            )}
+            <AnimatePresence mode="popLayout" initial={false}>
+              <motion.div
+                key={current?.id ?? "empty"}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.35, ease: "easeInOut" }}
+              >
+                <h1 className="font-display mt-3 truncate text-[clamp(2.4rem,4.25vw,3.75rem)] font-extrabold leading-none tracking-tight" style={{ color: PAPER }}>
+                  {current?.text ?? "Finalist demosu yok"}
+                </h1>
+                {current && (
+                  <div className="mt-2.5 flex flex-wrap items-center gap-3.5 text-[1.25rem]" style={{ color: dim(0.55) }}>
+                    <span style={{ color: dim(0.8) }}>{current.presenter ?? "—"}</span>
+                    {current.live_at && <><span className="opacity-40">·</span><span>{current.live_at}</span></>}
+                    {current.tag && <span className="rounded-full px-3.5 py-1 text-[1.06rem] font-semibold" style={{ background: "rgba(231,169,63,0.15)", color: GOLD_SOFT }}>{current.tag}</span>}
+                    {current.demo_url && <a href={current.demo_url} target="_blank" rel="noreferrer" className="rounded-full border px-4 py-1.5 text-[1.06rem] transition hover:bg-white/10" style={{ borderColor: "rgba(255,255,255,0.22)", color: dim(0.85) }}>Demoyu aç ↗</a>}
+                  </div>
+                )}
+              </motion.div>
+            </AnimatePresence>
           </div>
           {finalists.length > 0 && <div className="shrink-0"><VoteQR id={id} /></div>}
         </header>

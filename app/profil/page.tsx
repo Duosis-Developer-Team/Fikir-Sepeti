@@ -8,7 +8,8 @@ import { Avatars } from "@/components/shared/Avatars";
 import { loadHome } from "@/lib/db";
 import { accentFor, soft } from "@/lib/accent";
 import { supabase } from "@/lib/supabase";
-import type { Basket, Idea } from "@/lib/types";
+import { listSuggestions, createSuggestion } from "@/lib/suggestions";
+import type { Basket, Idea, Suggestion } from "@/lib/types";
 
 const PHASE_LABEL: Record<string, string> = {
   ideas: "fikir topluyor",
@@ -62,6 +63,12 @@ export default function ProfilePage() {
   const [ideasBy, setIdeasBy] = useState<Record<string, Idea[]>>({});
   const [loading, setLoading] = useState(true);
 
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [sugLoading, setSugLoading] = useState(true);
+  const [sugText, setSugText] = useState("");
+  const [sugBusy, setSugBusy] = useState(false);
+  const [sugError, setSugError] = useState<string | null>(null);
+
   const refresh = async () => {
     if (!tenantId) {
       setBaskets([]);
@@ -85,12 +92,44 @@ export default function ProfilePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tenantId]);
 
+  const refreshSuggestions = async () => {
+    if (!tenantId || !name) {
+      setSuggestions([]);
+      setSugLoading(false);
+      return;
+    }
+    setSuggestions(await listSuggestions(name, tenantId));
+    setSugLoading(false);
+  };
+  useEffect(() => {
+    void refreshSuggestions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tenantId, name]);
+
+  const submitSuggestion = async () => {
+    if (!tenantId || !name || sugText.trim().length < 2) return;
+    setSugBusy(true);
+    setSugError(null);
+    const res = await createSuggestion({ text: sugText.trim(), email: name, tenantId });
+    setSugBusy(false);
+    if (!res.ok) {
+      setSugError("Gönderilemedi, tekrar dene.");
+      return;
+    }
+    setSugText("");
+    await refreshSuggestions();
+  };
+
   const mine = useMemo(() => baskets.filter((b) => b.created_by && b.created_by === name), [baskets, name]);
   const openCount = mine.filter((b) => b.status !== "resolved").length;
 
   return (
     <main className="mx-auto max-w-[980px] px-[clamp(24px,5vw,40px)] pb-[90px] pt-[clamp(32px,5vw,56px)]">
-      <div className="flex items-center justify-between gap-4">
+      <Link href="/" className="text-[0.88rem]" style={{ color: "var(--text-muted)" }}>
+        ← sepetler
+      </Link>
+
+      <div className="mt-6 flex items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <span className="grid h-14 w-14 place-items-center rounded-2xl text-[1.4rem] font-bold" style={{ background: "linear-gradient(135deg,#E7A93F,#F2795F)", color: "#0F0F0F" }}>
             {(name || "?").charAt(0).toLocaleUpperCase("tr")}
@@ -130,6 +169,56 @@ export default function ProfilePage() {
       ) : (
         <div className="mt-6 grid gap-5 md:grid-cols-2">
           {mine.map((b) => <MineCard key={b.id} basket={b} ideas={ideasBy[b.id] ?? []} />)}
+        </div>
+      )}
+
+      <div className="mt-12 flex items-center gap-4">
+        <span className="text-[0.72rem] font-semibold uppercase tracking-[0.24em]" style={{ color: "var(--text-muted)" }}>Öneriler</span>
+        <span className="h-px flex-1" style={{ background: "rgba(var(--border-rgb),0.1)" }} />
+      </div>
+      <p className="mt-3 text-[0.88rem]" style={{ color: "var(--text-muted)" }}>
+        FikirSepeti&apos;nde neyin geliştirilmesini/eklenmesini istersin? Herkes görebilir.
+      </p>
+
+      <div className="mt-4 rounded-[22px] p-5" style={{ background: "var(--card)", border: "1px solid rgba(var(--border-rgb),0.09)" }}>
+        <textarea
+          value={sugText}
+          onChange={(e) => setSugText(e.target.value)}
+          rows={2}
+          placeholder="Bir öneri yaz…"
+          className="w-full resize-none rounded-2xl px-4 py-3 text-[0.98rem] outline-none"
+          style={{ background: "var(--surface-2)", border: "1px solid rgba(var(--border-rgb),0.1)", color: "var(--text)" }}
+        />
+        <div className="mt-3 flex items-center justify-between gap-3">
+          {sugError ? <p className="text-[0.82rem]" style={{ color: "#F2795F" }}>{sugError}</p> : <span />}
+          <button
+            type="button"
+            disabled={sugBusy || sugText.trim().length < 2}
+            onClick={() => void submitSuggestion()}
+            className="rounded-full px-6 py-2.5 text-[0.9rem] font-semibold disabled:opacity-40"
+            style={{ background: "#F2795F", color: "#161616" }}
+          >
+            Gönder
+          </button>
+        </div>
+      </div>
+
+      {sugLoading ? (
+        <div className="mt-4 grid gap-3">
+          {[0, 1].map((i) => <div key={i} className="h-16 animate-pulse rounded-2xl" style={{ background: "var(--card)" }} />)}
+        </div>
+      ) : suggestions.length === 0 ? (
+        <p className="mt-4 py-6 text-center text-[0.9rem]" style={{ color: "var(--text-muted)" }}>Henüz öneri yok — ilkini sen yaz.</p>
+      ) : (
+        <div className="mt-4 flex flex-col gap-3">
+          {suggestions.map((s) => (
+            <div key={s.id} className="rounded-2xl px-5 py-4" style={{ background: "var(--card)", border: "1px solid rgba(var(--border-rgb),0.09)" }}>
+              <p className="text-[0.98rem]" style={{ color: "var(--text)" }}>{s.text}</p>
+              <p className="mt-2 text-[0.76rem]" style={{ color: "var(--text-faint)" }}>
+                {s.created_by} · {new Date(s.created_at).toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}
+              </p>
+            </div>
+          ))}
         </div>
       )}
     </main>

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "./supabase";
+import { votePoolIdea } from "./pool";
 import type { PoolIdea } from "./types";
 
 type State = {
@@ -133,9 +134,14 @@ export function useRealtimePool(tenantId: string | null, voter: string) {
 
   const vote = useCallback(
     async (poolIdeaId: string) => {
-      if (!tenantId || state.myVotes.has(poolIdeaId)) return;
+      if (!tenantId) return;
 
+      let alreadyVoted = false;
       setState((prev) => {
+        if (prev.myVotes.has(poolIdeaId)) {
+          alreadyVoted = true;
+          return prev;
+        }
         const myVotes = new Set(prev.myVotes);
         myVotes.add(poolIdeaId);
         const ideas = prev.ideas.map((i) =>
@@ -143,28 +149,25 @@ export function useRealtimePool(tenantId: string | null, voter: string) {
         );
         return { ...prev, myVotes, ideas };
       });
+      if (alreadyVoted) return;
 
-      const { error } = await supabase.from("pool_votes").insert({
-        pool_idea_id: poolIdeaId,
-        tenant_id: tenantId,
-        voter,
-      });
+      // API route (not a direct client insert) so poll deadline is enforced and
+      // idea_pool.status flips "new" -> "voting" on first vote, same as the server does.
+      const res = await votePoolIdea({ pool_idea_id: poolIdeaId, voter, tenant_id: tenantId });
 
-      if (error) {
-        if (error.code !== "23505") {
-          setState((prev) => {
-            const myVotes = new Set(prev.myVotes);
-            myVotes.delete(poolIdeaId);
-            const ideas = prev.ideas.map((i) =>
-              i.id === poolIdeaId ? { ...i, vote_count: Math.max(0, i.vote_count - 1) } : i
-            );
-            return { ...prev, myVotes, ideas };
-          });
-        }
+      if (!res.ok) {
+        setState((prev) => {
+          const myVotes = new Set(prev.myVotes);
+          myVotes.delete(poolIdeaId);
+          const ideas = prev.ideas.map((i) =>
+            i.id === poolIdeaId ? { ...i, vote_count: Math.max(0, i.vote_count - 1) } : i
+          );
+          return { ...prev, myVotes, ideas };
+        });
       }
       void fetchAll();
     },
-    [tenantId, voter, state.myVotes, fetchAll]
+    [tenantId, voter, fetchAll]
   );
 
   return { ...state, refresh: fetchAll, vote };

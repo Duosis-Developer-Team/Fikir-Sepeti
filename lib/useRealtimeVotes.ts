@@ -198,9 +198,13 @@ export function useRealtimeVotes(basketId: string, voter: string) {
 
       try {
         if (h.action === "unvote") {
-          await delOld();
+          const { error } = await delOld();
+          if (error) throw error;
         } else {
-          if (h.action === "change") await delOld();
+          if (h.action === "change") {
+            const { error: delError } = await delOld();
+            if (delError) throw delError;
+          }
           const { error } = await insNew();
           if (error && error.code !== "23505") throw error;
         }
