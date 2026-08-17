@@ -13,6 +13,7 @@ const eslintConfig = defineConfig([
     "Design system documentation/**",
     "playwright-report/**",
     "test-results/**",
+    "supabase/.temp/**",
   ]),
   {
     rules: {
