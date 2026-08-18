@@ -8,7 +8,7 @@ import { Avatars } from "@/components/shared/Avatars";
 import { loadHome } from "@/lib/db";
 import { accentFor, soft } from "@/lib/accent";
 import { supabase } from "@/lib/supabase";
-import { listSuggestions, createSuggestion } from "@/lib/suggestions";
+import { listSuggestions, createSuggestion, voteSuggestion } from "@/lib/suggestions";
 import type { Basket, Idea, Suggestion } from "@/lib/types";
 
 const PHASE_LABEL: Record<string, string> = {
@@ -64,6 +64,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
 
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [myVotes, setMyVotes] = useState<Set<string>>(new Set());
   const [sugLoading, setSugLoading] = useState(true);
   const [sugText, setSugText] = useState("");
   const [sugBusy, setSugBusy] = useState(false);
@@ -95,10 +96,13 @@ export default function ProfilePage() {
   const refreshSuggestions = async () => {
     if (!tenantId || !name) {
       setSuggestions([]);
+      setMyVotes(new Set());
       setSugLoading(false);
       return;
     }
-    setSuggestions(await listSuggestions(name, tenantId));
+    const { suggestions, myVotes } = await listSuggestions(name, tenantId);
+    setSuggestions(suggestions);
+    setMyVotes(new Set(myVotes));
     setSugLoading(false);
   };
   useEffect(() => {
@@ -117,6 +121,27 @@ export default function ProfilePage() {
       return;
     }
     setSugText("");
+    await refreshSuggestions();
+  };
+
+  const voteOnSuggestion = async (id: string) => {
+    if (!tenantId || !name || myVotes.has(id)) return;
+    setMyVotes((prev) => new Set(prev).add(id));
+    setSuggestions((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, vote_count: s.vote_count + 1 } : s))
+    );
+    const res = await voteSuggestion({ suggestionId: id, email: name, tenantId });
+    if (!res.ok) {
+      setMyVotes((prev) => {
+        const n = new Set(prev);
+        n.delete(id);
+        return n;
+      });
+      setSuggestions((prev) =>
+        prev.map((s) => (s.id === id ? { ...s, vote_count: Math.max(0, s.vote_count - 1) } : s))
+      );
+      return;
+    }
     await refreshSuggestions();
   };
 
@@ -211,14 +236,33 @@ export default function ProfilePage() {
         <p className="mt-4 py-6 text-center text-[0.9rem]" style={{ color: "var(--text-muted)" }}>Henüz öneri yok — ilkini sen yaz.</p>
       ) : (
         <div className="mt-4 flex flex-col gap-3">
-          {suggestions.map((s) => (
-            <div key={s.id} className="rounded-2xl px-5 py-4" style={{ background: "var(--card)", border: "1px solid rgba(var(--border-rgb),0.09)" }}>
-              <p className="text-[0.98rem]" style={{ color: "var(--text)" }}>{s.text}</p>
-              <p className="mt-2 text-[0.76rem]" style={{ color: "var(--text-faint)" }}>
-                {s.created_by} · {new Date(s.created_at).toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}
-              </p>
-            </div>
-          ))}
+          {suggestions.map((s) => {
+            const voted = myVotes.has(s.id);
+            return (
+              <div key={s.id} className="flex items-start gap-4 rounded-2xl px-5 py-4" style={{ background: "var(--card)", border: "1px solid rgba(var(--border-rgb),0.09)" }}>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[0.98rem]" style={{ color: "var(--text)" }}>{s.text}</p>
+                  <p className="mt-2 text-[0.76rem]" style={{ color: "var(--text-faint)" }}>
+                    {s.created_by} · {new Date(s.created_at).toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void voteOnSuggestion(s.id)}
+                  disabled={voted}
+                  className="flex shrink-0 flex-col items-center gap-0.5 rounded-2xl px-4 py-2 text-[0.85rem] font-semibold disabled:opacity-70"
+                  style={
+                    voted
+                      ? { background: "#F2795F", color: "#161616" }
+                      : { border: "1px solid rgba(var(--border-rgb),0.2)", color: "var(--text)" }
+                  }
+                >
+                  <span className="tnum text-[1.05rem] font-bold">{s.vote_count}</span>
+                  <span>{voted ? "✓ oyun" : "oy ver"}</span>
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
     </main>

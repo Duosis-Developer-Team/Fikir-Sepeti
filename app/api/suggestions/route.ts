@@ -12,12 +12,24 @@ export async function GET(req: Request) {
     .from("suggestions")
     .select("*")
     .eq("tenant_id", identity.tenantId)
+    .order("vote_count", { ascending: false })
     .order("created_at", { ascending: false });
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-  return NextResponse.json({ suggestions: data ?? [] });
+
+  const { data: voteRows } = await sb
+    .from("suggestion_votes")
+    .select("suggestion_id")
+    .eq("tenant_id", identity.tenantId)
+    .eq("voter", identity.email);
+
+  const myVotes = ((voteRows as { suggestion_id: string }[] | null) ?? []).map(
+    (r) => r.suggestion_id
+  );
+
+  return NextResponse.json({ suggestions: data ?? [], myVotes });
 }
 
 export async function POST(req: Request) {

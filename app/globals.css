@@ -177,3 +177,27 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Yazdır / "PDF olarak kaydet" — açık temanın renkleriyle, gölgesiz, aksiyon
+   butonları gizli. Sayfa hangi temada olursa olsun çıktı hep okunaklı. */
+@media print {
+  :root {
+    --bg: #f3f1ec;
+    --card: #ffffff;
+    --black: #fbfaf8;
+    --surface-2: #ece9e2;
+    --text: #211d18;
+    --text-2: #3d372e;
+    --text-3: #524b40;
+    --text-muted: #6f6656;
+    --text-faint: #a69c8b;
+    --text-rgb: 33, 29, 24;
+    --border-rgb: 0, 0, 0;
+    --bg-rgb: 243, 241, 236;
+    --card-shadow: none;
+    --card-shadow-hover: none;
+  }
+  .print-hide {
+    display: none !important;
+  }
+}

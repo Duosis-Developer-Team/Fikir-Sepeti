@@ -22,7 +22,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col">
       <header
-        className="sticky top-0 z-20 flex items-center justify-between px-[clamp(24px,5vw,56px)] py-[14px]"
+        className="print-hide sticky top-0 z-20 flex items-center justify-between px-[clamp(24px,5vw,56px)] py-[14px]"
         style={{ borderBottom: "1px solid rgba(var(--border-rgb),0.08)", background: "var(--bg)" }}
       >
         <Link href="/" className="flex shrink-0 items-center" aria-label="FikirSepeti ana sayfa">

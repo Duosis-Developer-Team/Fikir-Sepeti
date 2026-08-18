@@ -196,6 +196,7 @@ export type Suggestion = {
   tenant_id: string;
   text: string;
   created_by: string;
+  vote_count: number;
   created_at: string;
 };
 

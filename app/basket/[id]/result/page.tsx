@@ -78,19 +78,30 @@ export default function BasketResultPage() {
 
   return (
     <main className="mx-auto max-w-[880px] px-[clamp(24px,5vw,40px)] pb-20 pt-8" data-testid="result-page">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="print-hide flex flex-wrap items-center justify-between gap-3">
         <Link href="/archive" className="text-[0.9rem]" style={{ color: "var(--text-muted)" }}>
           ← Arşiv
         </Link>
-        <button
-          type="button"
-          onClick={() => void downloadCsv()}
-          className="rounded-full px-4 py-2 text-[0.85rem] font-semibold"
-          style={{ background: soft(a, 0.18), color: a.base }}
-          data-testid="result-csv"
-        >
-          CSV indir
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="rounded-full px-4 py-2 text-[0.85rem] font-semibold"
+            style={{ background: soft(a, 0.18), color: a.base }}
+            data-testid="result-pdf"
+          >
+            PDF olarak indir
+          </button>
+          <button
+            type="button"
+            onClick={() => void downloadCsv()}
+            className="rounded-full px-4 py-2 text-[0.85rem] font-semibold"
+            style={{ background: soft(a, 0.18), color: a.base }}
+            data-testid="result-csv"
+          >
+            CSV indir
+          </button>
+        </div>
       </div>
 
       <p className="mt-8 text-[0.72rem] font-bold uppercase tracking-[0.22em]" style={{ color: a.base }}>
