@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useNameContext } from "@/components/AuthGate";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { listArchive, type ArchiveBasket } from "@/lib/archive";
 import { accentFor, soft } from "@/lib/accent";
 
@@ -29,12 +28,9 @@ export default function ArchivePage() {
 
   return (
     <main className="mx-auto min-h-screen max-w-[960px] px-[clamp(24px,5vw,48px)] pb-20 pt-8">
-      <div className="flex items-center justify-between gap-3">
-        <Link href="/" className="text-[0.9rem]" style={{ color: "var(--text-muted)" }}>
-          ← Ana sayfa
-        </Link>
-        <ThemeToggle />
-      </div>
+      <Link href="/" className="text-[0.9rem]" style={{ color: "var(--text-muted)" }}>
+        ← Ana sayfa
+      </Link>
 
       <h1 className="font-display mt-8 text-[clamp(2rem,4vw,3rem)] font-bold" style={{ color: "var(--text)" }}>
         Arşiv
