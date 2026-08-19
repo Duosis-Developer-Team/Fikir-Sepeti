@@ -170,10 +170,27 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data }) => {
-      await applySession(data.session);
+    let settled = false;
+    const markReady = () => {
+      if (settled) return;
+      settled = true;
       setReady(true);
-    });
+    };
+
+    // Safety net: a hung request (cold-starting DB, dead connection) should
+    // never leave the app stuck on the loading skeleton forever.
+    const timeout = setTimeout(markReady, 8000);
+
+    supabase.auth
+      .getSession()
+      .then(({ data }) => applySession(data.session))
+      .catch((e) => {
+        console.error("initial session check failed", e);
+      })
+      .finally(() => {
+        clearTimeout(timeout);
+        markReady();
+      });
 
     if (typeof window !== "undefined" && window.location.hash.includes("access_token")) {
       window.history.replaceState(null, "", window.location.pathname + window.location.search);
