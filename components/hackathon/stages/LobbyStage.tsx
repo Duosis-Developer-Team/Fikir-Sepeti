@@ -181,7 +181,7 @@ export function LobbyStage({ data, config, isAdmin, user, refresh, needsJoinActi
               style={{ color: GOLD_SOFT }}
               data-testid="lobby-teams-link-join"
             >
-              Teams'e katıl →
+              Teams&apos;e katıl →
             </a>
           )}
           <div className="mt-5 flex flex-wrap justify-center gap-2">
@@ -214,7 +214,7 @@ export function LobbyStage({ data, config, isAdmin, user, refresh, needsJoinActi
             style={{ color: GOLD_SOFT }}
             data-testid="lobby-teams-link-wait"
           >
-            Teams'e katıl →
+            Teams&apos;e katıl →
           </a>
         )}
         <p className="mt-3 text-[0.95rem]" style={{ color: dim(0.5) }}>

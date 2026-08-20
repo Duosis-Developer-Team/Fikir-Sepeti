@@ -95,12 +95,13 @@ export function PoolPanel() {
 
   const addOptionTo = async (parent: PoolIdea, text: string) => {
     if (!tenantId || text.trim().length < 2) return;
-    const closes = parent.poll_closes_at ?? new Date(Date.now() + 24 * 3600_000).toISOString();
+    // canAddOption zaten status === "voting" ile gate'liyor, bu da yaratılışta
+    // poll_closes_at'in set edilmiş olduğu anlamına gelir (bkz. submit()).
     await createPoolIdea({
       text: text.trim(),
       brief: "Poll seçeneği",
       category: parent.category ?? null,
-      poll_closes_at: closes,
+      poll_closes_at: parent.poll_closes_at,
       status: "voting",
       created_by: name,
       tenant_id: tenantId,
@@ -241,8 +242,8 @@ export function PoolPanel() {
 
       {trackFilter === "etkinlik" && (
         <p className="text-[0.82rem]" style={{ color: "var(--text-faint)" }} data-testid="pool-etkinlik-wip-note">
-          Hackathon için sepetten fikir seçme artık ilgili hackathon'un lobisinden yapılıyor. Etkinlik tarafı için
-          bu akış henüz yapım aşamasında (WIP) — şimdilik "+ Yeni sepet" ile boş bir etkinlik açıp fikirleri elle
+          Hackathon için sepetten fikir seçme artık ilgili hackathon&apos;un lobisinden yapılıyor. Etkinlik tarafı için
+          bu akış henüz yapım aşamasında (WIP) — şimdilik &quot;+ Yeni sepet&quot; ile boş bir etkinlik açıp fikirleri elle
           taşımak gerekiyor.
         </p>
       )}
