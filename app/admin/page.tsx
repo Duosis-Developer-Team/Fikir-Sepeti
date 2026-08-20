@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
+import { AnimatePresence, motion } from "motion/react";
 import { useNameContext, useSession } from "@/components/AuthGate";
 
 type TenantRow = {
@@ -34,6 +35,8 @@ export default function AdminPage() {
   const [selected, setSelected] = useState<string | null>(null);
   const [detailUsers, setDetailUsers] = useState<DetailUser[]>([]);
   const [busy, setBusy] = useState(false);
+  const [confirmSuspend, setConfirmSuspend] = useState<TenantRow | null>(null);
+  const [confirmPlan, setConfirmPlan] = useState<{ tenant: TenantRow; next: "free" | "analytics" } | null>(null);
 
   const load = useCallback(async () => {
     if (!tenantId || !name) return;
@@ -160,9 +163,7 @@ export default function AdminPage() {
                       disabled={busy}
                       onClick={(e) => {
                         e.stopPropagation();
-                        void patch(t.id, {
-                          plan: t.plan === "free" ? "analytics" : "free",
-                        });
+                        setConfirmPlan({ tenant: t, next: t.plan === "free" ? "analytics" : "free" });
                       }}
                       className="rounded-full px-3 py-1 text-[0.78rem] font-semibold"
                       style={{ border: "1px solid rgba(var(--border-rgb),0.15)", color: "var(--text-2)" }}
@@ -174,9 +175,8 @@ export default function AdminPage() {
                       disabled={busy}
                       onClick={(e) => {
                         e.stopPropagation();
-                        void patch(t.id, {
-                          status: t.status === "active" ? "suspended" : "active",
-                        });
+                        if (t.status === "active") setConfirmSuspend(t);
+                        else void patch(t.id, { status: "active" });
                       }}
                       className="rounded-full px-3 py-1 text-[0.78rem] font-semibold"
                       style={{
@@ -227,6 +227,162 @@ export default function AdminPage() {
           </section>
         </div>
       )}
+
+      <SuspendConfirmDialog
+        tenant={confirmSuspend}
+        busy={busy}
+        onCancel={() => setConfirmSuspend(null)}
+        onConfirm={async () => {
+          if (!confirmSuspend) return;
+          await patch(confirmSuspend.id, { status: "suspended" });
+          setConfirmSuspend(null);
+        }}
+      />
+      <PlanConfirmDialog
+        data={confirmPlan}
+        busy={busy}
+        onCancel={() => setConfirmPlan(null)}
+        onConfirm={async () => {
+          if (!confirmPlan) return;
+          await patch(confirmPlan.tenant.id, { plan: confirmPlan.next });
+          setConfirmPlan(null);
+        }}
+      />
     </main>
+  );
+}
+
+function DialogShell({ open, onClose, children }: { open: boolean; onClose: () => void; children: ReactNode }) {
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          className="fixed inset-0 z-40 flex items-center justify-center px-4"
+          style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(6px)" }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+        >
+          <motion.div
+            className="w-full max-w-[420px] overflow-hidden rounded-[22px] p-7"
+            style={{
+              background: "linear-gradient(180deg, var(--sheen), transparent 38%), var(--card)",
+              border: "1px solid rgba(var(--border-rgb),0.1)",
+              boxShadow: "0 50px 120px -40px rgba(0,0,0,0.9), inset 0 1px 0 var(--edge)",
+            }}
+            initial={{ scale: 0.96, y: 16 }}
+            animate={{ scale: 1, y: 0 }}
+            exit={{ scale: 0.96, y: 16 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {children}
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+function SuspendConfirmDialog({
+  tenant,
+  busy,
+  onCancel,
+  onConfirm,
+}: {
+  tenant: TenantRow | null;
+  busy: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const [typed, setTyped] = useState("");
+  useEffect(() => setTyped(""), [tenant]);
+  const match = !!tenant && typed.trim() === tenant.name;
+
+  return (
+    <DialogShell open={!!tenant} onClose={onCancel}>
+      <h2 className="font-display text-[1.3rem] font-bold" style={{ color: "var(--text)" }}>
+        Tenant&apos;ı askıya al
+      </h2>
+      <p className="mt-2 text-[0.88rem]" style={{ color: "var(--text-muted)" }}>
+        <span className="font-semibold" style={{ color: "var(--text)" }}>{tenant?.user_count}</span> kullanıcının erişimi hemen kesilir. Devam etmek için tenant adını yaz:
+      </p>
+      <p className="mt-3 font-display text-[1.05rem] font-bold" style={{ color: "#F2795F" }}>{tenant?.name}</p>
+      <input
+        autoFocus
+        value={typed}
+        onChange={(e) => setTyped(e.target.value)}
+        placeholder="tenant adını buraya yaz"
+        className="mt-3 w-full rounded-lg px-3.5 py-2.5 text-[0.92rem] outline-none"
+        style={{ background: "var(--surface-2)", border: "1px solid rgba(var(--border-rgb),0.09)", color: "var(--text)" }}
+        data-testid="admin-suspend-confirm-input"
+      />
+      <div className="mt-6 flex items-center justify-end gap-2">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-full px-5 py-[10px] text-[0.9rem] font-semibold transition hover:bg-[rgba(var(--border-rgb),0.05)]"
+          style={{ color: "var(--text-muted)" }}
+        >
+          Vazgeç
+        </button>
+        <button
+          type="button"
+          disabled={!match || busy}
+          onClick={onConfirm}
+          className="rounded-full px-5 py-[10px] text-[0.9rem] font-bold transition disabled:opacity-40"
+          style={{ background: "#F2795F", color: "#161616" }}
+          data-testid="admin-suspend-confirm"
+        >
+          Askıya al
+        </button>
+      </div>
+    </DialogShell>
+  );
+}
+
+function PlanConfirmDialog({
+  data,
+  busy,
+  onCancel,
+  onConfirm,
+}: {
+  data: { tenant: TenantRow; next: "free" | "analytics" } | null;
+  busy: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <DialogShell open={!!data} onClose={onCancel}>
+      <h2 className="font-display text-[1.3rem] font-bold" style={{ color: "var(--text)" }}>
+        Planı değiştir
+      </h2>
+      <p className="mt-2 text-[0.88rem]" style={{ color: "var(--text-muted)" }}>
+        <span className="font-semibold" style={{ color: "var(--text)" }}>{data?.tenant.name}</span> için:
+      </p>
+      <p className="mt-3 text-[1.15rem]" style={{ color: "var(--text)" }}>
+        <span style={{ color: "var(--text-faint)" }}>{data?.tenant.plan}</span> → <span className="font-bold" style={{ color: "var(--clay)" }}>{data?.next}</span>
+      </p>
+      <div className="mt-6 flex items-center justify-end gap-2">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-full px-5 py-[10px] text-[0.9rem] font-semibold transition hover:bg-[rgba(var(--border-rgb),0.05)]"
+          style={{ color: "var(--text-muted)" }}
+        >
+          Vazgeç
+        </button>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={onConfirm}
+          className="rounded-full px-5 py-[10px] text-[0.9rem] font-bold transition disabled:opacity-40"
+          style={{ background: "var(--clay)", color: "#161616" }}
+          data-testid="admin-plan-confirm"
+        >
+          Değiştir
+        </button>
+      </div>
+    </DialogShell>
   );
 }

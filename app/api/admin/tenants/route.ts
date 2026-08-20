@@ -5,6 +5,7 @@ import {
   userHasPermission,
   userHasPermissionAnyTenant,
 } from "@/lib/server-auth";
+import { writeAudit } from "@/lib/server-moderation";
 
 async function requirePlatformAdmin(req: Request) {
   const identity = await resolveIdentity(req);
@@ -80,6 +81,12 @@ export async function PATCH(req: Request) {
   }
 
   const sb = getDb(req);
+  const { data: before } = await sb
+    .from("tenants")
+    .select("id, name, plan, status")
+    .eq("id", body.tenantId)
+    .maybeSingle();
+
   const { data, error } = await sb
     .from("tenants")
     .update(patch)
@@ -87,5 +94,16 @@ export async function PATCH(req: Request) {
     .select("id, name, plan, status")
     .single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  const action = patch.status ? "tenant.status_change" : "tenant.plan_change";
+  await writeAudit(sb, {
+    tenant_id: body.tenantId,
+    actor: gate.identity.email,
+    action,
+    entity_type: "tenant",
+    entity_id: body.tenantId,
+    meta: { before, after: data },
+  });
+
   return NextResponse.json({ tenant: data });
 }
