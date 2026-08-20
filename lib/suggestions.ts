@@ -48,3 +48,33 @@ export async function voteSuggestion(input: {
   if (!res.ok) return { ok: false, error: json.error };
   return { ok: true };
 }
+
+export async function setSuggestionStatus(input: {
+  suggestionId: string;
+  status: "open" | "done";
+  email: string;
+  tenantId: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  const res = await fetch(`/api/suggestions/${input.suggestionId}`, {
+    method: "PATCH",
+    headers: await apiAuthHeaders(input.email, input.tenantId),
+    body: JSON.stringify({ status: input.status }),
+  });
+  const json = (await res.json().catch(() => ({}))) as { error?: string };
+  if (!res.ok) return { ok: false, error: json.error };
+  return { ok: true };
+}
+
+export async function deleteSuggestion(input: {
+  suggestionId: string;
+  email: string;
+  tenantId: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  const res = await fetch(`/api/suggestions/${input.suggestionId}`, {
+    method: "DELETE",
+    headers: await apiAuthHeaders(input.email, input.tenantId),
+  });
+  const json = (await res.json().catch(() => ({}))) as { error?: string };
+  if (!res.ok) return { ok: false, error: json.error };
+  return { ok: true };
+}

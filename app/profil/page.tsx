@@ -8,7 +8,7 @@ import { Avatars } from "@/components/shared/Avatars";
 import { loadHome } from "@/lib/db";
 import { accentFor, soft } from "@/lib/accent";
 import { supabase } from "@/lib/supabase";
-import { listSuggestions, createSuggestion, voteSuggestion } from "@/lib/suggestions";
+import { listSuggestions, createSuggestion, voteSuggestion, setSuggestionStatus, deleteSuggestion } from "@/lib/suggestions";
 import type { Basket, Idea, Suggestion } from "@/lib/types";
 
 const PHASE_LABEL: Record<string, string> = {
@@ -147,6 +147,26 @@ export default function ProfilePage() {
     await refreshSuggestions();
   };
 
+  const toggleSuggestionDone = async (id: string, done: boolean) => {
+    if (!tenantId || !name) return;
+    const next = done ? "done" : "open";
+    setSuggestions((prev) => prev.map((s) => (s.id === id ? { ...s, status: next } : s)));
+    const res = await setSuggestionStatus({ suggestionId: id, status: next, email: name, tenantId });
+    if (!res.ok) await refreshSuggestions();
+  };
+
+  const removeSuggestion = async (id: string) => {
+    if (!tenantId || !name) return;
+    setSuggestions((prev) => prev.filter((s) => s.id !== id));
+    const res = await deleteSuggestion({ suggestionId: id, email: name, tenantId });
+    if (!res.ok) await refreshSuggestions();
+  };
+
+  const sortedSuggestions = useMemo(
+    () => [...suggestions].sort((a, b) => (a.status === b.status ? 0 : a.status === "done" ? 1 : -1)),
+    [suggestions]
+  );
+
   const mine = useMemo(() => baskets.filter((b) => b.created_by && b.created_by === name), [baskets, name]);
   const openCount = mine.filter((b) => b.status !== "resolved").length;
 
@@ -262,39 +282,98 @@ export default function ProfilePage() {
         <div className="mt-4 grid gap-3">
           {[0, 1].map((i) => <div key={i} className="h-16 animate-pulse rounded-2xl" style={{ background: "var(--card)" }} />)}
         </div>
-      ) : suggestions.length === 0 ? (
+      ) : sortedSuggestions.length === 0 ? (
         <p className="mt-4 py-6 text-center text-[0.9rem]" style={{ color: "var(--text-muted)" }}>Henüz öneri yok — ilkini sen yaz.</p>
       ) : (
         <div className="mt-4 flex flex-col gap-3">
-          {suggestions.map((s) => {
-            const voted = myVotes.has(s.id);
-            return (
-              <div key={s.id} className="flex items-start gap-4 rounded-2xl px-5 py-4" style={{ background: "var(--card)", border: "1px solid rgba(var(--border-rgb),0.09)" }}>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[0.98rem]" style={{ color: "var(--text)" }}>{s.text}</p>
-                  <p className="mt-2 text-[0.76rem]" style={{ color: "var(--text-faint)" }}>
-                    {s.created_by ?? "Anonim"} · {new Date(s.created_at).toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => void voteOnSuggestion(s.id)}
-                  disabled={voted}
-                  className="flex shrink-0 flex-col items-center gap-0.5 rounded-2xl px-4 py-2 text-[0.85rem] font-semibold disabled:opacity-70"
-                  style={
-                    voted
-                      ? { background: "#F2795F", color: "#161616" }
-                      : { border: "1px solid rgba(var(--border-rgb),0.2)", color: "var(--text)" }
-                  }
-                >
-                  <span className="tnum text-[1.05rem] font-bold">{s.vote_count}</span>
-                  <span>{voted ? "✓ oyun" : "oy ver"}</span>
-                </button>
-              </div>
-            );
-          })}
+          {sortedSuggestions.map((s) => (
+            <SuggestionCard
+              key={s.id}
+              suggestion={s}
+              voted={myVotes.has(s.id)}
+              canDelete={s.created_by === name}
+              onVote={() => void voteOnSuggestion(s.id)}
+              onToggleDone={(done) => void toggleSuggestionDone(s.id, done)}
+              onDelete={() => void removeSuggestion(s.id)}
+            />
+          ))}
         </div>
       )}
     </main>
+  );
+}
+
+function SuggestionCard({
+  suggestion: s,
+  voted,
+  canDelete,
+  onVote,
+  onToggleDone,
+  onDelete,
+}: {
+  suggestion: Suggestion;
+  voted: boolean;
+  canDelete: boolean;
+  onVote: () => void;
+  onToggleDone: (done: boolean) => void;
+  onDelete: () => void;
+}) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const done = s.status === "done";
+  return (
+    <div
+      className="flex items-start gap-4 rounded-2xl px-5 py-4"
+      style={{ background: "var(--card)", border: "1px solid rgba(var(--border-rgb),0.09)", opacity: done ? 0.7 : 1 }}
+    >
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          {done && (
+            <span className="rounded-full px-2.5 py-0.5 text-[0.68rem] font-bold uppercase tracking-wider" style={{ background: "rgba(51,194,147,0.15)", color: "var(--green)" }}>
+              ✓ Tamamlandı
+            </span>
+          )}
+          <p className="text-[0.98rem]" style={{ color: "var(--text)", textDecoration: done ? "line-through" : "none" }}>{s.text}</p>
+        </div>
+        <p className="mt-2 text-[0.76rem]" style={{ color: "var(--text-faint)" }}>
+          {s.created_by ?? "Anonim"} · {new Date(s.created_at).toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}
+        </p>
+        <div className="mt-2 flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={() => onToggleDone(!done)}
+            className="text-[0.78rem] font-semibold"
+            style={{ color: done ? "var(--text-faint)" : "var(--green)" }}
+          >
+            {done ? "Açığa al" : "✓ Tamamlandı işaretle"}
+          </button>
+          {canDelete && (
+            confirmDelete ? (
+              <span className="flex items-center gap-2 text-[0.78rem]">
+                <button type="button" onClick={onDelete} className="font-semibold" style={{ color: "#F2795F" }}>Sil</button>
+                <button type="button" onClick={() => setConfirmDelete(false)} style={{ color: "var(--text-faint)" }}>vazgeç</button>
+              </span>
+            ) : (
+              <button type="button" onClick={() => setConfirmDelete(true)} className="text-[0.78rem]" style={{ color: "var(--text-faint)" }}>
+                Sil
+              </button>
+            )
+          )}
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={onVote}
+        disabled={voted}
+        className="flex shrink-0 flex-col items-center gap-0.5 rounded-2xl px-4 py-2 text-[0.85rem] font-semibold disabled:opacity-70"
+        style={
+          voted
+            ? { background: "#F2795F", color: "#161616" }
+            : { border: "1px solid rgba(var(--border-rgb),0.2)", color: "var(--text)" }
+        }
+      >
+        <span className="tnum text-[1.05rem] font-bold">{s.vote_count}</span>
+        <span>{voted ? "✓ oyun" : "oy ver"}</span>
+      </button>
+    </div>
   );
 }

@@ -122,6 +122,20 @@ export async function returnIdeaToPool(input: {
   return json.idea ?? null;
 }
 
+export async function deletePoolIdea(input: {
+  idea_id: string;
+  actor: string;
+  tenant_id: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  const res = await fetch(`/api/pool/${input.idea_id}`, {
+    method: "DELETE",
+    headers: await apiAuthHeaders(input.actor, input.tenant_id),
+  });
+  const json = (await res.json().catch(() => ({}))) as { error?: string };
+  if (!res.ok) return { ok: false, error: json.error };
+  return { ok: true };
+}
+
 export async function markPoolWinner(input: {
   pool_idea_id: string;
   winner_label: string;

@@ -202,6 +202,7 @@ export type Suggestion = {
   /** Anonim gönderilmişse API bunu null döndürür — gönderenin kimliği gizlenir. */
   created_by: string | null;
   anonymous: boolean;
+  status: "open" | "done";
   vote_count: number;
   created_at: string;
 };

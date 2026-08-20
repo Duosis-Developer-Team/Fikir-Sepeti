@@ -6,7 +6,7 @@ import Link from "next/link";
 import { motion } from "motion/react";
 import { useNameContext } from "@/components/AuthGate";
 import { POOL_ACCENT, soft } from "@/lib/accent";
-import { createPoolIdea, promotePoolIdeas } from "@/lib/pool";
+import { createPoolIdea, promotePoolIdeas, deletePoolIdea } from "@/lib/pool";
 import { useRealtimePool, type PromotedBasketInfo } from "@/lib/useRealtimePool";
 import type { BasketType, PoolIdea, PoolStatus } from "@/lib/types";
 
@@ -123,6 +123,12 @@ export function PoolPanel() {
     setPollOption("");
     setBusy(false);
     void refresh();
+  };
+
+  const deleteIdea = async (id: string) => {
+    if (!tenantId) return;
+    const res = await deletePoolIdea({ idea_id: id, actor: name, tenant_id: tenantId });
+    if (res.ok) void refresh();
   };
 
   const toggleSelect = (id: string) => {
@@ -364,9 +370,13 @@ export function PoolPanel() {
             promotedBasket={idea.promoted_basket_id ? promotedBaskets[idea.promoted_basket_id] : undefined}
             options={optionsByParent.get(idea.id) ?? []}
             myVotes={myVotes}
+            canDelete={idea.created_by === name}
             onVote={() => void vote(idea.id)}
             onVoteOption={(id) => void vote(id)}
             onToggle={() => toggleSelect(idea.id)}
+            onDelete={() => void deleteIdea(idea.id)}
+            onDeleteOption={(id) => void deleteIdea(id)}
+            currentUser={name}
           />
         ))}
         {!filtered.length && (
@@ -386,9 +396,13 @@ function PoolCard({
   promotedBasket,
   options,
   myVotes,
+  canDelete,
   onVote,
   onVoteOption,
   onToggle,
+  onDelete,
+  onDeleteOption,
+  currentUser,
 }: {
   idea: PoolIdea;
   voted: boolean;
@@ -396,10 +410,15 @@ function PoolCard({
   promotedBasket?: PromotedBasketInfo;
   options: PoolIdea[];
   myVotes: Set<string>;
+  canDelete: boolean;
   onVote: () => void;
   onVoteOption: (id: string) => void;
   onToggle: () => void;
+  onDelete: () => void;
+  onDeleteOption: (id: string) => void;
+  currentUser: string;
 }) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const closed = idea.poll_closes_at ? new Date(idea.poll_closes_at) < new Date() : false;
   const usedLabel =
     idea.status === "promoted" && idea.promoted_basket_id
@@ -501,6 +520,40 @@ function PoolCard({
           >
             {voted ? "✓ oyun" : closed ? "kapandı" : "oy ver"}
           </button>
+          {canDelete && (
+            confirmDelete ? (
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={onDelete}
+                  className="rounded-full px-3 py-2 text-[0.78rem] font-semibold"
+                  style={{ background: "#F2795F", color: "#161616" }}
+                  data-testid={`pool-delete-confirm-${idea.id}`}
+                >
+                  Sil
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(false)}
+                  className="rounded-full px-2.5 py-2 text-[0.78rem]"
+                  style={{ color: "var(--text-faint)" }}
+                >
+                  vazgeç
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(true)}
+                aria-label="Sil"
+                className="grid h-8 w-8 place-items-center rounded-full transition hover:bg-[rgba(242,121,95,0.12)]"
+                style={{ color: "var(--text-faint)" }}
+                data-testid={`pool-delete-${idea.id}`}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6h16Z" /></svg>
+              </button>
+            )
+          )}
         </div>
       </div>
 
@@ -509,34 +562,80 @@ function PoolCard({
           <span className="text-[0.68rem] font-semibold uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>
             Poll seçenekleri
           </span>
-          {options.map((opt) => {
-            const optVoted = myVotes.has(opt.id);
-            const optClosed = opt.poll_closes_at ? new Date(opt.poll_closes_at) < new Date() : false;
-            return (
-              <div key={opt.id} className="flex items-center justify-between gap-3 rounded-xl px-3.5 py-2.5" style={{ background: "var(--surface-2)" }} data-testid={`pool-option-${opt.id}`}>
-                <span className="min-w-0 flex-1 truncate text-[0.92rem]" style={{ color: "var(--text)" }}>{opt.text}</span>
-                <div className="flex shrink-0 items-center gap-2.5">
-                  <span className="tnum font-display text-[1rem] font-bold" style={{ color: optVoted ? CLAY.base : CLAY.light }}>{opt.vote_count}</span>
-                  <button
-                    type="button"
-                    onClick={() => onVoteOption(opt.id)}
-                    disabled={optVoted || optClosed}
-                    className="rounded-full px-3 py-1.5 text-[0.78rem] font-semibold disabled:opacity-40"
-                    style={
-                      optVoted
-                        ? { background: CLAY.base, color: "#161616" }
-                        : { border: "1px solid rgba(var(--border-rgb),0.2)", color: "var(--text)" }
-                    }
-                    data-testid={`pool-option-vote-${opt.id}`}
-                  >
-                    {optVoted ? "✓ oyun" : optClosed ? "kapandı" : "oy ver"}
-                  </button>
-                </div>
-              </div>
-            );
-          })}
+          {options.map((opt) => (
+            <OptionRow
+              key={opt.id}
+              opt={opt}
+              voted={myVotes.has(opt.id)}
+              canDelete={opt.created_by === currentUser}
+              onVote={() => onVoteOption(opt.id)}
+              onDelete={() => onDeleteOption(opt.id)}
+            />
+          ))}
         </div>
       )}
     </motion.div>
+  );
+}
+
+function OptionRow({
+  opt,
+  voted,
+  canDelete,
+  onVote,
+  onDelete,
+}: {
+  opt: PoolIdea;
+  voted: boolean;
+  canDelete: boolean;
+  onVote: () => void;
+  onDelete: () => void;
+}) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const closed = opt.poll_closes_at ? new Date(opt.poll_closes_at) < new Date() : false;
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-xl px-3.5 py-2.5" style={{ background: "var(--surface-2)" }} data-testid={`pool-option-${opt.id}`}>
+      <span className="min-w-0 flex-1 truncate text-[0.92rem]" style={{ color: "var(--text)" }}>{opt.text}</span>
+      <div className="flex shrink-0 items-center gap-2.5">
+        <span className="tnum font-display text-[1rem] font-bold" style={{ color: voted ? CLAY.base : CLAY.light }}>{opt.vote_count}</span>
+        <button
+          type="button"
+          onClick={onVote}
+          disabled={voted || closed}
+          className="rounded-full px-3 py-1.5 text-[0.78rem] font-semibold disabled:opacity-40"
+          style={
+            voted
+              ? { background: CLAY.base, color: "#161616" }
+              : { border: "1px solid rgba(var(--border-rgb),0.2)", color: "var(--text)" }
+          }
+          data-testid={`pool-option-vote-${opt.id}`}
+        >
+          {voted ? "✓ oyun" : closed ? "kapandı" : "oy ver"}
+        </button>
+        {canDelete && (
+          confirmDelete ? (
+            <div className="flex items-center gap-1">
+              <button type="button" onClick={onDelete} className="rounded-full px-2.5 py-1.5 text-[0.72rem] font-semibold" style={{ background: "#F2795F", color: "#161616" }}>
+                Sil
+              </button>
+              <button type="button" onClick={() => setConfirmDelete(false)} className="rounded-full px-2 py-1.5 text-[0.72rem]" style={{ color: "var(--text-faint)" }}>
+                vazgeç
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(true)}
+              aria-label="Sil"
+              className="grid h-7 w-7 place-items-center rounded-full transition hover:bg-[rgba(242,121,95,0.12)]"
+              style={{ color: "var(--text-faint)" }}
+              data-testid={`pool-option-delete-${opt.id}`}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6h16Z" /></svg>
+            </button>
+          )
+        )}
+      </div>
+    </div>
   );
 }
