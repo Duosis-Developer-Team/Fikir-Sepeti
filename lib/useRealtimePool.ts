@@ -57,7 +57,7 @@ export function useRealtimePool(tenantId: string | null, voter: string) {
     for (const row of rows) byId.set(row.id, row);
 
     const basketIds = [...new Set(rows.map((r) => r.promoted_basket_id).filter((id): id is string => !!id))];
-    let promotedBaskets: Record<string, PromotedBasketInfo> = {};
+    const promotedBaskets: Record<string, PromotedBasketInfo> = {};
     if (basketIds.length) {
       const basketsRes = await supabase.from("baskets").select("id, type, title").in("id", basketIds);
       for (const b of (basketsRes.data as { id: string; type: BasketType; title: string }[]) ?? []) {
