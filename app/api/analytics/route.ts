@@ -61,6 +61,7 @@ export async function GET(req: Request) {
     { data: ideaIdsWithVotes },
     { data: selectedRows },
     { data: baskets },
+    { data: demoBaskets },
     { data: poolRows },
     { data: votes },
     { data: participants },
@@ -74,14 +75,19 @@ export async function GET(req: Request) {
     sb
       .from("baskets")
       .select("selected_idea_id, winner_idea_id")
-      .eq("tenant_id", tenantId),
+      .eq("tenant_id", tenantId)
+      .eq("is_demo", false),
     sb
       .from("baskets")
       .select(
         "id, title, type, phase, status, created_by, created_at, production_note, effort_estimate, winner_idea_id, selected_idea_id"
       )
       .eq("tenant_id", tenantId)
+      .eq("is_demo", false)
       .order("created_at", { ascending: false }),
+    // FS-17: onboarding'de sabit gelen demo sepetleri (2 sosyal + 1 build) —
+    // gerçek katılım/retention rakamlarını şişirmesin diye votes/participants'tan ayıklanıyor.
+    sb.from("baskets").select("id").eq("tenant_id", tenantId).eq("is_demo", true),
     sb
       .from("idea_pool")
       .select("id, status, vote_count, parent_idea_id")
@@ -97,6 +103,7 @@ export async function GET(req: Request) {
       .eq("tenant_id", tenantId),
   ]);
 
+  const demoBasketIds = new Set((demoBaskets ?? []).map((b) => b.id as string));
   const tenantCapacity = Math.max(memberCount ?? 1, 1);
 
   const votedIdeaIds = new Set<string>();
@@ -180,12 +187,14 @@ export async function GET(req: Request) {
   const events: ParticipationEvent[] = [];
   for (const v of votes ?? []) {
     if (!v.voter || !v.created_at) continue;
+    if (demoBasketIds.has(v.basket_id as string)) continue;
     events.push({
       userKey: v.voter as string,
       at: new Date(v.created_at as string),
     });
   }
   for (const p of participants ?? []) {
+    if (demoBasketIds.has(p.basket_id as string)) continue;
     const key = (p.email as string) || (p.user_id as string);
     if (!key || !p.joined_at) continue;
     events.push({ userKey: key, at: new Date(p.joined_at as string) });
