@@ -20,6 +20,13 @@ const STATUS_LABEL: Record<PoolStatus, string> = {
 };
 
 const CATEGORIES = ["ürün", "süreç", "kültür", "teknoloji", "diğer"];
+type TrackHint = "hackathon" | "etkinlik" | null;
+const TRACK_LABEL: Record<"all" | "hackathon" | "etkinlik" | "genel", string> = {
+  all: "tümü",
+  genel: "fikir",
+  hackathon: "hackathon fikri",
+  etkinlik: "etkinlik fikri",
+};
 
 export function PoolPanel() {
   const { name, tenantId } = useNameContext();
@@ -29,7 +36,9 @@ export function PoolPanel() {
   const [text, setText] = useState("");
   const [brief, setBrief] = useState("");
   const [category, setCategory] = useState("");
+  const [trackHint, setTrackHint] = useState<TrackHint>(null);
   const [filterCat, setFilterCat] = useState<string>("all");
+  const [trackFilter, setTrackFilter] = useState<"all" | "hackathon" | "etkinlik" | "genel">("all");
   const [query, setQuery] = useState("");
   const [pollHours, setPollHours] = useState(0);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -39,6 +48,10 @@ export function PoolPanel() {
 
   const filtered = useMemo(() => {
     return ideas.filter((i) => {
+      if (trackFilter !== "all") {
+        const track = i.track_hint ?? "genel";
+        if (track !== trackFilter) return false;
+      }
       if (filterCat !== "all" && (i.category ?? "") !== filterCat) return false;
       if (query.trim()) {
         const q = query.toLowerCase();
@@ -47,7 +60,7 @@ export function PoolPanel() {
       }
       return true;
     });
-  }, [ideas, filterCat, query]);
+  }, [ideas, trackFilter, filterCat, query]);
 
   const openPoll = useMemo(
     () => ideas.some((i) => i.status === "voting" && (!i.poll_closes_at || new Date(i.poll_closes_at) > new Date())),
@@ -61,8 +74,9 @@ export function PoolPanel() {
       pollHours > 0 ? new Date(Date.now() + pollHours * 3600_000).toISOString() : null;
     await createPoolIdea({
       text: text.trim(),
-      brief: brief.trim() || null,
-      category: category || null,
+      brief: trackHint ? null : brief.trim() || null,
+      category: trackHint ? null : category || null,
+      track_hint: trackHint,
       poll_closes_at: closes,
       status: closes ? "voting" : "new",
       created_by: name,
@@ -145,6 +159,27 @@ export function PoolPanel() {
         <p className="text-[0.72rem] font-bold uppercase tracking-[0.22em]" style={{ color: CLAY.base }}>
           Sepete at
         </p>
+        <div className="mt-3 flex flex-wrap gap-2" data-testid="pool-track-hint">
+          {([null, "hackathon", "etkinlik"] as TrackHint[]).map((t) => {
+            const on = trackHint === t;
+            return (
+              <button
+                key={t ?? "genel"}
+                type="button"
+                onClick={() => setTrackHint(t)}
+                className="rounded-full px-3.5 py-1.5 text-[0.8rem] font-semibold transition"
+                style={
+                  on
+                    ? { background: CLAY.base, color: "#161616" }
+                    : { border: "1px solid rgba(var(--border-rgb),0.15)", color: "var(--text-muted)" }
+                }
+                data-testid={`pool-track-hint-${t ?? "genel"}`}
+              >
+                {t === "hackathon" ? "Hackathon fikri" : t === "etkinlik" ? "Etkinlik fikri" : "Fikir"}
+              </button>
+            );
+          })}
+        </div>
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -154,27 +189,31 @@ export function PoolPanel() {
           style={{ background: "var(--surface-2)", border: "1px solid rgba(var(--border-rgb),0.1)", color: "var(--text)" }}
           data-testid="pool-idea-input"
         />
-        <input
-          value={brief}
-          onChange={(e) => setBrief(e.target.value)}
-          placeholder="Kısa brief (opsiyonel)"
-          className="mt-3 w-full rounded-xl px-4 py-3 text-[0.95rem] outline-none"
-          style={{ background: "var(--surface-2)", border: "1px solid rgba(var(--border-rgb),0.08)", color: "var(--text)" }}
-        />
+        {!trackHint && (
+          <input
+            value={brief}
+            onChange={(e) => setBrief(e.target.value)}
+            placeholder="Kısa brief (opsiyonel)"
+            className="mt-3 w-full rounded-xl px-4 py-3 text-[0.95rem] outline-none"
+            style={{ background: "var(--surface-2)", border: "1px solid rgba(var(--border-rgb),0.08)", color: "var(--text)" }}
+          />
+        )}
         <div className="mt-4 flex flex-wrap items-center gap-3">
-          <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            className="rounded-full px-4 py-2 text-[0.85rem] outline-none"
-            style={{ background: "var(--surface-2)", color: "var(--text)", border: "1px solid rgba(var(--border-rgb),0.1)" }}
-          >
-            <option value="">kategori</option>
-            {CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
+          {!trackHint && (
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="rounded-full px-4 py-2 text-[0.85rem] outline-none"
+              style={{ background: "var(--surface-2)", color: "var(--text)", border: "1px solid rgba(var(--border-rgb),0.1)" }}
+            >
+              <option value="">kategori</option>
+              {CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          )}
           <select
             value={pollHours}
             onChange={(e) => setPollHours(Number(e.target.value))}
@@ -228,6 +267,28 @@ export function PoolPanel() {
           </button>
         </div>
       )}
+
+      <div className="flex flex-wrap items-center gap-2" data-testid="pool-track-filter">
+        {(["all", "genel", "hackathon", "etkinlik"] as const).map((t) => {
+          const on = trackFilter === t;
+          return (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setTrackFilter(t)}
+              className="rounded-full px-3.5 py-1.5 text-[0.8rem] font-semibold transition"
+              style={
+                on
+                  ? { background: soft(CLAY, 0.18), color: CLAY.base, border: `1px solid ${soft(CLAY, 0.4)}` }
+                  : { border: "1px solid rgba(var(--border-rgb),0.12)", color: "var(--text-muted)" }
+              }
+              data-testid={`pool-track-filter-${t}`}
+            >
+              {TRACK_LABEL[t]}
+            </button>
+          );
+        })}
+      </div>
 
       <div className="flex flex-wrap items-center gap-3">
         <input
@@ -358,6 +419,15 @@ function PoolCard({
             >
               {STATUS_LABEL[idea.status]}
             </span>
+            {idea.track_hint && (
+              <span
+                className="rounded-full px-2.5 py-0.5 text-[0.68rem] font-semibold"
+                style={{ background: "var(--surface-2)", color: "var(--text-muted)" }}
+                data-testid={`pool-track-${idea.id}`}
+              >
+                {idea.track_hint === "hackathon" ? "hackathon" : "etkinlik"}
+              </span>
+            )}
             {idea.category && (
               <span className="text-[0.75rem]" style={{ color: "var(--text-muted)" }}>
                 {idea.category}
