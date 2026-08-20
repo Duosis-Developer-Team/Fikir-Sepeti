@@ -10,6 +10,7 @@ import {
   type AnalyticsFull,
   type AnalyticsTeaser,
 } from "@/lib/client-analytics";
+import { countMissingEffort } from "@/lib/analytics";
 
 export default function AnalyticsPage() {
   const { name, tenantId } = useNameContext();
@@ -198,12 +199,20 @@ export default function AnalyticsPage() {
               className="rounded-2xl px-6 py-5"
               style={{ background: "var(--card)", border: "1px solid rgba(var(--border-rgb),0.1)" }}
             >
-              <p className="font-display text-[2.4rem] font-bold" style={{ color: "#E3A857" }}>
-                %{full.retention.rate}
-              </p>
+              {full.retention.rate === null ? (
+                <p className="font-display text-[1.5rem] font-bold" style={{ color: "var(--text-faint)" }}>
+                  Yeterli veri yok
+                </p>
+              ) : (
+                <p className="font-display text-[2.4rem] font-bold" style={{ color: "#E3A857" }}>
+                  %{full.retention.rate}
+                </p>
+              )}
               <p className="mt-1 text-[0.9rem]" style={{ color: "var(--text-muted)" }}>
-                {full.retention.anchorMonth} aktif {full.retention.month1Active} kişiden{" "}
-                {full.retention.month3Active} kişi {full.retention.asOfMonth} ayında da katıldı.
+                {full.retention.month1Active === 0
+                  ? `${full.retention.anchorMonth} ayında henüz aktif kullanıcı yok.`
+                  : <>{full.retention.anchorMonth} aktif {full.retention.month1Active} kişiden{" "}
+                      {full.retention.month3Active} kişi {full.retention.asOfMonth} ayında da katıldı.</>}
               </p>
             </div>
           </section>
@@ -217,6 +226,11 @@ export default function AnalyticsPage() {
                 Toplam efor: {full.effortTotal} gün
               </span>
             </div>
+            {countMissingEffort(full.production) > 0 && (
+              <p className="mb-4 rounded-xl px-4 py-2.5 text-[0.85rem]" style={{ background: "rgba(227,168,87,0.12)", color: "#E3A857" }} data-testid="analytics-missing-effort">
+                {countMissingEffort(full.production)} kayıtta efor eksik — huninin son adımı tam ölçülemiyor.
+              </p>
+            )}
             {full.production.length === 0 ? (
               <p style={{ color: "var(--text-muted)" }}>Henüz üretime alınan sepet yok.</p>
             ) : (

@@ -27,8 +27,8 @@ export type RetentionResult = {
   month1Active: number;
   /** Of month1, still active in asOf month. */
   month3Active: number;
-  /** month3Active / month1Active, or 0 if none. */
-  rate: number;
+  /** month3Active / month1Active — null if month1Active is 0 (no data, not "0%"). */
+  rate: number | null;
   anchorMonth: string;
   asOfMonth: string;
 };
@@ -114,10 +114,15 @@ export function computeRetention3Month(
   return {
     month1Active: m1.size,
     month3Active: still,
-    rate: m1.size === 0 ? 0 : Math.round((still / m1.size) * 1000) / 10,
+    rate: m1.size === 0 ? null : Math.round((still / m1.size) * 1000) / 10,
     anchorMonth: anchorM,
     asOfMonth: asOfM,
   };
+}
+
+/** Number of production records missing an effort estimate (FS-18). */
+export function countMissingEffort(records: { effort_estimate: number | null }[]): number {
+  return records.filter((r) => r.effort_estimate == null).length;
 }
 
 /** Average participation rate across last N resolved etkinlik baskets. */

@@ -20,12 +20,19 @@ export function ProductionStage({ data, user, isAdmin }: StageContext) {
   const [effortEstimate, setEffortEstimate] = useState(
     basket.effort_estimate != null ? String(basket.effort_estimate) : ""
   );
+  const [confirmSkipMeta, setConfirmSkipMeta] = useState(false);
   const nameOf = (uid: string) => {
     const p = participants.find((x) => x.user_id === uid);
     return p?.display_name || p?.email || uid;
   };
 
+  const metaMissing = productionNote.trim() === "" && effortEstimate.trim() === "";
+
   const finalize = async () => {
+    if (metaMissing && !confirmSkipMeta) {
+      setConfirmSkipMeta(true);
+      return;
+    }
     await markDone(basket.id, selected?.id ?? null, {
       production_note: productionNote.trim() || null,
       effort_estimate:
@@ -164,7 +171,7 @@ export function ProductionStage({ data, user, isAdmin }: StageContext) {
             </span>
             <input
               value={productionNote}
-              onChange={(e) => setProductionNote(e.target.value)}
+              onChange={(e) => { setProductionNote(e.target.value); setConfirmSkipMeta(false); }}
               placeholder="Ne yapıldı, kim yaptı"
               className="mt-2 w-full rounded-xl px-3 py-2.5 text-[0.95rem]"
               style={{ background: "var(--surface-2)", color: "var(--text)", border: "1px solid rgba(var(--border-rgb),0.1)" }}
@@ -172,7 +179,7 @@ export function ProductionStage({ data, user, isAdmin }: StageContext) {
             />
             <input
               value={effortEstimate}
-              onChange={(e) => setEffortEstimate(e.target.value)}
+              onChange={(e) => { setEffortEstimate(e.target.value); setConfirmSkipMeta(false); }}
               placeholder="Tahmini adam-gün"
               type="number"
               min={0}
@@ -181,6 +188,11 @@ export function ProductionStage({ data, user, isAdmin }: StageContext) {
               style={{ background: "var(--surface-2)", color: "var(--text)", border: "1px solid rgba(var(--border-rgb),0.1)" }}
               data-testid="production-effort"
             />
+            {confirmSkipMeta && (
+              <p className="mt-2 text-[0.85rem]" style={{ color: "#E3A857" }} data-testid="production-meta-warning">
+                Efor/not girmeden bitirirsen analitikte bu iş ölçülemez. Devam etmek için tekrar bas.
+              </p>
+            )}
           </div>
         )}
 
@@ -188,7 +200,9 @@ export function ProductionStage({ data, user, isAdmin }: StageContext) {
           {done ? (
             <span className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-[0.95rem] font-semibold" style={{ background: "rgba(51,194,147,0.14)", color: "#6FD9B4" }}>✓ Üretime alındı</span>
           ) : isAdmin ? (
-            <GoldButton onClick={finalize}>Üretime al · kapat</GoldButton>
+            <GoldButton onClick={finalize}>
+              {confirmSkipMeta ? "Yine de bitir →" : "Üretime al · kapat"}
+            </GoldButton>
           ) : (
             <p className="text-[0.9rem]" style={{ color: dim(0.5) }}>Admin sonuçlandıracak.</p>
           )}
