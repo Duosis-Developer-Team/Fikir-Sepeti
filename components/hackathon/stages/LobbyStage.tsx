@@ -58,7 +58,8 @@ function ParticipantChip({ p }: { p: Participant }) {
 }
 
 export function LobbyStage({ data, config, isAdmin, user, refresh }: StageContext) {
-  const { basket, participants } = data;
+  const { basket, participants, ideas } = data;
+  const selectedIdea = ideas.find((i) => i.id === basket.selected_idea_id) ?? null;
   const [sub, setSub] = useState<Sub>("invite");
 
   const write = (c: HackathonConfig) => setConfig(basket.id, c).then(refresh);
@@ -113,7 +114,7 @@ export function LobbyStage({ data, config, isAdmin, user, refresh }: StageContex
           sub={`${basket.created_by ?? "Admin"} kuruyor. Başlayınca ekran değişecek.`}
         />
         <p className="mt-2 text-[0.95rem]" style={{ color: GOLD_SOFT }} data-testid="lobby-idea-status">
-          {ideaStatusLabel(config)}
+          {ideaStatusLabel(config, selectedIdea?.text)}
         </p>
         <p className="mt-3 text-[0.95rem]" style={{ color: dim(0.5) }}>
           {approved.length} kişi katıldı

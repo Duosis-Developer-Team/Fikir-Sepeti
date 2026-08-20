@@ -76,6 +76,7 @@ export async function POST(req: Request) {
         ? {
             ideaSource: "repo",
             repoPoolIdeaId: primary.id as string,
+            repoPoolIdeaIds: ids,
           }
         : {},
     })
@@ -86,7 +87,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: bErr?.message ?? "basket_failed" }, { status: 500 });
   }
 
-  // Copy pool texts into basket ideas (etkinlik always; hackathon repo keeps primary selected)
+  // Copy all promoted pool ideas into the basket; the lobby's vote/kura setup decides which one(s) get locked.
   const ideaInserts = poolRows.map((row) => ({
     basket_id: basket.id,
     text: row.text as string,
@@ -95,17 +96,13 @@ export async function POST(req: Request) {
     tenant_id: identity.tenantId,
     vote_count: 0,
   }));
-  const { data: ideas, error: iErr } = await sb.from("ideas").insert(ideaInserts).select();
+  const { error: iErr } = await sb.from("ideas").insert(ideaInserts).select();
   if (iErr) {
     return NextResponse.json({ error: iErr.message }, { status: 500 });
   }
 
-  if (isHackathon && ideas?.[0]) {
-    await sb
-      .from("baskets")
-      .update({ selected_idea_id: ideas[0].id })
-      .eq("id", basket.id);
-  }
+  // Idea selection happens in the lobby (vote/kura), not at promote time —
+  // see FS-07. Locking selected_idea_id here ignored the organizer's setup.
 
   await sb
     .from("idea_pool")

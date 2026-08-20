@@ -33,11 +33,13 @@ export function decideLobbyJoin(input: {
 }
 
 export function ideaStatusLabel(
-  config: HackathonConfig | null | undefined
+  config: HackathonConfig | null | undefined,
+  selectedIdeaText?: string | null
 ): string {
+  if (selectedIdeaText) return `Fikir belli: ${selectedIdeaText}`;
   const src = config?.ideaSource;
   if (src === "static") return "Fikir belli — admin girecek / girdi.";
   if (src === "pool") return "Fikir birlikte belirlenecek (brainstorm).";
-  if (src === "repo") return "Fikir sepetinden seçilecek.";
+  if (src === "repo") return "Fikir sepetten oylanarak/kurayla seçilecek.";
   return "Fikir durumu henüz ayarlanmadı.";
 }

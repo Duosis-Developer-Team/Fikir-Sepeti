@@ -25,8 +25,10 @@ export type HackathonConfig = {
   /** static = admin girer; pool = sepet-içi brainstorm; repo = Sepet'ten */
   ideaSource?: "static" | "pool" | "repo";
   poolSelect?: "vote" | "random";
-  /** Sepet fikir id — ideaSource=repo iken */
+  /** Sepet fikir id — ideaSource=repo iken. Geriye uyum için tutulur (ilk fikir). */
   repoPoolIdeaId?: string;
+  /** Sepetten dönüştürülen TÜM fikirlerin id'leri — ideaSource=repo iken havuzu doldurur. */
+  repoPoolIdeaIds?: string[];
   teamMode?: "solo" | "groups" | "one";
   groups?: {
     count: number;
