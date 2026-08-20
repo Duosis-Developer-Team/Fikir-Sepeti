@@ -153,7 +153,7 @@ export default function ProfilePage() {
   return (
     <main className="mx-auto max-w-[980px] px-[clamp(24px,5vw,40px)] pb-[90px] pt-[clamp(32px,5vw,56px)]">
       <Link href="/" className="text-[0.88rem]" style={{ color: "var(--text-muted)" }}>
-        ← sepetler
+        ← Ana sayfa
       </Link>
 
       <div className="mt-6 flex items-center justify-between gap-4">

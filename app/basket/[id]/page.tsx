@@ -61,7 +61,7 @@ export default function BasketDetail() {
           href="/"
           className="inline-flex items-center gap-2 rounded-full border border-[rgba(var(--border-rgb),0.09)] bg-[var(--card)] px-4 py-2 text-[0.88rem] text-[var(--text-3)] transition hover:border-[rgba(var(--border-rgb),0.2)] hover:text-[var(--text)]"
         >
-          <span className="text-base leading-none">←</span> sepetler
+          <span className="text-base leading-none">←</span> Ana sayfa
         </Link>
 
         {isOwner && basket && (

@@ -99,7 +99,7 @@ export default function AdminPage() {
   return (
     <main className="mx-auto max-w-[1100px] px-[clamp(24px,5vw,40px)] pb-[90px] pt-[clamp(28px,4vw,48px)]">
       <Link href="/" className="text-[0.88rem]" style={{ color: "var(--text-muted)" }}>
-        ← sepetler
+        ← Ana sayfa
       </Link>
       <h1 className="font-display mt-6 text-[2rem] font-bold" style={{ color: "var(--text)" }}>
         Platform · Tenantlar
