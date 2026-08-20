@@ -11,7 +11,9 @@ import {
   routeAfterPeek,
 } from "@/lib/register";
 
-type Step = "account" | "choose" | "create" | "invite";
+type Step = "account" | "confirm" | "choose" | "create" | "invite";
+
+const RESEND_COOLDOWN_S = 60;
 
 export default function RegisterPage() {
   const {
@@ -22,6 +24,10 @@ export default function RegisterPage() {
     loginError,
     loginAzure,
     registerWithPassword,
+    needsConfirmation,
+    confirmationEmail,
+    resendConfirmation,
+    clearNeedsConfirmation,
     createWorkspace,
     joinWithInvite,
     clearLoginError,
@@ -37,10 +43,22 @@ export default function RegisterPage() {
   const [domainTenant, setDomainTenant] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resendMsg, setResendMsg] = useState<string | null>(null);
 
   useEffect(() => {
     if (needsWorkspace) setStep("choose");
   }, [needsWorkspace]);
+
+  useEffect(() => {
+    if (needsConfirmation) setStep("confirm");
+  }, [needsConfirmation]);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const t = setInterval(() => setResendCooldown((s) => Math.max(0, s - 1)), 1000);
+    return () => clearInterval(t);
+  }, [resendCooldown]);
 
   if (!ready) {
     return (
@@ -93,14 +111,29 @@ export default function RegisterPage() {
         setDomainTenant(null);
       }
       await registerWithPassword(clean, password);
-      setStep(route.kind === "join_domain" ? "choose" : "choose");
-      // Domain match: AuthGate bindAfterAuth should already attach tenant → redirect home.
-      // If still needs workspace, choose step shows.
+      // Step advances reactively: needsConfirmation -> "confirm",
+      // needsWorkspace -> "choose" (see the two useEffects above).
     } catch {
       /* loginError set */
     } finally {
       setBusy(false);
     }
+  };
+
+  const onResend = async () => {
+    if (resendCooldown > 0) return;
+    setResendMsg(null);
+    await resendConfirmation();
+    setResendCooldown(RESEND_COOLDOWN_S);
+    setResendMsg("Onay maili tekrar gönderildi.");
+  };
+
+  const onDifferentEmail = () => {
+    clearNeedsConfirmation();
+    clearLoginError();
+    setLocalError(null);
+    setPassword("");
+    setStep("account");
   };
 
   const onCreate = async () => {
@@ -162,6 +195,7 @@ export default function RegisterPage() {
         </h1>
         <p className="mt-1.5 text-[0.92rem]" style={{ color: "var(--text-muted)" }}>
           {step === "account" && "Hesap oluştur; domain eşleşirse otomatik katılır, yoksa çalışma alanı açarsın."}
+          {step === "confirm" && "Neredeyse bitti — e-postanı onayla."}
           {step === "choose" &&
             (domainTenant
               ? `“${domainTenant}” alanına katılmaya hazırsın — veya kendi alanını oluştur.`
@@ -233,6 +267,34 @@ export default function RegisterPage() {
               </button>
             )}
           </>
+        )}
+
+        {step === "confirm" && (
+          <div className="mt-6 flex flex-col gap-3">
+            <p className="text-[0.9rem]" style={{ color: "var(--text-2)" }}>
+              <span className="font-semibold" style={{ color: "var(--text)" }}>{confirmationEmail}</span> adresine bir onay maili gönderdik. Linke tıklayınca kayıt kaldığı yerden devam eder.
+            </p>
+            {resendMsg && (
+              <p className="text-[0.82rem]" style={{ color: "var(--text-muted)" }}>{resendMsg}</p>
+            )}
+            <button
+              type="button"
+              onClick={() => void onResend()}
+              disabled={resendCooldown > 0}
+              className="w-full rounded-full py-3 text-[0.95rem] font-semibold transition disabled:opacity-40"
+              style={{ border: "1px solid rgba(var(--border-rgb),0.18)", color: "var(--text)" }}
+            >
+              {resendCooldown > 0 ? `Tekrar gönder (${resendCooldown}sn)` : "Tekrar gönder"}
+            </button>
+            <button
+              type="button"
+              onClick={onDifferentEmail}
+              className="text-[0.85rem] font-medium"
+              style={{ color: "var(--text-faint)" }}
+            >
+              Farklı e-posta dene
+            </button>
+          </div>
         )}
 
         {step === "choose" && needsWorkspace && (

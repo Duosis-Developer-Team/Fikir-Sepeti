@@ -35,8 +35,17 @@ type Ctx = {
   loginAzure: () => void;
   /** Bypass/dev password login (seed or known domain). */
   devLogin: (draft: string) => Promise<void>;
+  /** Email+password sign-in for /login. Never falls back to signUp. */
+  loginWithPassword: (email: string, password: string) => Promise<void>;
+  /** Sends a password-reset email via Supabase. */
+  requestPasswordReset: (email: string) => Promise<void>;
   /** Email+password sign-up / sign-in for /register. */
   registerWithPassword: (email: string, password: string) => Promise<void>;
+  /** True right after signUp when Supabase requires email confirmation. */
+  needsConfirmation: boolean;
+  confirmationEmail: string | null;
+  resendConfirmation: () => Promise<void>;
+  clearNeedsConfirmation: () => void;
   createWorkspace: (name: string, domain?: string | null) => Promise<void>;
   joinWithInvite: (code: string) => Promise<void>;
   clearLoginError: () => void;
@@ -54,7 +63,13 @@ const SessionContext = createContext<Ctx>({
   bypass: false,
   loginAzure: () => {},
   devLogin: async () => {},
+  loginWithPassword: async () => {},
+  requestPasswordReset: async () => {},
   registerWithPassword: async () => {},
+  needsConfirmation: false,
+  confirmationEmail: null,
+  resendConfirmation: async () => {},
+  clearNeedsConfirmation: () => {},
   createWorkspace: async () => {},
   joinWithInvite: async () => {},
   clearLoginError: () => {},
@@ -150,6 +165,8 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   const [tenantDenied, setTenantDenied] = useState(false);
   const [deniedEmail, setDeniedEmail] = useState<string | null>(null);
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [needsConfirmation, setNeedsConfirmation] = useState(false);
+  const [confirmationEmail, setConfirmationEmail] = useState<string | null>(null);
   const pathname = usePathname();
   const router = useRouter();
 
@@ -161,6 +178,8 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       setDeniedEmail(null);
       return;
     }
+    setNeedsConfirmation(false);
+    setConfirmationEmail(null);
     const azureTid = azureTenantIdFromUser(session?.user);
     const { tenantId, denied } = await bindAfterAuth(base.email, azureTid);
     setTenantDenied(denied);
@@ -251,13 +270,87 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     return second.data.session;
   };
 
+  /** /login only — never falls back to signUp (a wrong password must not silently create a new account). */
+  const loginWithPassword = async (email: string, password: string) => {
+    setLoginError(null);
+    setTenantDenied(false);
+    setDeniedEmail(null);
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password,
+    });
+    if (error || !data.session) {
+      const message = /email not confirmed/i.test(error?.message ?? "")
+        ? "E-posta adresini henüz onaylamadın. Gelen kutunu kontrol et."
+        : "E-posta veya şifre hatalı.";
+      setLoginError(message);
+      throw new Error(message);
+    }
+    await applySession(data.session);
+  };
+
+  const requestPasswordReset = async (email: string) => {
+    await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+      redirectTo: typeof window !== "undefined" ? `${window.location.origin}/login` : undefined,
+    });
+  };
+
+  const clearNeedsConfirmation = () => {
+    setNeedsConfirmation(false);
+    setConfirmationEmail(null);
+  };
+
+  const resendConfirmation = async () => {
+    if (!confirmationEmail) return;
+    await supabase.auth.resend({
+      type: "signup",
+      email: confirmationEmail,
+      options: {
+        emailRedirectTo: typeof window !== "undefined" ? `${window.location.origin}/register?confirmed=1` : undefined,
+      },
+    });
+  };
+
   const registerWithPassword = async (email: string, password: string) => {
     setLoginError(null);
     setTenantDenied(false);
     setDeniedEmail(null);
+    setNeedsConfirmation(false);
+    setConfirmationEmail(null);
+    const lower = email.trim().toLowerCase();
     try {
-      const session = await ensurePasswordSession(email.trim(), password);
-      await applySession(session);
+      // Resubmitting the form with an existing, already-confirmed account just signs in.
+      const first = await supabase.auth.signInWithPassword({ email: lower, password });
+      if (first.data.session) {
+        await applySession(first.data.session);
+        return;
+      }
+      const { data: signUpData, error: upErr } = await supabase.auth.signUp({
+        email: lower,
+        password,
+        options: {
+          data: { name: lower.split("@")[0] },
+          emailRedirectTo: `${window.location.origin}/register?confirmed=1`,
+        },
+      });
+      if (upErr) {
+        if (/already|registered/i.test(upErr.message)) {
+          throw new Error("Bu e-posta ile zaten bir hesap var. Şifreni mi unuttun?");
+        }
+        throw new Error(upErr.message);
+      }
+      if (signUpData.session) {
+        await applySession(signUpData.session);
+        return;
+      }
+      // Newer Supabase versions return no error for an already-registered email
+      // (anti-enumeration) but flag it via an empty identities array.
+      if (signUpData.user && signUpData.user.identities?.length === 0) {
+        throw new Error("Bu e-posta ile zaten bir hesap var. Şifreni mi unuttun?");
+      }
+      // signUp succeeded but no session => "Confirm email" is on in Supabase; wait for the link.
+      setNeedsConfirmation(true);
+      setConfirmationEmail(lower);
     } catch (e) {
       setLoginError(e instanceof Error ? e.message : "Kayıt başarısız");
       throw e;
@@ -352,7 +445,13 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     bypass,
     loginAzure,
     devLogin,
+    loginWithPassword,
+    requestPasswordReset,
     registerWithPassword,
+    needsConfirmation,
+    confirmationEmail,
+    resendConfirmation,
+    clearNeedsConfirmation,
     createWorkspace,
     joinWithInvite,
     clearLoginError,

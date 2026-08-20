@@ -13,12 +13,17 @@ export default function LoginPage() {
     deniedEmail,
     loginError,
     loginAzure,
+    loginWithPassword,
+    requestPasswordReset,
     devLogin,
     signOut,
     clearLoginError,
   } = useSession();
   const [draft, setDraft] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [resetMsg, setResetMsg] = useState<string | null>(null);
 
   if (!ready || user?.tenantId) {
     return (
@@ -36,6 +41,35 @@ export default function LoginPage() {
     clearLoginError();
     try {
       await devLogin(draft);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const onPasswordLogin = async () => {
+    if (!email.includes("@") || !password || submitting) return;
+    setSubmitting(true);
+    clearLoginError();
+    setResetMsg(null);
+    try {
+      await loginWithPassword(email, password);
+    } catch {
+      /* loginError set */
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const onForgotPassword = async () => {
+    if (!email.includes("@")) {
+      setResetMsg("Önce e-posta adresini yaz.");
+      return;
+    }
+    setResetMsg(null);
+    setSubmitting(true);
+    try {
+      await requestPasswordReset(email);
+      setResetMsg("Şifre sıfırlama linki gönderildi — gelen kutunu kontrol et.");
     } finally {
       setSubmitting(false);
     }
@@ -103,6 +137,11 @@ export default function LoginPage() {
             {loginError}
           </p>
         )}
+        {resetMsg && (
+          <p className="mt-3 text-[0.82rem]" style={{ color: "var(--text-muted)" }}>
+            {resetMsg}
+          </p>
+        )}
 
         {bypass ? (
           <>
@@ -134,14 +173,71 @@ export default function LoginPage() {
             </p>
           </>
         ) : (
-          <button
-            type="button"
-            onClick={loginAzure}
-            className="mt-6 flex w-full items-center justify-center gap-2.5 rounded-full py-3 text-[0.95rem] font-semibold transition hover:opacity-90"
-            style={{ background: "var(--text)", color: "var(--bg)" }}
-          >
-            <MicrosoftMark /> Microsoft ile giriş
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={loginAzure}
+              className="mt-6 flex w-full items-center justify-center gap-2.5 rounded-full py-3 text-[0.95rem] font-semibold transition hover:opacity-90"
+              style={{ background: "var(--text)", color: "var(--bg)" }}
+            >
+              <MicrosoftMark /> Microsoft ile giriş
+            </button>
+
+            <div className="mt-5 flex items-center gap-3">
+              <span className="h-px flex-1" style={{ background: "rgba(var(--border-rgb),0.12)" }} />
+              <span className="text-[0.75rem]" style={{ color: "var(--text-faint)" }}>veya</span>
+              <span className="h-px flex-1" style={{ background: "rgba(var(--border-rgb),0.12)" }} />
+            </div>
+
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="iş e-postan"
+              className="mt-4 w-full rounded-lg px-3.5 py-3 text-[0.95rem] outline-none"
+              style={{
+                background: "var(--surface-2)",
+                border: "1px solid rgba(var(--border-rgb),0.09)",
+                color: "var(--text)",
+              }}
+              disabled={submitting}
+            />
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && void onPasswordLogin()}
+              placeholder="şifre"
+              className="mt-3 w-full rounded-lg px-3.5 py-3 text-[0.95rem] outline-none"
+              style={{
+                background: "var(--surface-2)",
+                border: "1px solid rgba(var(--border-rgb),0.09)",
+                color: "var(--text)",
+              }}
+              disabled={submitting}
+            />
+            <button
+              type="button"
+              onClick={() => void onPasswordLogin()}
+              disabled={submitting || !email.includes("@") || !password}
+              className="mt-3 w-full rounded-full py-3 text-[0.95rem] font-semibold transition disabled:opacity-40"
+              style={{
+                border: "1px solid rgba(var(--border-rgb),0.18)",
+                color: "var(--text)",
+              }}
+            >
+              {submitting ? "…" : "E-posta ile giriş yap"}
+            </button>
+            <button
+              type="button"
+              onClick={() => void onForgotPassword()}
+              disabled={submitting}
+              className="mt-3 w-full text-center text-[0.82rem] font-medium disabled:opacity-40"
+              style={{ color: "var(--text-faint)" }}
+            >
+              Şifremi unuttum
+            </button>
+          </>
         )}
       </div>
     </div>
