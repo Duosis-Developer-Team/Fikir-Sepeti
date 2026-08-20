@@ -3,11 +3,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "./supabase";
 import { votePoolIdea } from "./pool";
-import type { PoolIdea } from "./types";
+import type { BasketType, PoolIdea } from "./types";
+
+export type PromotedBasketInfo = { type: BasketType; title: string };
 
 type State = {
   ideas: PoolIdea[];
   myVotes: Set<string>;
+  promotedBaskets: Record<string, PromotedBasketInfo>;
   loading: boolean;
   connected: boolean;
 };
@@ -20,6 +23,7 @@ export function useRealtimePool(tenantId: string | null, voter: string) {
   const [state, setState] = useState<State>({
     ideas: [],
     myVotes: new Set(),
+    promotedBaskets: {},
     loading: true,
     connected: false,
   });
@@ -52,10 +56,20 @@ export function useRealtimePool(tenantId: string | null, voter: string) {
     const byId = new Map<string, PoolIdea>();
     for (const row of rows) byId.set(row.id, row);
 
+    const basketIds = [...new Set(rows.map((r) => r.promoted_basket_id).filter((id): id is string => !!id))];
+    let promotedBaskets: Record<string, PromotedBasketInfo> = {};
+    if (basketIds.length) {
+      const basketsRes = await supabase.from("baskets").select("id, type, title").in("id", basketIds);
+      for (const b of (basketsRes.data as { id: string; type: BasketType; title: string }[]) ?? []) {
+        promotedBaskets[b.id] = { type: b.type, title: b.title };
+      }
+    }
+
     setState((prev) => ({
       ...prev,
       ideas: [...byId.values()],
       myVotes: new Set(votedIds),
+      promotedBaskets,
       loading: false,
     }));
   }, [tenantId, voter]);

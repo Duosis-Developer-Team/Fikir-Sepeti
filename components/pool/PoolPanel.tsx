@@ -2,11 +2,12 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { motion } from "motion/react";
 import { useNameContext } from "@/components/AuthGate";
 import { POOL_ACCENT, soft } from "@/lib/accent";
 import { createPoolIdea, promotePoolIdeas } from "@/lib/pool";
-import { useRealtimePool } from "@/lib/useRealtimePool";
+import { useRealtimePool, type PromotedBasketInfo } from "@/lib/useRealtimePool";
 import type { BasketType, PoolIdea, PoolStatus } from "@/lib/types";
 
 const CLAY = POOL_ACCENT;
@@ -23,7 +24,7 @@ const CATEGORIES = ["ürün", "süreç", "kültür", "teknoloji", "diğer"];
 export function PoolPanel() {
   const { name, tenantId } = useNameContext();
   const router = useRouter();
-  const { ideas, myVotes, loading, vote, refresh } = useRealtimePool(tenantId, name);
+  const { ideas, myVotes, promotedBaskets, loading, vote, refresh } = useRealtimePool(tenantId, name);
 
   const [text, setText] = useState("");
   const [brief, setBrief] = useState("");
@@ -107,7 +108,8 @@ export function PoolPanel() {
   const promote = async () => {
     if (!tenantId || !selected.size) return;
     const first = ideas.find((i) => selected.has(i.id));
-    const title = first ? `Sepet: ${first.text.slice(0, 48)}` : "Ortak sepet";
+    const typeLabel = promoteType === "hackathon" ? "Hackathon" : "Etkinlik";
+    const title = first ? first.text.slice(0, 60) : `${typeLabel} · ${new Date().toLocaleDateString("tr-TR")}`;
     setBusy(true);
     const res = await promotePoolIdeas({
       pool_idea_ids: [...selected],
@@ -283,6 +285,7 @@ export function PoolPanel() {
             idea={idea}
             voted={myVotes.has(idea.id)}
             selected={selected.has(idea.id)}
+            promotedBasket={idea.promoted_basket_id ? promotedBaskets[idea.promoted_basket_id] : undefined}
             onVote={() => void vote(idea.id)}
             onToggle={() => toggleSelect(idea.id)}
           />
@@ -301,21 +304,23 @@ function PoolCard({
   idea,
   voted,
   selected,
+  promotedBasket,
   onVote,
   onToggle,
 }: {
   idea: PoolIdea;
   voted: boolean;
   selected: boolean;
+  promotedBasket?: PromotedBasketInfo;
   onVote: () => void;
   onToggle: () => void;
 }) {
   const closed = idea.poll_closes_at ? new Date(idea.poll_closes_at) < new Date() : false;
-  const used =
+  const usedLabel =
     idea.status === "promoted" && idea.promoted_basket_id
-      ? idea.winner_label
-        ? `→ Hackathon'da kullanıldı, kazanan: ${idea.winner_label}`
-        : "→ Sepette kullanıldı"
+      ? promotedBasket?.type === "etkinlik"
+        ? "→ Etkinlik'te kullanıldı"
+        : "→ Hackathon'da kullanıldı"
       : null;
 
   return (
@@ -372,10 +377,16 @@ function PoolCard({
               {idea.brief}
             </p>
           )}
-          {used && (
-            <p className="mt-2 text-[0.88rem] font-medium" style={{ color: CLAY.light }} data-testid={`pool-used-${idea.id}`}>
-              {used}
-            </p>
+          {usedLabel && (
+            <Link
+              href={`/basket/${idea.promoted_basket_id}`}
+              className="mt-2 inline-block text-[0.88rem] font-medium hover:underline"
+              style={{ color: CLAY.light }}
+              data-testid={`pool-used-${idea.id}`}
+            >
+              {usedLabel}
+              {idea.winner_label ? `, kazanan: ${idea.winner_label}` : ""}
+            </Link>
           )}
         </div>
         <div className="flex items-center gap-3">

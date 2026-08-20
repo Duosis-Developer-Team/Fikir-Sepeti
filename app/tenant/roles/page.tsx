@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useNameContext, useSession } from "@/components/AuthGate";
-import { PERMISSIONS } from "@/lib/permissions";
+import { PERMISSIONS, PERMISSION_LABELS } from "@/lib/permissions";
 import { supabase } from "@/lib/supabase";
 
 type Role = { id: string; key: string; label: string; is_system: boolean };
@@ -140,35 +140,41 @@ export default function TenantRolesPage() {
               <table className="w-full text-left text-[0.82rem]">
                 <thead>
                   <tr style={{ color: "var(--text-muted)" }}>
-                    <th className="py-2 pr-3">Rol</th>
-                    {PERMISSIONS.map((p) => (
-                      <th key={p} className="px-1 py-2 font-normal" title={p}>
-                        {p.split(".")[1]?.slice(0, 4) ?? p}
+                    <th className="py-2 pr-3 min-w-[220px]">İzin</th>
+                    {roles.map((r) => (
+                      <th key={r.id} className="px-2 py-2 text-center font-semibold whitespace-nowrap" style={{ color: "var(--text)" }}>
+                        {r.label}
                       </th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {roles.map((r) => (
-                    <tr key={r.id} style={{ borderTop: "1px solid rgba(var(--border-rgb),0.08)", color: "var(--text)" }}>
-                      <td className="py-2 pr-3 font-semibold">{r.label}</td>
-                      {PERMISSIONS.map((p) => {
-                        const on = perms.some((x) => x.role_id === r.id && x.permission_key === p);
-                        return (
-                          <td key={p} className="px-1 py-2 text-center">
-                            {on ? "✓" : "·"}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
+                  {PERMISSIONS.map((p) => {
+                    const info = PERMISSION_LABELS[p];
+                    return (
+                      <tr key={p} style={{ borderTop: "1px solid rgba(var(--border-rgb),0.08)" }}>
+                        <td className="py-2 pr-3">
+                          <div className="font-semibold" style={{ color: "var(--text)" }}>{info.tr}</div>
+                          <div className="text-[0.74rem]" style={{ color: "var(--text-faint)" }}>{info.desc}</div>
+                        </td>
+                        {roles.map((r) => {
+                          const on = perms.some((x) => x.role_id === r.id && x.permission_key === p);
+                          return (
+                            <td key={r.id} className="px-2 py-2 text-center" style={{ color: "var(--text)" }}>
+                              {on ? "✓" : "·"}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           </section>
 
           <section className="mt-6 rounded-[22px] p-6" style={{ background: "var(--card)", border: "1px solid rgba(var(--border-rgb),0.09)" }}>
-            <h2 className="font-display text-[1.2rem] font-bold" style={{ color: "var(--text)" }}>Kullanıcı rollerı</h2>
+            <h2 className="font-display text-[1.2rem] font-bold" style={{ color: "var(--text)" }}>Kullanıcı rolleri</h2>
             <div className="mt-4 flex flex-col gap-3">
               {users.map((u) => {
                 const mine = assignments.filter((a) => a.user_id === u.user_id && !a.scope_basket_id);

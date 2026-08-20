@@ -226,11 +226,13 @@ function Stepper({ phase, isAdmin, onJump }: { phase: StagePhase; isAdmin: boole
               : { background: "transparent", color: dim(0.42) };
           const cls = "flex-1 whitespace-nowrap rounded-full px-3 py-2.5 text-center text-[0.85rem] font-semibold transition-colors";
           return isAdmin ? (
-            <motion.button key={p} whileTap={{ scale: 0.96 }} onClick={() => onJump(p)} className={cls} style={st}>
+            <motion.button key={p} whileTap={{ scale: 0.96 }} onClick={() => onJump(p)} className={`${cls} cursor-pointer`} style={st}>
               {PHASE_LABEL[p]}
             </motion.button>
           ) : (
-            <div key={p} className={cls} style={st}>{PHASE_LABEL[p]}</div>
+            <div key={p} className={`${cls} cursor-default`} style={st} aria-disabled="true" tabIndex={-1}>
+              {PHASE_LABEL[p]}
+            </div>
           );
         })}
       </div>
