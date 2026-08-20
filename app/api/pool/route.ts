@@ -47,6 +47,7 @@ export async function POST(req: Request) {
     poll_closes_at?: string | null;
     status?: string;
     acknowledge?: boolean;
+    parent_idea_id?: string | null;
   };
   try {
     body = await req.json();
@@ -85,6 +86,18 @@ export async function POST(req: Request) {
   const status =
     body.poll_closes_at || body.status === "voting" ? "voting" : body.status === "new" ? "new" : body.poll_closes_at ? "voting" : "new";
 
+  let parentIdeaId: string | null = null;
+  if (body.parent_idea_id) {
+    const { data: parent } = await sb
+      .from("idea_pool")
+      .select("id, tenant_id")
+      .eq("id", body.parent_idea_id)
+      .maybeSingle();
+    if (parent && parent.tenant_id === identity.tenantId) {
+      parentIdeaId = parent.id as string;
+    }
+  }
+
   const { data, error } = await sb
     .from("idea_pool")
     .insert({
@@ -96,6 +109,7 @@ export async function POST(req: Request) {
       status,
       created_by: identity.email,
       poll_closes_at: body.poll_closes_at ?? null,
+      parent_idea_id: parentIdeaId,
     })
     .select()
     .single();

@@ -23,6 +23,7 @@ export async function createPoolIdea(input: {
   created_by: string;
   tenant_id: string;
   acknowledge?: boolean;
+  parent_idea_id?: string | null;
 }): Promise<PoolIdea | null> {
   const res = await fetch("/api/pool", {
     method: "POST",
@@ -35,6 +36,7 @@ export async function createPoolIdea(input: {
       poll_closes_at: input.poll_closes_at,
       status: input.status,
       acknowledge: input.acknowledge,
+      parent_idea_id: input.parent_idea_id,
     }),
   });
   const json = (await res.json().catch(() => ({}))) as {

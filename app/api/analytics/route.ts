@@ -84,7 +84,7 @@ export async function GET(req: Request) {
       .order("created_at", { ascending: false }),
     sb
       .from("idea_pool")
-      .select("id, status, vote_count")
+      .select("id, status, vote_count, parent_idea_id")
       .eq("tenant_id", tenantId),
     sb.from("votes").select("voter, created_at, basket_id").eq("tenant_id", tenantId),
     sb
@@ -128,7 +128,8 @@ export async function GET(req: Request) {
         b.production_note != null)
   );
 
-  const poolIdeaCount = (poolRows ?? []).length;
+  // Poll seçenekleri (parent_idea_id dolu) bağımsız fikir sayılmaz (FS-05).
+  const poolIdeaCount = (poolRows ?? []).filter((p) => !p.parent_idea_id).length;
   const counts: Record<FunnelStageKey, number> = {
     ideas: (ideasCount ?? 0) + poolIdeaCount,
     voted: votedIdeaIds.size + poolVoted,

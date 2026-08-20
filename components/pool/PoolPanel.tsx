@@ -46,8 +46,22 @@ export function PoolPanel() {
   const [busy, setBusy] = useState(false);
   const [pollOption, setPollOption] = useState("");
 
+  // Poll seçenekleri (parent_idea_id dolu) ana listede ayrı kart değil — kök
+  // fikrin altında görünür (FS-05).
+  const rootIdeas = useMemo(() => ideas.filter((i) => !i.parent_idea_id), [ideas]);
+  const optionsByParent = useMemo(() => {
+    const map = new Map<string, PoolIdea[]>();
+    for (const i of ideas) {
+      if (!i.parent_idea_id) continue;
+      const list = map.get(i.parent_idea_id) ?? [];
+      list.push(i);
+      map.set(i.parent_idea_id, list);
+    }
+    return map;
+  }, [ideas]);
+
   const filtered = useMemo(() => {
-    return ideas.filter((i) => {
+    return rootIdeas.filter((i) => {
       if (trackFilter !== "all") {
         const track = i.track_hint ?? "genel";
         if (track !== trackFilter) return false;
@@ -60,7 +74,7 @@ export function PoolPanel() {
       }
       return true;
     });
-  }, [ideas, trackFilter, filterCat, query]);
+  }, [rootIdeas, trackFilter, filterCat, query]);
 
   const openPoll = useMemo(
     () => ideas.some((i) => i.status === "voting" && (!i.poll_closes_at || new Date(i.poll_closes_at) > new Date())),
@@ -104,6 +118,7 @@ export function PoolPanel() {
       status: "voting",
       created_by: name,
       tenant_id: tenantId,
+      parent_idea_id: open?.id ?? null,
     });
     setPollOption("");
     setBusy(false);
@@ -347,7 +362,10 @@ export function PoolPanel() {
             voted={myVotes.has(idea.id)}
             selected={selected.has(idea.id)}
             promotedBasket={idea.promoted_basket_id ? promotedBaskets[idea.promoted_basket_id] : undefined}
+            options={optionsByParent.get(idea.id) ?? []}
+            myVotes={myVotes}
             onVote={() => void vote(idea.id)}
+            onVoteOption={(id) => void vote(id)}
             onToggle={() => toggleSelect(idea.id)}
           />
         ))}
@@ -366,14 +384,20 @@ function PoolCard({
   voted,
   selected,
   promotedBasket,
+  options,
+  myVotes,
   onVote,
+  onVoteOption,
   onToggle,
 }: {
   idea: PoolIdea;
   voted: boolean;
   selected: boolean;
   promotedBasket?: PromotedBasketInfo;
+  options: PoolIdea[];
+  myVotes: Set<string>;
   onVote: () => void;
+  onVoteOption: (id: string) => void;
   onToggle: () => void;
 }) {
   const closed = idea.poll_closes_at ? new Date(idea.poll_closes_at) < new Date() : false;
@@ -479,6 +503,40 @@ function PoolCard({
           </button>
         </div>
       </div>
+
+      {options.length > 0 && (
+        <div className="ml-8 mt-3 flex flex-col gap-2 border-l pl-4" style={{ borderColor: "rgba(var(--border-rgb),0.1)" }} data-testid={`pool-options-${idea.id}`}>
+          <span className="text-[0.68rem] font-semibold uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>
+            Poll seçenekleri
+          </span>
+          {options.map((opt) => {
+            const optVoted = myVotes.has(opt.id);
+            const optClosed = opt.poll_closes_at ? new Date(opt.poll_closes_at) < new Date() : false;
+            return (
+              <div key={opt.id} className="flex items-center justify-between gap-3 rounded-xl px-3.5 py-2.5" style={{ background: "var(--surface-2)" }} data-testid={`pool-option-${opt.id}`}>
+                <span className="min-w-0 flex-1 truncate text-[0.92rem]" style={{ color: "var(--text)" }}>{opt.text}</span>
+                <div className="flex shrink-0 items-center gap-2.5">
+                  <span className="tnum font-display text-[1rem] font-bold" style={{ color: optVoted ? CLAY.base : CLAY.light }}>{opt.vote_count}</span>
+                  <button
+                    type="button"
+                    onClick={() => onVoteOption(opt.id)}
+                    disabled={optVoted || optClosed}
+                    className="rounded-full px-3 py-1.5 text-[0.78rem] font-semibold disabled:opacity-40"
+                    style={
+                      optVoted
+                        ? { background: CLAY.base, color: "#161616" }
+                        : { border: "1px solid rgba(var(--border-rgb),0.2)", color: "var(--text)" }
+                    }
+                    data-testid={`pool-option-vote-${opt.id}`}
+                  >
+                    {optVoted ? "✓ oyun" : optClosed ? "kapandı" : "oy ver"}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </motion.div>
   );
 }

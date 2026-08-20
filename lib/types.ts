@@ -76,6 +76,8 @@ export type PoolIdea = {
   source_basket_id: string | null;
   poll_closes_at: string | null;
   winner_label: string | null;
+  /** Bir poll seçeneğiyse, ait olduğu kök fikrin id'si (FS-05). */
+  parent_idea_id: string | null;
   created_at: string;
 };
 
