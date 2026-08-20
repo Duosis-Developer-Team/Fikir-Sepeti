@@ -10,15 +10,15 @@ export function InvitePanel({ basketId }: { basketId: string }) {
   const [qr, setQr] = useState("");
   const [copied, setCopied] = useState(false);
 
+  const code = basketId.slice(0, 6).toUpperCase();
+
   useEffect(() => {
-    const link = `${window.location.origin}/basket/${basketId}`;
+    const link = `${window.location.origin}/basket/${basketId}?invite=${code}`;
     setUrl(link);
     QRCode.toDataURL(link, { margin: 1, width: 320, color: { dark: "#17150F", light: "#FFFFFF" } })
       .then(setQr)
       .catch(() => {});
-  }, [basketId]);
-
-  const code = basketId.slice(0, 6).toUpperCase();
+  }, [basketId, code]);
 
   const copy = async () => {
     try {

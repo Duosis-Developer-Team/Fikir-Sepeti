@@ -37,6 +37,7 @@ export function HackathonRunner({ basketId }: { basketId: string }) {
 
   const [joinBlocked, setJoinBlocked] = useState(false);
   const [joinPending, setJoinPending] = useState(false);
+  const [needsJoinAction, setNeedsJoinAction] = useState(false);
 
   const load = useCallback(async () => {
     const [basketRes, ideasRes, participants, teams, members, teamVotes, scores] = await Promise.all([
@@ -76,7 +77,26 @@ export function HackathonRunner({ basketId }: { basketId: string }) {
     return () => { supabase.removeChannel(ch); };
   }, [basketId, load]);
 
-  // lobiye katıl (bir kez) — gated API
+  const doJoin = useCallback(() => {
+    if (!user || !data) return;
+    setNeedsJoinAction(false);
+    void joinLobbyGated({
+      basket_id: basketId,
+      email: user.email,
+      tenant_id: data.basket.tenant_id,
+      display_name: user.name,
+    }).then((r) => {
+      if (!r.ok) {
+        setJoinBlocked(true);
+        return;
+      }
+      if (r.approved === false) setJoinPending(true);
+      void load();
+    });
+  }, [user, data, basketId, load]);
+
+  // lobiye katılım kararı (bir kez) — sahip ve davet linkiyle gelen otomatik
+  // katılır; sadece sepet listesinden tıklayan biri "Katıl" butonunu görür (FS-10).
   useEffect(() => {
     if (!user || !data || joined.current) return;
     joined.current = true;
@@ -95,20 +115,18 @@ export function HackathonRunner({ basketId }: { basketId: string }) {
       setJoinBlocked(true);
       return;
     }
-    void joinLobbyGated({
-      basket_id: basketId,
-      email: user.email,
-      tenant_id: data.basket.tenant_id,
-      display_name: user.name,
-    }).then((r) => {
-      if (!r.ok) {
-        setJoinBlocked(true);
-        return;
-      }
-      if (r.approved === false) setJoinPending(true);
-      void load();
-    });
-  }, [user, data, basketId, load]);
+    const hasInvite =
+      typeof window !== "undefined" && new URLSearchParams(window.location.search).has("invite");
+    // Only the casual "opened it from the pool list while still in lobby" case needs an
+    // explicit click — late join (allowLateJoin, phase already advanced) keeps auto-joining,
+    // since there's no lobby screen left to show a "Katıl" button on.
+    const inLobbyPhase = data.basket.phase === "lobby";
+    if (isOwner || hasInvite || !inLobbyPhase) {
+      doJoin();
+    } else {
+      setNeedsJoinAction(true);
+    }
+  }, [user, data, basketId, doJoin]);
 
   if (!user || !data) {
     return <div className="mx-auto mt-20 h-40 max-w-[760px] animate-pulse rounded-[22px]" style={{ background: "var(--card)" }} />;
@@ -142,7 +160,15 @@ export function HackathonRunner({ basketId }: { basketId: string }) {
 
   const phase = (PHASE_ORDER.includes(data.basket.phase as StagePhase) ? data.basket.phase : "lobby") as StagePhase;
   const isAdmin = data.basket.created_by === user.email;
-  const ctx: StageContext = { data, config: data.basket.config ?? {}, user, isAdmin, refresh: load };
+  const ctx: StageContext = {
+    data,
+    config: data.basket.config ?? {},
+    user,
+    isAdmin,
+    refresh: load,
+    needsJoinAction,
+    onJoin: doJoin,
+  };
   const def = STAGES[phase];
   const idx = PHASE_ORDER.indexOf(phase);
   const nextPhase = PHASE_ORDER[idx + 1];

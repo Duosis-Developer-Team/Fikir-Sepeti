@@ -57,7 +57,7 @@ function ParticipantChip({ p }: { p: Participant }) {
   );
 }
 
-export function LobbyStage({ data, config, isAdmin, user, refresh }: StageContext) {
+export function LobbyStage({ data, config, isAdmin, user, refresh, needsJoinAction, onJoin }: StageContext) {
   const { basket, participants, ideas } = data;
   const selectedIdea = ideas.find((i) => i.id === basket.selected_idea_id) ?? null;
   const [sub, setSub] = useState<Sub>("invite");
@@ -106,6 +106,28 @@ export function LobbyStage({ data, config, isAdmin, user, refresh }: StageContex
 
   // ── katılımcı (admin değil) ──
   if (!isAdmin) {
+    if (needsJoinAction) {
+      return (
+        <div className="mx-auto flex min-h-[60vh] max-w-[680px] flex-col justify-center text-center" data-testid="lobby-join-prompt">
+          <StageHeadline
+            pre="Bu hackathona"
+            accent="katıl?"
+            sub={`${basket.created_by ?? "Admin"} kuruyor. Katılırsan lobiye eklenirsin.`}
+          />
+          <p className="mt-3 text-[0.95rem]" style={{ color: dim(0.5) }}>
+            {approved.length} kişi katıldı
+          </p>
+          <div className="mt-5 flex flex-wrap justify-center gap-2">
+            {approved.map((p) => (
+              <ParticipantChip key={p.id} p={p} />
+            ))}
+          </div>
+          <div className="mt-8 flex justify-center">
+            <GoldButton onClick={() => onJoin?.()}>Katıl →</GoldButton>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="mx-auto flex min-h-[60vh] max-w-[680px] flex-col justify-center text-center" data-testid="lobby-member">
         <StageHeadline
