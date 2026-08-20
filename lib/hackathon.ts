@@ -77,7 +77,7 @@ export async function listParticipants(basketId: string): Promise<Participant[]>
 export async function markDone(
   basketId: string,
   winnerIdeaId: string | null,
-  meta?: { production_note?: string | null; effort_estimate?: number | null }
+  meta?: { production_note?: string | null; project_link?: string | null }
 ) {
   await supabase
     .from("baskets")
@@ -88,8 +88,8 @@ export async function markDone(
       ...(meta?.production_note !== undefined
         ? { production_note: meta.production_note }
         : {}),
-      ...(meta?.effort_estimate !== undefined
-        ? { effort_estimate: meta.effort_estimate }
+      ...(meta?.project_link !== undefined
+        ? { project_link: meta.project_link }
         : {}),
     })
     .eq("id", basketId);

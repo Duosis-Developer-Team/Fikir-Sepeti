@@ -1,15 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
-import { markDone } from "@/lib/hackathon";
+import { markDone, listFeedback } from "@/lib/hackathon";
 import { markPoolWinner, returnIdeaToPool } from "@/lib/pool";
+import { groupFeedbackByTeam } from "@/lib/feedback-groups";
+import { DEFAULT_RUBRIC } from "@/lib/scoring";
+import { supabase } from "@/lib/supabase";
+import type { Feedback } from "@/lib/types";
 import type { StageContext } from "../contract";
 import { GOLD, GOLD_SOFT, dim } from "../contract";
-import { Card, GoldButton, Avatar } from "../ui";
+import { Card, GoldButton, Avatar, initials } from "../ui";
+import { Scoreboard } from "../Scoreboard";
 
-export function ProductionStage({ data, user, isAdmin }: StageContext) {
-  const { basket, teams, members, teamVotes, ideas, participants } = data;
+export function ProductionStage({ data, config, user, isAdmin }: StageContext) {
+  const { basket, teams, members, teamVotes, ideas, participants, scores } = data;
   const selected = ideas.find((i) => i.id === basket.selected_idea_id) ?? null;
   const votesOf = (id: string) => teamVotes.filter((v) => v.team_id === id).length;
   const winner = [...teams].sort((a, b) => votesOf(b.id) - votesOf(a.id))[0] ?? null;
@@ -17,16 +22,41 @@ export function ProductionStage({ data, user, isAdmin }: StageContext) {
   const done = basket.status === "resolved" || basket.phase === "done";
   const [returned, setReturned] = useState<Set<string>>(new Set());
   const [productionNote, setProductionNote] = useState(basket.production_note ?? "");
-  const [effortEstimate, setEffortEstimate] = useState(
-    basket.effort_estimate != null ? String(basket.effort_estimate) : ""
-  );
+  const [projectLink, setProjectLink] = useState(basket.project_link ?? "");
   const [confirmSkipMeta, setConfirmSkipMeta] = useState(false);
+  const [feedback, setFeedback] = useState<Feedback[]>([]);
   const nameOf = (uid: string) => {
     const p = participants.find((x) => x.user_id === uid);
     return p?.display_name || p?.email || uid;
   };
 
-  const metaMissing = productionNote.trim() === "" && effortEstimate.trim() === "";
+  const loadFeedback = useCallback(() => {
+    listFeedback(basket.id).then(setFeedback);
+  }, [basket.id]);
+
+  useEffect(() => {
+    loadFeedback();
+    const ch = supabase
+      .channel(`fb-prod:${basket.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "feedback", filter: `basket_id=eq.${basket.id}` },
+        () => loadFeedback()
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, [basket.id, loadFeedback]);
+
+  const teamNames = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const t of teams) m[t.id] = t.name;
+    return m;
+  }, [teams]);
+  const feedbackGroups = useMemo(() => groupFeedbackByTeam(feedback, teamNames), [feedback, teamNames]);
+
+  const metaMissing = productionNote.trim() === "" && projectLink.trim() === "";
 
   const finalize = async () => {
     if (metaMissing && !confirmSkipMeta) {
@@ -35,8 +65,7 @@ export function ProductionStage({ data, user, isAdmin }: StageContext) {
     }
     await markDone(basket.id, selected?.id ?? null, {
       production_note: productionNote.trim() || null,
-      effort_estimate:
-        effortEstimate.trim() === "" ? null : Number(effortEstimate),
+      project_link: projectLink.trim() || null,
     });
     const poolId = basket.config?.repoPoolIdeaId;
     if (poolId && winner) {
@@ -181,7 +210,7 @@ export function ProductionStage({ data, user, isAdmin }: StageContext) {
         {!done && isAdmin && (
           <div className="mt-6 text-left" data-testid="production-meta">
             <span className="text-[0.7rem] font-semibold uppercase tracking-[0.22em]" style={{ color: dim(0.45) }}>
-              Üretim notu / efor
+              Üretim notu / proje linki
             </span>
             <input
               value={productionNote}
@@ -192,22 +221,33 @@ export function ProductionStage({ data, user, isAdmin }: StageContext) {
               data-testid="production-note"
             />
             <input
-              value={effortEstimate}
-              onChange={(e) => { setEffortEstimate(e.target.value); setConfirmSkipMeta(false); }}
-              placeholder="Tahmini adam-gün"
-              type="number"
-              min={0}
-              step={0.5}
+              value={projectLink}
+              onChange={(e) => { setProjectLink(e.target.value); setConfirmSkipMeta(false); }}
+              placeholder="Proje linki (repo/deploy/tasarım)"
               className="mt-2 w-full rounded-xl px-3 py-2.5 text-[0.95rem]"
               style={{ background: "var(--surface-2)", color: "var(--text)", border: "1px solid rgba(var(--border-rgb),0.1)" }}
-              data-testid="production-effort"
+              data-testid="production-link"
             />
             {confirmSkipMeta && (
               <p className="mt-2 text-[0.85rem]" style={{ color: "#E3A857" }} data-testid="production-meta-warning">
-                Efor/not girmeden bitirirsen analitikte bu iş ölçülemez. Devam etmek için tekrar bas.
+                Not/link girmeden bitirirsen bu iş takip için görünmez kalır. Devam etmek için tekrar bas.
               </p>
             )}
           </div>
+        )}
+
+        {done && (basket.production_note || basket.project_link) && (
+          <p className="mt-5 text-[0.92rem]" style={{ color: dim(0.6) }} data-testid="production-summary">
+            {basket.production_note}
+            {basket.project_link && (
+              <>
+                {basket.production_note ? " · " : ""}
+                <a href={basket.project_link} target="_blank" rel="noreferrer" className="underline" style={{ color: GOLD_SOFT }}>
+                  proje linki
+                </a>
+              </>
+            )}
+          </p>
         )}
 
         <div className="mt-7">
@@ -222,6 +262,53 @@ export function ProductionStage({ data, user, isAdmin }: StageContext) {
           )}
         </div>
       </Card>
+
+      {config.scoringMode === "rubric" && teams.length > 0 && (
+        <Scoreboard
+          teams={teams}
+          scores={scores}
+          rubric={config.rubric?.length ? config.rubric : DEFAULT_RUBRIC}
+          juryEnabled={config.juryEnabled}
+          juryWeight={config.juryWeight}
+        />
+      )}
+
+      {feedback.length > 0 && (
+        <div className="mt-8 text-left" data-testid="production-feedback">
+          <span className="text-[0.7rem] font-semibold uppercase tracking-[0.22em]" style={{ color: dim(0.45) }}>
+            Feedback
+          </span>
+          <div className="mt-3 flex flex-col gap-4">
+            {feedbackGroups.map((g) => (
+              <div key={g.key}>
+                <h4 className="mb-1.5 text-[0.68rem] font-semibold uppercase tracking-wider" style={{ color: dim(0.4) }}>
+                  {g.label}
+                </h4>
+                <div className="flex flex-col gap-2">
+                  {g.items.map((f) => (
+                    <div
+                      key={f.id}
+                      className="flex gap-2.5 rounded-xl px-3.5 py-2.5"
+                      style={{ background: "var(--surface-2)" }}
+                    >
+                      <span
+                        className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-[0.72rem] font-bold"
+                        style={{ background: "var(--card)", color: "var(--text)" }}
+                      >
+                        {initials(f.author_name || f.author_id || "?")}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-[0.75rem]" style={{ color: dim(0.45) }}>{f.author_name || f.author_id}</p>
+                        <p className="text-[0.92rem]" style={{ color: "var(--text)" }}>{f.text}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

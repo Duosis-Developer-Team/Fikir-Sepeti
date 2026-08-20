@@ -7,7 +7,7 @@ import {
 
 /**
  * PATCH /api/analytics/production
- * Update production_note / effort_estimate on a resolved basket.
+ * Update production_note / project_link on a resolved basket.
  * Requires hackathon.manage or analytics.view (tenant admin path).
  */
 export async function PATCH(req: Request) {
@@ -19,7 +19,7 @@ export async function PATCH(req: Request) {
   const body = (await req.json()) as {
     basketId?: string;
     production_note?: string | null;
-    effort_estimate?: number | null;
+    project_link?: string | null;
   };
   if (!body.basketId) {
     return NextResponse.json({ error: "basketId required" }, { status: 400 });
@@ -57,8 +57,8 @@ export async function PATCH(req: Request) {
   if (body.production_note !== undefined) {
     patch.production_note = body.production_note;
   }
-  if (body.effort_estimate !== undefined) {
-    patch.effort_estimate = body.effort_estimate;
+  if (body.project_link !== undefined) {
+    patch.project_link = body.project_link;
   }
   if (!Object.keys(patch).length) {
     return NextResponse.json({ error: "nothing to update" }, { status: 400 });
@@ -70,7 +70,7 @@ export async function PATCH(req: Request) {
     .eq("id", body.basketId)
     .eq("tenant_id", identity.tenantId)
     .select(
-      "id, title, production_note, effort_estimate, status, phase"
+      "id, title, production_note, project_link, status, phase"
     )
     .single();
 

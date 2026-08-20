@@ -3,6 +3,7 @@ import {
   buildFunnel,
   computeRetention3Month,
   teaserParticipationPct,
+  buildPeopleStats,
 } from "../../lib/analytics";
 
 test.describe("S8 analytics pure helpers", () => {
@@ -53,5 +54,29 @@ test.describe("S8 analytics pure helpers", () => {
       { basketId: "2", participantCount: 5, capacityHint: 10 },
     ]);
     expect(pct).toBe(65);
+  });
+
+  test("buildPeopleStats aggregates + ranks by votes then participation then ideas", () => {
+    const rows = buildPeopleStats({
+      ideaAuthors: ["a@duosis.dev", "a@duosis.dev", "b@duosis.dev"],
+      participantPeople: ["a@duosis.dev", "b@duosis.dev", "b@duosis.dev"],
+      memberVotes: [
+        { person: "b@duosis.dev", votes: 5 },
+        { person: "a@duosis.dev", votes: 2 },
+      ],
+    });
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toEqual({
+      person: "b@duosis.dev",
+      ideasContributed: 1,
+      participations: 2,
+      votesReceived: 5,
+    });
+    expect(rows[1]).toEqual({
+      person: "a@duosis.dev",
+      ideasContributed: 2,
+      participations: 1,
+      votesReceived: 2,
+    });
   });
 });

@@ -120,9 +120,40 @@ export function computeRetention3Month(
   };
 }
 
-/** Number of production records missing an effort estimate (FS-18). */
-export function countMissingEffort(records: { effort_estimate: number | null }[]): number {
-  return records.filter((r) => r.effort_estimate == null).length;
+export type PersonStat = {
+  person: string;
+  ideasContributed: number;
+  participations: number;
+  votesReceived: number;
+};
+
+/**
+ * Kişi bazlı katkı ölçütleri — efor tahmini yerine (efor artık ölçülmüyor):
+ * fikir katkısı, hackathon katılımı, takımı aldığı oylar.
+ */
+export function buildPeopleStats(input: {
+  ideaAuthors: string[];
+  participantPeople: string[];
+  memberVotes: { person: string; votes: number }[];
+}): PersonStat[] {
+  const map = new Map<string, PersonStat>();
+  const get = (person: string) => {
+    let s = map.get(person);
+    if (!s) {
+      s = { person, ideasContributed: 0, participations: 0, votesReceived: 0 };
+      map.set(person, s);
+    }
+    return s;
+  };
+  for (const a of input.ideaAuthors) get(a).ideasContributed += 1;
+  for (const p of input.participantPeople) get(p).participations += 1;
+  for (const m of input.memberVotes) get(m.person).votesReceived += m.votes;
+  return [...map.values()].sort(
+    (a, b) =>
+      b.votesReceived - a.votesReceived ||
+      b.participations - a.participations ||
+      b.ideasContributed - a.ideasContributed
+  );
 }
 
 /** Average participation rate across last N resolved etkinlik baskets. */

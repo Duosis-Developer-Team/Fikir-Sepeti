@@ -66,13 +66,13 @@ test.describe("S8 Analytics", () => {
       data: {
         basketId: ARCHIVE_HACK,
         production_note: "E2E production note",
-        effort_estimate: 4.5,
+        project_link: "https://github.com/duosis/e2e-demo",
       },
     });
     expect(patch.status()).toBe(200);
     const updated = await patch.json();
     expect(updated.basket.production_note).toBe("E2E production note");
-    expect(Number(updated.basket.effort_estimate)).toBe(4.5);
+    expect(updated.basket.project_link).toBe("https://github.com/duosis/e2e-demo");
 
     const again = await request.get(`${BASE}/api/analytics?full=1`, {
       headers: headers("admin@duosis.dev"),

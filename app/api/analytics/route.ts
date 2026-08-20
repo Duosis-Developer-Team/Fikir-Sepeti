@@ -3,6 +3,7 @@ import {
   buildFunnel,
   computeRetention3Month,
   teaserParticipationPct,
+  buildPeopleStats,
   type FunnelStageKey,
   type ParticipationEvent,
 } from "@/lib/analytics";
@@ -21,7 +22,7 @@ type BasketRow = {
   created_by: string | null;
   created_at: string;
   production_note: string | null;
-  effort_estimate: number | null;
+  project_link: string | null;
   winner_idea_id: string | null;
   selected_idea_id: string | null;
 };
@@ -57,7 +58,7 @@ export async function GET(req: Request) {
   const tenantId = identity.tenantId;
 
   const [
-    { count: ideasCount },
+    { data: ideaRows },
     { data: ideaIdsWithVotes },
     { data: selectedRows },
     { data: baskets },
@@ -66,11 +67,10 @@ export async function GET(req: Request) {
     { data: votes },
     { data: participants },
     { count: memberCount },
+    { data: teamMembersAll },
+    { data: teamVotesAll },
   ] = await Promise.all([
-    sb
-      .from("ideas")
-      .select("*", { count: "exact", head: true })
-      .eq("tenant_id", tenantId),
+    sb.from("ideas").select("created_by").eq("tenant_id", tenantId),
     sb.from("votes").select("idea_id").eq("tenant_id", tenantId),
     sb
       .from("baskets")
@@ -80,7 +80,7 @@ export async function GET(req: Request) {
     sb
       .from("baskets")
       .select(
-        "id, title, type, phase, status, created_by, created_at, production_note, effort_estimate, winner_idea_id, selected_idea_id"
+        "id, title, type, phase, status, created_by, created_at, production_note, project_link, winner_idea_id, selected_idea_id"
       )
       .eq("tenant_id", tenantId)
       .eq("is_demo", false)
@@ -90,17 +90,19 @@ export async function GET(req: Request) {
     sb.from("baskets").select("id").eq("tenant_id", tenantId).eq("is_demo", true),
     sb
       .from("idea_pool")
-      .select("id, status, vote_count, parent_idea_id")
+      .select("id, status, vote_count, parent_idea_id, created_by")
       .eq("tenant_id", tenantId),
     sb.from("votes").select("voter, created_at, basket_id").eq("tenant_id", tenantId),
     sb
       .from("hackathon_participants")
-      .select("user_id, email, joined_at, basket_id")
+      .select("user_id, email, display_name, joined_at, basket_id")
       .eq("tenant_id", tenantId),
     sb
       .from("app_users")
       .select("*", { count: "exact", head: true })
       .eq("tenant_id", tenantId),
+    sb.from("team_members").select("team_id, user_id").eq("tenant_id", tenantId),
+    sb.from("team_votes").select("team_id").eq("tenant_id", tenantId),
   ]);
 
   const demoBasketIds = new Set((demoBaskets ?? []).map((b) => b.id as string));
@@ -138,7 +140,7 @@ export async function GET(req: Request) {
   // Poll seçenekleri (parent_idea_id dolu) bağımsız fikir sayılmaz (FS-05).
   const poolIdeaCount = (poolRows ?? []).filter((p) => !p.parent_idea_id).length;
   const counts: Record<FunnelStageKey, number> = {
-    ideas: (ideasCount ?? 0) + poolIdeaCount,
+    ideas: (ideaRows ?? []).length + poolIdeaCount,
     voted: votedIdeaIds.size + poolVoted,
     organized,
     done: doneBaskets.length,
@@ -201,10 +203,6 @@ export async function GET(req: Request) {
   }
 
   const retention = computeRetention3Month(events, new Date());
-  const effortTotal = productionBaskets.reduce(
-    (sum, b) => sum + (Number(b.effort_estimate) || 0),
-    0
-  );
 
   const production = productionBaskets.map((b) => ({
     id: b.id,
@@ -213,15 +211,47 @@ export async function GET(req: Request) {
     created_by: b.created_by,
     created_at: b.created_at,
     production_note: b.production_note,
-    effort_estimate: b.effort_estimate,
+    project_link: b.project_link,
   }));
+
+  // Kişi bazlı ölçütler: efor yerine — fikir katkısı, hackathon katılımı,
+  // takımının aldığı oylar (bkz. lib/analytics.ts buildPeopleStats).
+  const idToEmail = new Map<string, string>();
+  for (const p of participants ?? []) {
+    const uid = p.user_id as string;
+    if (uid) idToEmail.set(uid, (p.email as string) || uid);
+  }
+  const teamVoteCounts = new Map<string, number>();
+  for (const v of teamVotesAll ?? []) {
+    const tid = v.team_id as string;
+    teamVoteCounts.set(tid, (teamVoteCounts.get(tid) ?? 0) + 1);
+  }
+  const memberVotes = (teamMembersAll ?? []).map((m) => {
+    const uid = m.user_id as string;
+    return {
+      person: idToEmail.get(uid) ?? uid,
+      votes: teamVoteCounts.get(m.team_id as string) ?? 0,
+    };
+  });
+  const ideaAuthors = [
+    ...(ideaRows ?? []).map((r) => r.created_by as string).filter(Boolean),
+    ...(poolRows ?? [])
+      .filter((p) => !p.parent_idea_id)
+      .map((p) => p.created_by as string)
+      .filter(Boolean),
+  ];
+  const participantPeople = (participants ?? [])
+    .filter((p) => !demoBasketIds.has(p.basket_id as string))
+    .map((p) => (p.email as string) || (p.user_id as string))
+    .filter(Boolean);
+  const people = buildPeopleStats({ ideaAuthors, participantPeople, memberVotes });
 
   return NextResponse.json({
     teaser,
     canViewFull: true,
     funnel: buildFunnel(counts),
     retention,
+    people,
     production,
-    effortTotal,
   });
 }

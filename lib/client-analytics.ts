@@ -33,9 +33,14 @@ export type AnalyticsFull = {
     created_by: string | null;
     created_at: string;
     production_note: string | null;
-    effort_estimate: number | null;
+    project_link: string | null;
   }[];
-  effortTotal: number;
+  people: {
+    person: string;
+    ideasContributed: number;
+    participations: number;
+    votesReceived: number;
+  }[];
 };
 
 export async function fetchAnalyticsTeaser(input: {
@@ -68,7 +73,7 @@ export async function updateProductionMeta(input: {
   tenantId: string;
   basketId: string;
   production_note?: string | null;
-  effort_estimate?: number | null;
+  project_link?: string | null;
 }): Promise<boolean> {
   const res = await fetch("/api/analytics/production", {
     method: "PATCH",
@@ -76,7 +81,7 @@ export async function updateProductionMeta(input: {
     body: JSON.stringify({
       basketId: input.basketId,
       production_note: input.production_note,
-      effort_estimate: input.effort_estimate,
+      project_link: input.project_link,
     }),
   });
   return res.ok;

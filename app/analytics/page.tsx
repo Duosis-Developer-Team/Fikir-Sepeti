@@ -10,7 +10,6 @@ import {
   type AnalyticsFull,
   type AnalyticsTeaser,
 } from "@/lib/client-analytics";
-import { countMissingEffort } from "@/lib/analytics";
 
 export default function AnalyticsPage() {
   const { name, tenantId } = useNameContext();
@@ -21,7 +20,7 @@ export default function AnalyticsPage() {
   const [error, setError] = useState<string | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
   const [note, setNote] = useState("");
-  const [effort, setEffort] = useState("");
+  const [link, setLink] = useState("");
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -75,7 +74,7 @@ export default function AnalyticsPage() {
       tenantId,
       basketId,
       production_note: note || null,
-      effort_estimate: effort === "" ? null : Number(effort),
+      project_link: link || null,
     });
     setBusy(false);
     if (ok) {
@@ -217,20 +216,36 @@ export default function AnalyticsPage() {
             </div>
           </section>
 
-          <section data-testid="analytics-production">
-            <div className="mb-3 flex items-baseline justify-between">
-              <h2 className="text-[0.7rem] font-semibold uppercase tracking-[0.22em]" style={{ color: "var(--text-faint)" }}>
-                Üretime alınanlar
-              </h2>
-              <span className="tnum text-[0.85rem]" style={{ color: "var(--text-muted)" }}>
-                Toplam efor: {full.effortTotal} gün
-              </span>
-            </div>
-            {countMissingEffort(full.production) > 0 && (
-              <p className="mb-4 rounded-xl px-4 py-2.5 text-[0.85rem]" style={{ background: "rgba(227,168,87,0.12)", color: "#E3A857" }} data-testid="analytics-missing-effort">
-                {countMissingEffort(full.production)} kayıtta efor eksik — huninin son adımı tam ölçülemiyor.
-              </p>
+          <section className="mb-10" data-testid="analytics-people">
+            <h2 className="mb-3 text-[0.7rem] font-semibold uppercase tracking-[0.22em]" style={{ color: "var(--text-faint)" }}>
+              Kişiler
+            </h2>
+            {full.people.length === 0 ? (
+              <p style={{ color: "var(--text-muted)" }}>Henüz veri yok.</p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {full.people.slice(0, 10).map((p, i) => (
+                  <div
+                    key={p.person}
+                    className="flex items-center gap-3 rounded-xl px-4 py-2.5"
+                    style={{ background: "var(--surface-2)", border: "1px solid rgba(var(--border-rgb),0.08)" }}
+                    data-testid={`people-row-${p.person}`}
+                  >
+                    <span className="tnum font-display w-5 font-bold" style={{ color: i === 0 ? "#E3A857" : "var(--text-faint)" }}>{i + 1}</span>
+                    <span className="flex-1 truncate text-[0.92rem] font-semibold" style={{ color: "var(--text)" }}>{p.person}</span>
+                    <span className="text-[0.8rem]" style={{ color: "var(--text-muted)" }}>{p.ideasContributed} fikir</span>
+                    <span className="text-[0.8rem]" style={{ color: "var(--text-muted)" }}>{p.participations} katılım</span>
+                    <span className="tnum text-[0.9rem] font-bold" style={{ color: "#E3A857" }}>{p.votesReceived} oy</span>
+                  </div>
+                ))}
+              </div>
             )}
+          </section>
+
+          <section data-testid="analytics-production">
+            <h2 className="mb-3 text-[0.7rem] font-semibold uppercase tracking-[0.22em]" style={{ color: "var(--text-faint)" }}>
+              Üretime alınanlar
+            </h2>
             {full.production.length === 0 ? (
               <p style={{ color: "var(--text-muted)" }}>Henüz üretime alınan sepet yok.</p>
             ) : (
@@ -252,7 +267,15 @@ export default function AnalyticsPage() {
                           {p.title}
                         </Link>
                         <p className="mt-1 text-[0.85rem]" style={{ color: "var(--text-muted)" }}>
-                          {p.production_note || "Not yok"} · efor: {p.effort_estimate ?? "—"}
+                          {p.production_note || "Not yok"}
+                          {p.project_link && (
+                            <>
+                              {" · "}
+                              <a href={p.project_link} target="_blank" rel="noreferrer" className="underline" style={{ color: "#D97757" }}>
+                                proje linki
+                              </a>
+                            </>
+                          )}
                         </p>
                       </div>
                       <button
@@ -262,11 +285,11 @@ export default function AnalyticsPage() {
                         onClick={() => {
                           setEditId(p.id);
                           setNote(p.production_note ?? "");
-                          setEffort(p.effort_estimate != null ? String(p.effort_estimate) : "");
+                          setLink(p.project_link ?? "");
                         }}
                         data-testid={`edit-production-${p.id}`}
                       >
-                        Efor / not
+                        Not / link
                       </button>
                     </div>
                     {editId === p.id && (
@@ -280,15 +303,12 @@ export default function AnalyticsPage() {
                           data-testid="production-note-input"
                         />
                         <input
-                          value={effort}
-                          onChange={(e) => setEffort(e.target.value)}
-                          placeholder="Tahmini adam-gün"
-                          type="number"
-                          min={0}
-                          step={0.5}
+                          value={link}
+                          onChange={(e) => setLink(e.target.value)}
+                          placeholder="Proje linki (repo/deploy/tasarım)"
                           className="rounded-lg px-3 py-2 text-[0.9rem]"
                           style={{ background: "var(--bg)", color: "var(--text)", border: "1px solid rgba(var(--border-rgb),0.15)" }}
-                          data-testid="production-effort-input"
+                          data-testid="production-link-input"
                         />
                         <div className="flex gap-2">
                           <button

@@ -100,8 +100,10 @@ export type Basket = {
   tenant_id: string;
   /** S8: what shipped / who — Hermes bridge later. */
   production_note?: string | null;
-  /** S8: estimated person-days. */
+  /** S8: estimated person-days. Kept in schema, no longer surfaced in UI/analytics. */
   effort_estimate?: number | null;
+  /** Sonuçlar: üretime giden artefakt linki (repo/deploy/tasarım). */
+  project_link?: string | null;
   /** S11: new joins blocked when true (unless allowLateJoin). */
   lobby_locked?: boolean;
 };
