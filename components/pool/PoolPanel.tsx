@@ -239,6 +239,14 @@ export function PoolPanel() {
         })}
       </div>
 
+      {trackFilter === "etkinlik" && (
+        <p className="text-[0.82rem]" style={{ color: "var(--text-faint)" }} data-testid="pool-etkinlik-wip-note">
+          Hackathon için sepetten fikir seçme artık ilgili hackathon'un lobisinden yapılıyor. Etkinlik tarafı için
+          bu akış henüz yapım aşamasında (WIP) — şimdilik "+ Yeni sepet" ile boş bir etkinlik açıp fikirleri elle
+          taşımak gerekiyor.
+        </p>
+      )}
+
       <div className="flex flex-wrap items-center gap-3">
         <input
           value={query}
