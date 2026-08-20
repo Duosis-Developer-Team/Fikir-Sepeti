@@ -41,10 +41,10 @@ test.describe("S8 analytics pure helpers", () => {
     expect(r.rate).toBeCloseTo(66.7, 0);
   });
 
-  test("computeRetention3Month empty → 0", () => {
+  test("computeRetention3Month empty → null rate (no data, not 0%)", () => {
     const r = computeRetention3Month([], new Date(Date.UTC(2026, 0, 1)));
     expect(r.month1Active).toBe(0);
-    expect(r.rate).toBe(0);
+    expect(r.rate).toBeNull();
   });
 
   test("teaserParticipationPct averages last events", () => {
