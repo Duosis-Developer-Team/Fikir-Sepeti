@@ -197,7 +197,9 @@ export type Suggestion = {
   id: string;
   tenant_id: string;
   text: string;
-  created_by: string;
+  /** Anonim gönderilmişse API bunu null döndürür — gönderenin kimliği gizlenir. */
+  created_by: string | null;
+  anonymous: boolean;
   vote_count: number;
   created_at: string;
 };

@@ -29,7 +29,12 @@ export async function GET(req: Request) {
     (r) => r.suggestion_id
   );
 
-  return NextResponse.json({ suggestions: data ?? [], myVotes });
+  // Anonim gönderilenlerde gönderenin kimliği hiçbir görüntüleyene sızmaz.
+  const suggestions = (data ?? []).map((s) =>
+    s.anonymous ? { ...s, created_by: null } : s
+  );
+
+  return NextResponse.json({ suggestions, myVotes });
 }
 
 export async function POST(req: Request) {
@@ -38,7 +43,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  let body: { text?: string };
+  let body: { text?: string; anonymous?: boolean };
   try {
     body = await req.json();
   } catch {
@@ -52,6 +57,7 @@ export async function POST(req: Request) {
   if (text.length > 1000) {
     return NextResponse.json({ error: "text_too_long" }, { status: 400 });
   }
+  const anonymous = body.anonymous === true;
 
   const sb = getDb(req);
   const { data, error } = await sb
@@ -60,6 +66,7 @@ export async function POST(req: Request) {
       tenant_id: identity.tenantId,
       text,
       created_by: identity.email,
+      anonymous,
     })
     .select()
     .single();
@@ -67,5 +74,6 @@ export async function POST(req: Request) {
   if (error || !data) {
     return NextResponse.json({ error: error?.message ?? "insert_failed" }, { status: 500 });
   }
-  return NextResponse.json({ suggestion: data });
+  const suggestion = anonymous ? { ...data, created_by: null } : data;
+  return NextResponse.json({ suggestion });
 }

@@ -19,11 +19,12 @@ export async function createSuggestion(input: {
   text: string;
   email: string;
   tenantId: string;
+  anonymous?: boolean;
 }): Promise<{ ok: boolean; suggestion?: Suggestion; error?: string }> {
   const res = await fetch("/api/suggestions", {
     method: "POST",
     headers: await apiAuthHeaders(input.email, input.tenantId),
-    body: JSON.stringify({ text: input.text }),
+    body: JSON.stringify({ text: input.text, anonymous: input.anonymous === true }),
   });
   const json = (await res.json().catch(() => ({}))) as {
     suggestion?: Suggestion;

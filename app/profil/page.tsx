@@ -67,6 +67,7 @@ export default function ProfilePage() {
   const [myVotes, setMyVotes] = useState<Set<string>>(new Set());
   const [sugLoading, setSugLoading] = useState(true);
   const [sugText, setSugText] = useState("");
+  const [sugAnonymous, setSugAnonymous] = useState(false);
   const [sugBusy, setSugBusy] = useState(false);
   const [sugError, setSugError] = useState<string | null>(null);
 
@@ -114,13 +115,14 @@ export default function ProfilePage() {
     if (!tenantId || !name || sugText.trim().length < 2) return;
     setSugBusy(true);
     setSugError(null);
-    const res = await createSuggestion({ text: sugText.trim(), email: name, tenantId });
+    const res = await createSuggestion({ text: sugText.trim(), email: name, tenantId, anonymous: sugAnonymous });
     setSugBusy(false);
     if (!res.ok) {
       setSugError("Gönderilemedi, tekrar dene.");
       return;
     }
     setSugText("");
+    setSugAnonymous(false);
     await refreshSuggestions();
   };
 
@@ -215,17 +217,45 @@ export default function ProfilePage() {
           style={{ background: "var(--surface-2)", border: "1px solid rgba(var(--border-rgb),0.1)", color: "var(--text)" }}
         />
         <div className="mt-3 flex items-center justify-between gap-3">
-          {sugError ? <p className="text-[0.82rem]" style={{ color: "#F2795F" }}>{sugError}</p> : <span />}
+          <button
+            type="button"
+            onClick={() => setSugAnonymous((v) => !v)}
+            className="inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-[0.82rem] font-semibold transition"
+            style={
+              sugAnonymous
+                ? { background: "rgba(242,121,95,0.16)", color: "#F2795F" }
+                : { border: "1px solid rgba(var(--border-rgb),0.15)", color: "var(--text-muted)" }
+            }
+            aria-pressed={sugAnonymous}
+          >
+            <span
+              className="grid h-4 w-4 place-items-center rounded border text-[0.62rem]"
+              style={{
+                borderColor: sugAnonymous ? "#F2795F" : "rgba(var(--border-rgb),0.3)",
+                background: sugAnonymous ? "#F2795F" : "transparent",
+                color: "#161616",
+              }}
+            >
+              {sugAnonymous ? "✓" : ""}
+            </span>
+            Anonim gönder
+          </button>
+          {sugError && <p className="text-[0.82rem]" style={{ color: "#F2795F" }}>{sugError}</p>}
           <button
             type="button"
             disabled={sugBusy || sugText.trim().length < 2}
             onClick={() => void submitSuggestion()}
-            className="rounded-full px-6 py-2.5 text-[0.9rem] font-semibold disabled:opacity-40"
+            className="ml-auto rounded-full px-6 py-2.5 text-[0.9rem] font-semibold disabled:opacity-40"
             style={{ background: "#F2795F", color: "#161616" }}
           >
             Gönder
           </button>
         </div>
+        {sugAnonymous && (
+          <p className="mt-2 text-[0.78rem]" style={{ color: "var(--text-faint)" }}>
+            Bu öneri kimden geldiği görünmeden gönderilecek.
+          </p>
+        )}
       </div>
 
       {sugLoading ? (
@@ -243,7 +273,7 @@ export default function ProfilePage() {
                 <div className="min-w-0 flex-1">
                   <p className="text-[0.98rem]" style={{ color: "var(--text)" }}>{s.text}</p>
                   <p className="mt-2 text-[0.76rem]" style={{ color: "var(--text-faint)" }}>
-                    {s.created_by} · {new Date(s.created_at).toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}
+                    {s.created_by ?? "Anonim"} · {new Date(s.created_at).toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}
                   </p>
                 </div>
                 <button
