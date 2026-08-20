@@ -30,24 +30,48 @@ export function DemoStage({ data, user, config, refresh }: StageContext) {
     refresh();
   };
 
-  const myStars = (teamId: string, key: string) =>
-    scores.find(
+  const [pendingStars, setPendingStars] = useState<Record<string, number>>({});
+  const starsKey = (teamId: string, key: string) => `${teamId}:${key}`;
+
+  const myStars = (teamId: string, key: string) => {
+    const k = starsKey(teamId, key);
+    if (k in pendingStars) return pendingStars[k];
+    return scores.find(
       (s) =>
         s.team_id === teamId &&
         s.voter === user.email &&
         s.category_key === key
     )?.stars ?? 0;
+  };
 
-  const setStars = async (teamId: string, key: string, stars: number) => {
-    await upsertScore({
+  const setStars = (teamId: string, key: string, stars: number) => {
+    // Puanı önce yerelde göster - bekleyen ağ isteği/reload olmadan tıklama anında
+    // görsel geri bildirim verir (realtime abonelik zaten scores değişince yeniden yükler).
+    const k = starsKey(teamId, key);
+    setPendingStars((prev) => ({ ...prev, [k]: stars }));
+    void upsertScore({
       basket_id: basket.id,
       tenant_id: basket.tenant_id,
       team_id: teamId,
       voter: user.email,
       category_key: key,
       stars,
-    });
-    refresh();
+    })
+      .then(() => {
+        setPendingStars((prev) => {
+          const next = { ...prev };
+          delete next[k];
+          return next;
+        });
+        refresh();
+      })
+      .catch(() => {
+        setPendingStars((prev) => {
+          const next = { ...prev };
+          delete next[k];
+          return next;
+        });
+      });
   };
 
   if (mode === "rubric") {
@@ -95,7 +119,7 @@ export function DemoStage({ data, user, config, refresh }: StageContext) {
                         <button
                           key={n}
                           type="button"
-                          onClick={() => void setStars(team.id, cat.key, n)}
+                          onClick={() => setStars(team.id, cat.key, n)}
                           className="grid h-9 w-9 place-items-center rounded-full text-[1.05rem] font-bold transition"
                           style={{
                             background: current >= n ? GOLD : "var(--surface-2)",

@@ -79,7 +79,7 @@ export function ProductionStage({ data, user, isAdmin }: StageContext) {
     <div className="mx-auto max-w-[640px]">
       <Card className="text-center">
         <span className="text-[0.75rem] font-semibold uppercase tracking-[0.28em]" style={{ color: GOLD }}>
-          {done ? "Üretime alındı" : "Production"}
+          {done ? "Üretime alındı" : "Sonuçlar"}
         </span>
 
         {winner ? (

@@ -12,9 +12,9 @@ export const PHASE_LABEL: Record<StagePhase, string> = {
   idea: "Fikir",
   team: "Takım",
   hackathon: "Hackathon",
-  demo: "Demo",
+  demo: "Sunum & Puanlama",
   feedback: "Feedback",
-  production: "Production",
+  production: "Sonuçlar",
   done: "Tamamlandı",
 };
 
