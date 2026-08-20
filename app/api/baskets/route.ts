@@ -89,3 +89,56 @@ export async function POST(req: Request) {
 
   return NextResponse.json({ basket: data }, { status: 200 });
 }
+
+export async function PATCH(req: Request) {
+  const identity = await resolveIdentity(req);
+  if (!identity) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  let body: { basket_id?: string; title?: string };
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "invalid_json" }, { status: 400 });
+  }
+
+  const title = body.title?.trim() ?? "";
+  if (!body.basket_id || title.length < 2) {
+    return NextResponse.json({ error: "invalid_input" }, { status: 400 });
+  }
+
+  const sb = getDb(req);
+  const { data: basket } = await sb
+    .from("baskets")
+    .select("id, tenant_id, type, created_by")
+    .eq("id", body.basket_id)
+    .maybeSingle();
+  if (!basket || basket.tenant_id !== identity.tenantId) {
+    return NextResponse.json({ error: "not_found" }, { status: 404 });
+  }
+
+  const isCreator = basket.created_by === identity.email;
+  if (!isCreator) {
+    const canManage = await userHasPermission(
+      identity.tenantId,
+      identity.userId,
+      "hackathon.manage",
+      req
+    );
+    if (!canManage) {
+      return NextResponse.json({ error: "forbidden" }, { status: 403 });
+    }
+  }
+
+  const { data, error } = await sb
+    .from("baskets")
+    .update({ title })
+    .eq("id", body.basket_id)
+    .select()
+    .single();
+  if (error || !data) {
+    return NextResponse.json({ error: error?.message ?? "update_failed" }, { status: 500 });
+  }
+  return NextResponse.json({ basket: data });
+}

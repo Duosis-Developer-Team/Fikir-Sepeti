@@ -7,7 +7,7 @@ import { useNameContext } from "@/components/AuthGate";
 import { SocialBasket } from "@/components/social/SocialBasket";
 import { HackathonRunner } from "@/components/hackathon/HackathonRunner";
 import { supabase } from "@/lib/supabase";
-import { deleteBasket } from "@/lib/db";
+import { deleteBasket, updateBasketTitle } from "@/lib/db";
 import { accentFor } from "@/lib/accent";
 import type { Basket } from "@/lib/types";
 
@@ -18,12 +18,30 @@ export default function BasketDetail() {
   const [basket, setBasket] = useState<Basket | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState("");
 
   const isOwner = Boolean(name) && basket?.created_by === name;
   const doDelete = async () => {
     if (!basket) return;
     await deleteBasket(basket.id);
     router.push("/");
+  };
+
+  const startEditTitle = () => {
+    if (!basket) return;
+    setTitleDraft(basket.title);
+    setEditingTitle(true);
+  };
+
+  const saveTitle = async () => {
+    if (!basket || !tenantId || titleDraft.trim().length < 2) return;
+    const title = titleDraft.trim();
+    const res = await updateBasketTitle({ basket_id: basket.id, title, actor: name, tenant_id: tenantId });
+    if (res.ok) {
+      setBasket((prev) => (prev ? { ...prev, title } : prev));
+      setEditingTitle(false);
+    }
   };
 
   useEffect(() => {
@@ -82,10 +100,18 @@ export default function BasketDetail() {
 
       {basket && a && (
         isHackathon ? (
-          <div className="mt-7 flex items-center justify-center gap-2.5">
-            <span className="h-[7px] w-[7px] rounded-full" style={{ background: a.base, boxShadow: `0 0 0 4px ${a.base}22` }} />
-            <span className="text-[0.74rem] font-bold uppercase tracking-[0.22em]" style={{ color: a.base }}>Hackathon</span>
-            <span className="text-[0.74rem] font-semibold" style={{ color: "var(--text-muted)" }}>· {basket.title}</span>
+          <div className="mt-7 flex flex-col items-center gap-2">
+            <div className="flex items-center justify-center gap-2.5">
+              <span className="h-[7px] w-[7px] rounded-full" style={{ background: a.base, boxShadow: `0 0 0 4px ${a.base}22` }} />
+              <span className="text-[0.74rem] font-bold uppercase tracking-[0.22em]" style={{ color: a.base }}>Hackathon</span>
+              {!editingTitle && <span className="text-[0.74rem] font-semibold" style={{ color: "var(--text-muted)" }}>· {basket.title}</span>}
+              {isOwner && !editingTitle && (
+                <button onClick={startEditTitle} aria-label="Başlığı düzenle" className="text-[0.72rem]" style={{ color: "var(--text-faint)" }}>✎</button>
+              )}
+            </div>
+            {editingTitle && (
+              <TitleEditor value={titleDraft} onChange={setTitleDraft} onSave={saveTitle} onCancel={() => setEditingTitle(false)} />
+            )}
           </div>
         ) : (
           <div className="mt-8 text-center">
@@ -93,9 +119,18 @@ export default function BasketDetail() {
               <span className="h-[7px] w-[7px] rounded-full" style={{ background: a.base, boxShadow: `0 0 0 4px ${a.base}22` }} />
               <span className="text-[0.72rem] font-bold uppercase tracking-[0.22em]" style={{ color: a.base }}>{eyebrow}</span>
             </div>
-            <h1 className="font-display mt-3 text-[clamp(2.2rem,5vw,3.5rem)] font-semibold leading-[1.02]" style={{ color: "var(--text)" }}>
-              {basket.title}
-            </h1>
+            {editingTitle ? (
+              <div className="mt-3 flex justify-center">
+                <TitleEditor value={titleDraft} onChange={setTitleDraft} onSave={saveTitle} onCancel={() => setEditingTitle(false)} large />
+              </div>
+            ) : (
+              <h1 className="font-display mt-3 inline-flex items-center gap-3 text-[clamp(2.2rem,5vw,3.5rem)] font-semibold leading-[1.02]" style={{ color: "var(--text)" }}>
+                {basket.title}
+                {isOwner && (
+                  <button onClick={startEditTitle} aria-label="Başlığı düzenle" className="text-[1.2rem]" style={{ color: "var(--text-faint)" }}>✎</button>
+                )}
+              </h1>
+            )}
           </div>
         )
       )}
@@ -114,5 +149,41 @@ export default function BasketDetail() {
         )}
       </div>
     </main>
+  );
+}
+
+function TitleEditor({
+  value,
+  onChange,
+  onSave,
+  onCancel,
+  large,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onSave: () => void;
+  onCancel: () => void;
+  large?: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <input
+        autoFocus
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") onSave();
+          if (e.key === "Escape") onCancel();
+        }}
+        className={large ? "rounded-xl px-3 py-2 text-[1.3rem] outline-none" : "rounded-lg px-2.5 py-1 text-[0.85rem] outline-none"}
+        style={{ background: "var(--surface-2)", border: "1px solid rgba(var(--border-rgb),0.15)", color: "var(--text)", minWidth: large ? 320 : 200 }}
+      />
+      <button onClick={onSave} disabled={value.trim().length < 2} className="rounded-full px-3 py-1.5 text-[0.78rem] font-semibold disabled:opacity-40" style={{ background: "var(--clay)", color: "#161616" }}>
+        Kaydet
+      </button>
+      <button onClick={onCancel} className="text-[0.78rem]" style={{ color: "var(--text-faint)" }}>
+        vazgeç
+      </button>
+    </div>
   );
 }

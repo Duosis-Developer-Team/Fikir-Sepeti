@@ -47,6 +47,20 @@ export function ProductionStage({ data, user, isAdmin }: StageContext) {
         actor: user.email,
       });
     }
+    // FS-08: kazanmayan fikirler otomatik sepete döner — organizatörün
+    // her birini elle "sepete at" ile taşımasına gerek kalmaz.
+    if (ideas.length > 1) {
+      const winnerId = basket.winner_idea_id ?? basket.selected_idea_id;
+      const losers = ideas.filter((i) => i.id !== winnerId);
+      for (const idea of losers) {
+        await returnIdeaToPool({
+          idea_id: idea.id,
+          basket_id: basket.id,
+          created_by: user.email,
+          tenant_id: basket.tenant_id,
+        });
+      }
+    }
     // üretime alındı → ana sayfaya dön (tam reload)
     window.location.assign("/");
   };

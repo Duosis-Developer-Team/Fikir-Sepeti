@@ -59,6 +59,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "cannot_return_winner" }, { status: 400 });
   }
 
+  // Idempotent: if this idea was already returned (auto-return on finalize,
+  // or a previous click), don't create a duplicate pool row (FS-08).
+  const { data: existing } = await sb
+    .from("idea_pool")
+    .select("*")
+    .eq("tenant_id", identity.tenantId)
+    .eq("source_basket_id", body.basket_id)
+    .eq("text", idea.text as string)
+    .maybeSingle();
+  if (existing) {
+    return NextResponse.json({ idea: existing }, { status: 200 });
+  }
+
   const { data: poolIdea, error } = await sb
     .from("idea_pool")
     .insert({

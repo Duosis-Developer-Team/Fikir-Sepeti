@@ -66,6 +66,23 @@ export async function deleteBasket(id: string) {
   await supabase.from("baskets").delete().eq("id", id);
 }
 
+export async function updateBasketTitle(input: {
+  basket_id: string;
+  title: string;
+  actor: string;
+  tenant_id: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  const { apiAuthHeaders } = await import("./api-headers");
+  const res = await fetch("/api/baskets", {
+    method: "PATCH",
+    headers: await apiAuthHeaders(input.actor, input.tenant_id),
+    body: JSON.stringify({ basket_id: input.basket_id, title: input.title }),
+  });
+  const json = (await res.json().catch(() => ({}))) as { error?: string };
+  if (!res.ok) return { ok: false, error: json.error };
+  return { ok: true };
+}
+
 export async function setBasketPhase(id: string, phase: Phase) {
   const patch: Record<string, unknown> = { phase };
   // Leaving lobby locks joins unless allowLateJoin (checked at join time)
