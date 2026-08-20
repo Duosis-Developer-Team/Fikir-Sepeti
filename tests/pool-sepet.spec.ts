@@ -39,15 +39,19 @@ test.describe("S4 Sepet E2E", () => {
       },
     });
     expect(create.status()).toBe(200);
+    const { idea } = await create.json();
 
     await loginAs(page, { email: SEED.adminEmail, name: SEED.adminName });
-    await expect(page.getByTestId("pool-add-option")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId(`pool-open-options-${idea.id}`)).toBeVisible({ timeout: 15_000 });
 
     const ctx2 = await browser.newContext();
     const page2 = await ctx2.newPage();
     await loginAs(page2, { email: SEED.memberEmail, name: "Member" });
-    await page2.getByTestId("pool-option-input").fill(optionText);
-    await page2.getByTestId("pool-option-submit").click();
+    // Seçenek ekleme alanı artık her kartın kendi başlığına tıklayınca açılıyor
+    // (global "poll açık" banner'ı kaldırıldı — sadece "fikir" tipi maddelerde).
+    await page2.getByTestId(`pool-open-options-${idea.id}`).click();
+    await page2.getByTestId(`pool-option-input-${idea.id}`).fill(optionText);
+    await page2.getByTestId(`pool-option-submit-${idea.id}`).click();
     await expect(
       page2.locator("[data-testid^='pool-card-']").filter({ hasText: optionText }).first()
     ).toBeVisible({ timeout: 15_000 });

@@ -57,6 +57,8 @@ export type HackathonConfig = {
   lobbyPolicy?: "open" | "approval";
   /** S11: allow join after lobby phase when locked. */
   allowLateJoin?: boolean;
+  /** Paylaşılan Teams toplantı linki (opsiyonel, kurulumda eklenir). */
+  teamsLink?: string;
 };
 
 export type PoolStatus = "new" | "voting" | "promoted" | "archived" | "rejected";

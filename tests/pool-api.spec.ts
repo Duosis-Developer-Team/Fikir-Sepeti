@@ -55,6 +55,51 @@ test.describe("S4 Pool API", () => {
     expect(body.basket?.config?.repoPoolIdeaId).toBe(idea.id);
   });
 
+  test("organizer → pool.promote attaches to an existing basket (lobby 'Sepet' pick)", async ({ request }) => {
+    const basketRes = await request.post(`${BASE}/api/baskets`, {
+      headers: headers("admin@duosis.dev"),
+      data: { title: "Attach-flow hackathon", type: "hackathon" },
+    });
+    expect(basketRes.status()).toBe(200);
+    const { basket } = await basketRes.json();
+
+    const create = await request.post(`${BASE}/api/pool`, {
+      headers: headers("admin@duosis.dev"),
+      data: { text: "Attach me from lobby", track_hint: "hackathon" },
+    });
+    const { idea } = await create.json();
+
+    const attach = await request.post(`${BASE}/api/pool/promote`, {
+      headers: headers("admin@duosis.dev"),
+      data: { pool_idea_ids: [idea.id], basket_id: basket.id },
+    });
+    expect(attach.status()).toBe(200);
+    const attachBody = await attach.json();
+    expect(attachBody.basketId).toBe(basket.id);
+
+    const { createClient } = await import("@supabase/supabase-js");
+    const sb = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { persistSession: false } }
+    );
+    const { data: attachedIdea } = await sb
+      .from("ideas")
+      .select("*")
+      .eq("basket_id", basket.id)
+      .eq("text", "Attach me from lobby")
+      .maybeSingle();
+    expect(attachedIdea).toBeTruthy();
+
+    const { data: poolRow } = await sb.from("idea_pool").select("*").eq("id", idea.id).single();
+    expect(poolRow.status).toBe("promoted");
+    expect(poolRow.promoted_basket_id).toBe(basket.id);
+
+    const { data: updatedBasket } = await sb.from("baskets").select("config").eq("id", basket.id).single();
+    expect(updatedBasket.config.ideaSource).toBe("repo");
+    expect(updatedBasket.config.repoPoolIdeaIds).toContain(idea.id);
+  });
+
   test("return losing idea to pool", async ({ request }) => {
     const create = await request.post(`${BASE}/api/pool`, {
       headers: headers("admin@duosis.dev"),

@@ -141,24 +141,39 @@ export function IdeaStage(ctx: StageContext) {
   }
 
   const isVote = config.poolSelect === "vote";
+  const isRepo = config.ideaSource === "repo";
   const sorted = [...ideas].sort((a, b) => b.vote_count - a.vote_count);
   const rafflePrimary = rafflePick?.[0] ?? null;
 
   return (
     <div className="mx-auto max-w-[760px]">
-      <StageHeadline pre="Fikirleri" accent="dök" sub={config.poolSelect === "random" ? "Herkes yazsın; birini kura seçecek." : "Herkes yazsın; en çok oyu alan kazanır."} />
+      <StageHeadline
+        pre={isRepo ? "Sepetten" : "Fikirleri"}
+        accent={isRepo ? "gelenler" : "dök"}
+        sub={
+          isRepo
+            ? config.poolSelect === "random"
+              ? "Lobide seçilen adaylar arasından kura çekilecek."
+              : "Lobide seçilen adaylar arasından en çok oyu alan kazanır."
+            : config.poolSelect === "random"
+              ? "Herkes yazsın; birini kura seçecek."
+              : "Herkes yazsın; en çok oyu alan kazanır."
+        }
+      />
 
-      <div className="flex items-stretch gap-3">
-        <input
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && submitIdea()}
-          placeholder="Fikrini yaz…"
-          className="flex-1 rounded-2xl px-6 py-5 text-[1.2rem] outline-none transition focus:border-[rgba(231,169,63,0.5)]"
-          style={{ background: "var(--surface-2)", border: "1px solid rgba(var(--border-rgb),0.1)", color: "var(--text)" }}
-        />
-        <GoldButton onClick={submitIdea} disabled={draft.trim().length < 2}>Ekle</GoldButton>
-      </div>
+      {!isRepo && (
+        <div className="flex items-stretch gap-3">
+          <input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && submitIdea()}
+            placeholder="Fikrini yaz…"
+            className="flex-1 rounded-2xl px-6 py-5 text-[1.2rem] outline-none transition focus:border-[rgba(231,169,63,0.5)]"
+            style={{ background: "var(--surface-2)", border: "1px solid rgba(var(--border-rgb),0.1)", color: "var(--text)" }}
+          />
+          <GoldButton onClick={submitIdea} disabled={draft.trim().length < 2}>Ekle</GoldButton>
+        </div>
+      )}
 
       <div className="mt-6 flex flex-col gap-3">
         <AnimatePresence initial={false}>

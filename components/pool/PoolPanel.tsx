@@ -1,14 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "motion/react";
 import { useNameContext } from "@/components/AuthGate";
 import { POOL_ACCENT, soft } from "@/lib/accent";
-import { createPoolIdea, promotePoolIdeas, deletePoolIdea } from "@/lib/pool";
+import { createPoolIdea, deletePoolIdea } from "@/lib/pool";
 import { useRealtimePool, type PromotedBasketInfo } from "@/lib/useRealtimePool";
-import type { BasketType, PoolIdea, PoolStatus } from "@/lib/types";
+import type { PoolIdea, PoolStatus } from "@/lib/types";
 
 const CLAY = POOL_ACCENT;
 const STATUS_LABEL: Record<PoolStatus, string> = {
@@ -30,7 +29,6 @@ const TRACK_LABEL: Record<"all" | "hackathon" | "etkinlik" | "genel", string> = 
 
 export function PoolPanel() {
   const { name, tenantId } = useNameContext();
-  const router = useRouter();
   const { ideas, myVotes, promotedBaskets, loading, vote, refresh } = useRealtimePool(tenantId, name);
 
   const [text, setText] = useState("");
@@ -41,10 +39,7 @@ export function PoolPanel() {
   const [trackFilter, setTrackFilter] = useState<"all" | "hackathon" | "etkinlik" | "genel">("all");
   const [query, setQuery] = useState("");
   const [pollHours, setPollHours] = useState(0);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [promoteType, setPromoteType] = useState<BasketType>("hackathon");
   const [busy, setBusy] = useState(false);
-  const [pollOption, setPollOption] = useState("");
 
   // Poll seçenekleri (parent_idea_id dolu) ana listede ayrı kart değil — kök
   // fikrin altında görünür (FS-05).
@@ -76,11 +71,6 @@ export function PoolPanel() {
     });
   }, [rootIdeas, trackFilter, filterCat, query]);
 
-  const openPoll = useMemo(
-    () => ideas.some((i) => i.status === "voting" && (!i.poll_closes_at || new Date(i.poll_closes_at) > new Date())),
-    [ideas]
-  );
-
   const submit = async () => {
     if (!tenantId || text.trim().length < 2) return;
     setBusy(true);
@@ -103,25 +93,19 @@ export function PoolPanel() {
     void refresh();
   };
 
-  const addPollOption = async () => {
-    if (!tenantId || pollOption.trim().length < 2) return;
-    const open = ideas.find(
-      (i) => i.status === "voting" && (!i.poll_closes_at || new Date(i.poll_closes_at) > new Date())
-    );
-    const closes = open?.poll_closes_at ?? new Date(Date.now() + 24 * 3600_000).toISOString();
-    setBusy(true);
+  const addOptionTo = async (parent: PoolIdea, text: string) => {
+    if (!tenantId || text.trim().length < 2) return;
+    const closes = parent.poll_closes_at ?? new Date(Date.now() + 24 * 3600_000).toISOString();
     await createPoolIdea({
-      text: pollOption.trim(),
+      text: text.trim(),
       brief: "Poll seçeneği",
-      category: open?.category ?? null,
+      category: parent.category ?? null,
       poll_closes_at: closes,
       status: "voting",
       created_by: name,
       tenant_id: tenantId,
-      parent_idea_id: open?.id ?? null,
+      parent_idea_id: parent.id,
     });
-    setPollOption("");
-    setBusy(false);
     void refresh();
   };
 
@@ -129,32 +113,6 @@ export function PoolPanel() {
     if (!tenantId) return;
     const res = await deletePoolIdea({ idea_id: id, actor: name, tenant_id: tenantId });
     if (res.ok) void refresh();
-  };
-
-  const toggleSelect = (id: string) => {
-    setSelected((prev) => {
-      const n = new Set(prev);
-      if (n.has(id)) n.delete(id);
-      else n.add(id);
-      return n;
-    });
-  };
-
-  const promote = async () => {
-    if (!tenantId || !selected.size) return;
-    const first = ideas.find((i) => selected.has(i.id));
-    const typeLabel = promoteType === "hackathon" ? "Hackathon" : "Etkinlik";
-    const title = first ? first.text.slice(0, 60) : `${typeLabel} · ${new Date().toLocaleDateString("tr-TR")}`;
-    setBusy(true);
-    const res = await promotePoolIdeas({
-      pool_idea_ids: [...selected],
-      type: promoteType,
-      title,
-      created_by: name,
-      tenant_id: tenantId,
-    });
-    setBusy(false);
-    if (res?.basketId) router.push(`/basket/${res.basketId}`);
   };
 
   if (loading) {
@@ -259,36 +217,6 @@ export function PoolPanel() {
         </div>
       </div>
 
-      {openPoll && (
-        <div
-          className="flex flex-wrap items-center gap-3 rounded-2xl px-5 py-4"
-          style={{ background: soft(CLAY, 0.1), border: `1px solid ${soft(CLAY, 0.3)}` }}
-          data-testid="pool-add-option"
-        >
-          <span className="text-[0.85rem] font-semibold" style={{ color: CLAY.base }}>
-            Poll açık — seçenek ekle
-          </span>
-          <input
-            value={pollOption}
-            onChange={(e) => setPollOption(e.target.value)}
-            placeholder="Yeni seçenek…"
-            className="min-w-[200px] flex-1 rounded-full px-4 py-2 text-[0.95rem] outline-none"
-            style={{ background: "var(--surface-2)", color: "var(--text)", border: "1px solid rgba(var(--border-rgb),0.1)" }}
-            data-testid="pool-option-input"
-          />
-          <button
-            type="button"
-            onClick={() => void addPollOption()}
-            disabled={busy || pollOption.trim().length < 2}
-            className="rounded-full px-4 py-2 text-[0.85rem] font-semibold disabled:opacity-40"
-            style={{ background: CLAY.base, color: "#161616" }}
-            data-testid="pool-option-submit"
-          >
-            Ekle
-          </button>
-        </div>
-      )}
-
       <div className="flex flex-wrap items-center gap-2" data-testid="pool-track-filter">
         {(["all", "genel", "hackathon", "etkinlik"] as const).map((t) => {
           const on = trackFilter === t;
@@ -334,30 +262,6 @@ export function PoolPanel() {
             </option>
           ))}
         </select>
-        {selected.size > 0 && (
-          <div className="ml-auto flex flex-wrap items-center gap-2">
-            <select
-              value={promoteType}
-              onChange={(e) => setPromoteType(e.target.value as BasketType)}
-              className="rounded-full px-3 py-2 text-[0.85rem]"
-              style={{ background: "var(--surface-2)", color: "var(--text)" }}
-              data-testid="pool-promote-type"
-            >
-              <option value="hackathon">→ Hackathon</option>
-              <option value="etkinlik">→ Etkinlik</option>
-            </select>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void promote()}
-              className="rounded-full px-5 py-2 text-[0.9rem] font-bold"
-              style={{ background: CLAY.base, color: "#161616" }}
-              data-testid="pool-promote"
-            >
-              Dönüştür ({selected.size})
-            </button>
-          </div>
-        )}
       </div>
 
       <div className="flex flex-col gap-3">
@@ -366,16 +270,15 @@ export function PoolPanel() {
             key={idea.id}
             idea={idea}
             voted={myVotes.has(idea.id)}
-            selected={selected.has(idea.id)}
             promotedBasket={idea.promoted_basket_id ? promotedBaskets[idea.promoted_basket_id] : undefined}
             options={optionsByParent.get(idea.id) ?? []}
             myVotes={myVotes}
             canDelete={idea.created_by === name}
             onVote={() => void vote(idea.id)}
             onVoteOption={(id) => void vote(id)}
-            onToggle={() => toggleSelect(idea.id)}
             onDelete={() => void deleteIdea(idea.id)}
             onDeleteOption={(id) => void deleteIdea(id)}
+            onAddOption={(text) => void addOptionTo(idea, text)}
             currentUser={name}
           />
         ))}
@@ -392,34 +295,43 @@ export function PoolPanel() {
 function PoolCard({
   idea,
   voted,
-  selected,
   promotedBasket,
   options,
   myVotes,
   canDelete,
   onVote,
   onVoteOption,
-  onToggle,
   onDelete,
   onDeleteOption,
+  onAddOption,
   currentUser,
 }: {
   idea: PoolIdea;
   voted: boolean;
-  selected: boolean;
   promotedBasket?: PromotedBasketInfo;
   options: PoolIdea[];
   myVotes: Set<string>;
   canDelete: boolean;
   onVote: () => void;
   onVoteOption: (id: string) => void;
-  onToggle: () => void;
   onDelete: () => void;
   onDeleteOption: (id: string) => void;
+  onAddOption: (text: string) => void;
   currentUser: string;
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [addingOption, setAddingOption] = useState(false);
+  const [optionDraft, setOptionDraft] = useState("");
   const closed = idea.poll_closes_at ? new Date(idea.poll_closes_at) < new Date() : false;
+  // Seçenek/poll mekaniği sadece genel "fikir" maddelerinde anlamlı — hackathon/
+  // etkinlik'e özgülenmiş fikirler doğrudan lobiden tüketiliyor, poll'lanmıyor.
+  const canAddOption = !idea.track_hint && idea.status === "voting" && !closed;
+  const submitOption = () => {
+    if (optionDraft.trim().length < 2) return;
+    onAddOption(optionDraft.trim());
+    setOptionDraft("");
+    setAddingOption(false);
+  };
   const usedLabel =
     idea.status === "promoted" && idea.promoted_basket_id
       ? promotedBasket?.type === "etkinlik"
@@ -432,27 +344,13 @@ function PoolCard({
       layout
       className="rounded-[22px] px-5 py-4"
       style={{
-        background: selected ? soft(CLAY, 0.12) : "var(--card)",
-        border: `1px solid ${selected ? soft(CLAY, 0.5) : "rgba(var(--border-rgb),0.09)"}`,
+        background: addingOption ? soft(CLAY, 0.08) : "var(--card)",
+        border: `1px solid ${addingOption ? soft(CLAY, 0.4) : "rgba(var(--border-rgb),0.09)"}`,
         boxShadow: "var(--card-shadow)",
       }}
       data-testid={`pool-card-${idea.id}`}
     >
       <div className="flex flex-wrap items-start gap-3">
-        <button
-          type="button"
-          onClick={onToggle}
-          className="mt-1 grid h-5 w-5 place-items-center rounded border text-[0.7rem]"
-          style={{
-            borderColor: selected ? CLAY.base : "rgba(var(--border-rgb),0.25)",
-            background: selected ? CLAY.base : "transparent",
-            color: "#161616",
-          }}
-          aria-label="Seç"
-          data-testid={`pool-select-${idea.id}`}
-        >
-          {selected ? "✓" : ""}
-        </button>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <span
@@ -482,9 +380,21 @@ function PoolCard({
               </span>
             )}
           </div>
-          <p className="mt-1 text-[1.2rem] font-semibold" style={{ color: "var(--text)" }}>
-            {idea.text}
-          </p>
+          {canAddOption ? (
+            <button
+              type="button"
+              onClick={() => setAddingOption((v) => !v)}
+              className="mt-1 text-left text-[1.2rem] font-semibold underline decoration-dotted underline-offset-4"
+              style={{ color: "var(--text)" }}
+              data-testid={`pool-open-options-${idea.id}`}
+            >
+              {idea.text}
+            </button>
+          ) : (
+            <p className="mt-1 text-[1.2rem] font-semibold" style={{ color: "var(--text)" }}>
+              {idea.text}
+            </p>
+          )}
           {idea.brief && (
             <p className="mt-1 text-[0.9rem]" style={{ color: "var(--text-muted)" }}>
               {idea.brief}
@@ -557,11 +467,13 @@ function PoolCard({
         </div>
       </div>
 
-      {options.length > 0 && (
+      {(options.length > 0 || addingOption) && (
         <div className="ml-8 mt-3 flex flex-col gap-2 border-l pl-4" style={{ borderColor: "rgba(var(--border-rgb),0.1)" }} data-testid={`pool-options-${idea.id}`}>
-          <span className="text-[0.68rem] font-semibold uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>
-            Poll seçenekleri
-          </span>
+          {options.length > 0 && (
+            <span className="text-[0.68rem] font-semibold uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>
+              Poll seçenekleri
+            </span>
+          )}
           {options.map((opt) => (
             <OptionRow
               key={opt.id}
@@ -572,6 +484,36 @@ function PoolCard({
               onDelete={() => onDeleteOption(opt.id)}
             />
           ))}
+          {addingOption && (
+            <div className="flex items-center gap-2">
+              <input
+                autoFocus
+                value={optionDraft}
+                onChange={(e) => setOptionDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") submitOption();
+                  if (e.key === "Escape") setAddingOption(false);
+                }}
+                placeholder="Yeni seçenek…"
+                className="min-w-[160px] flex-1 rounded-full px-4 py-2 text-[0.9rem] outline-none"
+                style={{ background: "var(--surface-2)", color: "var(--text)", border: "1px solid rgba(var(--border-rgb),0.1)" }}
+                data-testid={`pool-option-input-${idea.id}`}
+              />
+              <button
+                type="button"
+                onClick={submitOption}
+                disabled={optionDraft.trim().length < 2}
+                className="rounded-full px-4 py-2 text-[0.8rem] font-semibold disabled:opacity-40"
+                style={{ background: CLAY.base, color: "#161616" }}
+                data-testid={`pool-option-submit-${idea.id}`}
+              >
+                Ekle
+              </button>
+              <button type="button" onClick={() => setAddingOption(false)} className="text-[0.8rem]" style={{ color: "var(--text-faint)" }}>
+                vazgeç
+              </button>
+            </div>
+          )}
         </div>
       )}
     </motion.div>

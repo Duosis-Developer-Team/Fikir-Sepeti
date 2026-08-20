@@ -1,19 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
-import type { HackathonConfig, Participant } from "@/lib/types";
+import type { HackathonConfig, Participant, PoolIdea } from "@/lib/types";
 import { setConfig } from "@/lib/hackathon";
 import { ideaStatusLabel } from "@/lib/lobby";
-import { DEFAULT_RUBRIC } from "@/lib/scoring";
+import { DEFAULT_RUBRIC, SCORE_LIBRARY, MAX_CUSTOM_CATEGORIES, type RubricCategory } from "@/lib/scoring";
 import { setBasketPhase } from "@/lib/db";
+import { listPoolIdeas, attachPoolIdeas } from "@/lib/pool";
 import type { StageContext } from "../contract";
 import { GOLD, GOLD_SOFT, dim } from "../contract";
 import { GoldButton, StageHeadline, NumberStepper, Segmented, Avatar } from "../ui";
 import { InvitePanel } from "../InvitePanel";
 import { apiAuthHeaders } from "@/lib/api-headers";
 
-type Sub = "invite" | "ideaSource" | "poolSelect" | "ideaAssign" | "teamMode" | "groups" | "duration" | "scoring" | "ready";
+type Sub = "invite" | "ideaSource" | "repoPick" | "poolSelect" | "ideaAssign" | "teamMode" | "groups" | "duration" | "scoring" | "ready";
 
 const UNITS: { v: "hour" | "day" | "week"; label: string }[] = [
   { v: "hour", label: "Saat" },
@@ -61,6 +63,58 @@ export function LobbyStage({ data, config, isAdmin, user, refresh, needsJoinActi
   const { basket, participants, ideas } = data;
   const selectedIdea = ideas.find((i) => i.id === basket.selected_idea_id) ?? null;
   const [sub, setSub] = useState<Sub>("invite");
+  const [poolIdeas, setPoolIdeas] = useState<PoolIdea[] | null>(null);
+  const [poolPicked, setPoolPicked] = useState<Set<string>>(new Set());
+  const [poolBusy, setPoolBusy] = useState(false);
+  const [rubricPicked, setRubricPicked] = useState<Set<string>>(
+    () => new Set(DEFAULT_RUBRIC.map((c) => c.key))
+  );
+  const [customCats, setCustomCats] = useState<RubricCategory[]>([]);
+  const [customDraft, setCustomDraft] = useState("");
+  const [teamsLinkDraft, setTeamsLinkDraft] = useState(config.teamsLink ?? "");
+  const saveTeamsLink = () => {
+    const v = teamsLinkDraft.trim();
+    if (v !== (config.teamsLink ?? "")) patch({ teamsLink: v || undefined });
+  };
+
+  useEffect(() => {
+    if (sub !== "repoPick") return;
+    let cancelled = false;
+    listPoolIdeas(basket.tenant_id).then((all) => {
+      if (cancelled) return;
+      const attached = new Set(config.repoPoolIdeaIds ?? []);
+      setPoolIdeas(
+        all.filter(
+          (i) =>
+            !i.parent_idea_id &&
+            i.status === "new" &&
+            i.track_hint !== "etkinlik" &&
+            !attached.has(i.id)
+        )
+      );
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sub, basket.tenant_id]);
+
+  const attachPicked = async () => {
+    if (!poolPicked.size) return;
+    setPoolBusy(true);
+    const res = await attachPoolIdeas({
+      pool_idea_ids: [...poolPicked],
+      basket_id: basket.id,
+      actor: user.email,
+      tenant_id: basket.tenant_id,
+    });
+    setPoolBusy(false);
+    if (res.ok) {
+      setPoolPicked(new Set());
+      await refresh();
+      setSub("poolSelect");
+    }
+  };
 
   const write = (c: HackathonConfig) => setConfig(basket.id, c).then(refresh);
   const patch = (p: Partial<HackathonConfig>) => write({ ...config, ...p });
@@ -88,7 +142,8 @@ export function LobbyStage({ data, config, isAdmin, user, refresh, needsJoinActi
   const prevOf = (s: Sub): Sub | null => {
     switch (s) {
       case "ideaSource": return "invite";
-      case "poolSelect": return "ideaSource";
+      case "repoPick": return "ideaSource";
+      case "poolSelect": return config.ideaSource === "repo" ? "repoPick" : "ideaSource";
       case "ideaAssign": return "poolSelect";
       case "teamMode":
         return config.ideaSource === "pool" || config.ideaSource === "repo"
@@ -117,6 +172,18 @@ export function LobbyStage({ data, config, isAdmin, user, refresh, needsJoinActi
           <p className="mt-3 text-[0.95rem]" style={{ color: dim(0.5) }}>
             {approved.length} kişi katıldı
           </p>
+          {config.teamsLink && (
+            <a
+              href={config.teamsLink}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-3 inline-block text-[0.9rem] font-semibold underline"
+              style={{ color: GOLD_SOFT }}
+              data-testid="lobby-teams-link-join"
+            >
+              Teams'e katıl →
+            </a>
+          )}
           <div className="mt-5 flex flex-wrap justify-center gap-2">
             {approved.map((p) => (
               <ParticipantChip key={p.id} p={p} />
@@ -138,6 +205,18 @@ export function LobbyStage({ data, config, isAdmin, user, refresh, needsJoinActi
         <p className="mt-2 text-[0.95rem]" style={{ color: GOLD_SOFT }} data-testid="lobby-idea-status">
           {ideaStatusLabel(config, selectedIdea?.text)}
         </p>
+        {config.teamsLink && (
+          <a
+            href={config.teamsLink}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-2 inline-block text-[0.9rem] font-semibold underline"
+            style={{ color: GOLD_SOFT }}
+            data-testid="lobby-teams-link-wait"
+          >
+            Teams'e katıl →
+          </a>
+        )}
         <p className="mt-3 text-[0.95rem]" style={{ color: dim(0.5) }}>
           {approved.length} kişi katıldı
         </p>
@@ -166,6 +245,18 @@ export function LobbyStage({ data, config, isAdmin, user, refresh, needsJoinActi
         <>
           <StageHeadline pre="Önce ekibi" accent="topla" sub="Linki paylaş — açan herkes iş e-postasıyla lobiye katılır. Sonra akışı kur." />
           <InvitePanel basketId={basket.id} />
+          <div className="mx-auto mt-4 flex max-w-[640px] items-center gap-2">
+            <input
+              value={teamsLinkDraft}
+              onChange={(e) => setTeamsLinkDraft(e.target.value)}
+              onBlur={saveTeamsLink}
+              onKeyDown={(e) => e.key === "Enter" && saveTeamsLink()}
+              placeholder="Teams toplantı linki (opsiyonel)"
+              className="flex-1 rounded-full px-4 py-2.5 text-[0.9rem] outline-none"
+              style={{ background: "var(--surface-2)", border: "1px solid rgba(var(--border-rgb),0.1)", color: "var(--text)" }}
+              data-testid="lobby-teams-link"
+            />
+          </div>
           <div className="mx-auto mt-6 flex max-w-[640px] flex-col gap-3" data-testid="lobby-policy">
             <Segmented
               label="Katılım"
@@ -226,7 +317,8 @@ export function LobbyStage({ data, config, isAdmin, user, refresh, needsJoinActi
             value={config.ideaSource}
             onChange={(v) => {
               patch({ ideaSource: v });
-              if (v === "pool" || v === "repo") setSub("poolSelect");
+              if (v === "repo") setSub("repoPick");
+              else if (v === "pool") setSub("poolSelect");
               else setSub("teamMode");
             }}
             options={[
@@ -235,6 +327,64 @@ export function LobbyStage({ data, config, isAdmin, user, refresh, needsJoinActi
               { v: "repo", label: "Sepet", hint: "sepetten çek" },
             ]}
           />
+        </>
+      )}
+
+      {sub === "repoPick" && (
+        <>
+          <StageHeadline pre="Sepetten" accent="çek" sub="Adayları seç — oylama ya da kura bunlar arasından olacak." />
+          {poolIdeas === null ? (
+            <div className="mx-auto flex max-w-[560px] flex-col gap-3">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="h-16 animate-pulse rounded-2xl" style={{ background: "var(--card)" }} />
+              ))}
+            </div>
+          ) : poolIdeas.length === 0 ? (
+            <p className="text-center text-[0.95rem]" style={{ color: dim(0.5) }}>
+              Sepette uygun fikir yok. <Link href="/">Sepete git</Link> ve önce oraya birkaç fikir at.
+            </p>
+          ) : (
+            <div className="mx-auto flex max-w-[640px] flex-col gap-2.5" data-testid="lobby-repo-pick">
+              {poolIdeas.map((idea) => {
+                const on = poolPicked.has(idea.id);
+                return (
+                  <button
+                    key={idea.id}
+                    type="button"
+                    onClick={() =>
+                      setPoolPicked((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(idea.id)) next.delete(idea.id);
+                        else next.add(idea.id);
+                        return next;
+                      })
+                    }
+                    className="flex items-center justify-between gap-3 rounded-2xl px-5 py-3.5 text-left transition"
+                    style={{
+                      background: on ? "rgba(231,169,63,0.1)" : "var(--card)",
+                      border: `1px solid ${on ? GOLD : "rgba(var(--border-rgb),0.09)"}`,
+                    }}
+                    data-testid={`lobby-repo-pick-${idea.id}`}
+                  >
+                    <span className="text-[1rem]" style={{ color: "var(--text)" }}>{idea.text}</span>
+                    <span
+                      className="grid h-6 w-6 shrink-0 place-items-center rounded-full text-[0.75rem] font-bold"
+                      style={{ background: on ? GOLD : "var(--surface-2)", color: on ? "#17150F" : "transparent" }}
+                    >
+                      ✓
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          {poolIdeas !== null && poolIdeas.length > 0 && (
+            <div className="mt-6 flex justify-center">
+              <GoldButton onClick={attachPicked} disabled={!poolPicked.size || poolBusy}>
+                Sepetten çek ({poolPicked.size}) →
+              </GoldButton>
+            </div>
+          )}
         </>
       )}
 
@@ -353,21 +503,110 @@ export function LobbyStage({ data, config, isAdmin, user, refresh, needsJoinActi
           />
           {config.scoringMode === "rubric" && (
             <div className="mt-8 flex flex-col items-center gap-4" data-testid="rubric-setup">
-              <p className="max-w-[420px] text-center text-[0.9rem]" style={{ color: dim(0.55) }}>
-                Varsayılan set: {DEFAULT_RUBRIC.map((c) => c.label).join(" · ")}
+              <p className="max-w-[460px] text-center text-[0.9rem]" style={{ color: dim(0.55) }}>
+                Kategorileri seç, gerekirse kendi kategorini ekle — {MAX_CUSTOM_CATEGORIES} tane özel kategoriye kadar.
               </p>
+              <div className="flex flex-wrap justify-center gap-2" data-testid="rubric-library">
+                {SCORE_LIBRARY.map((cat) => {
+                  const on = rubricPicked.has(cat.key);
+                  return (
+                    <button
+                      key={cat.key}
+                      type="button"
+                      onClick={() =>
+                        setRubricPicked((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(cat.key)) next.delete(cat.key);
+                          else next.add(cat.key);
+                          return next;
+                        })
+                      }
+                      className="rounded-full px-4 py-2 text-[0.88rem] font-semibold transition"
+                      style={
+                        on
+                          ? { background: GOLD, color: "#17150F" }
+                          : { border: "1px solid rgba(var(--border-rgb),0.15)", color: dim(0.7) }
+                      }
+                      data-testid={`rubric-lib-${cat.key}`}
+                    >
+                      {cat.label}
+                    </button>
+                  );
+                })}
+              </div>
+              {customCats.length > 0 && (
+                <div className="flex flex-wrap justify-center gap-2">
+                  {customCats.map((cat) => (
+                    <span
+                      key={cat.key}
+                      className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-[0.88rem] font-semibold"
+                      style={{ background: "rgba(231,169,63,0.14)", color: GOLD_SOFT, border: "1px solid rgba(231,169,63,0.4)" }}
+                    >
+                      {cat.label}
+                      <button
+                        type="button"
+                        onClick={() => setCustomCats((prev) => prev.filter((c) => c.key !== cat.key))}
+                        aria-label={`${cat.label} kategorisini kaldır`}
+                        style={{ color: dim(0.6) }}
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              {customCats.length < MAX_CUSTOM_CATEGORIES && (
+                <div className="flex items-center gap-2">
+                  <input
+                    value={customDraft}
+                    onChange={(e) => setCustomDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key !== "Enter") return;
+                      const label = customDraft.trim();
+                      if (label.length < 2) return;
+                      setCustomCats((prev) => [...prev, { key: `custom_${Date.now()}_${prev.length}`, label, weight: 1, custom: true }]);
+                      setCustomDraft("");
+                    }}
+                    placeholder="Özel kategori adı…"
+                    className="rounded-full px-4 py-2 text-[0.9rem] outline-none"
+                    style={{ background: "var(--surface-2)", color: "var(--text)", border: "1px solid rgba(var(--border-rgb),0.1)", minWidth: 200 }}
+                    data-testid="rubric-custom-input"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const label = customDraft.trim();
+                      if (label.length < 2) return;
+                      setCustomCats((prev) => [...prev, { key: `custom_${Date.now()}_${prev.length}`, label, weight: 1, custom: true }]);
+                      setCustomDraft("");
+                    }}
+                    disabled={customDraft.trim().length < 2}
+                    className="rounded-full px-4 py-2 text-[0.85rem] font-semibold disabled:opacity-40"
+                    style={{ border: "1px solid rgba(var(--border-rgb),0.2)", color: dim(0.85) }}
+                    data-testid="rubric-custom-add"
+                  >
+                    + Ekle
+                  </button>
+                </div>
+              )}
               <GoldButton
                 onClick={() => {
+                  const rubric = [
+                    ...SCORE_LIBRARY.filter((c) => rubricPicked.has(c.key)),
+                    ...customCats,
+                  ];
+                  if (!rubric.length) return;
                   patch({
                     scoringMode: "rubric",
-                    rubric: DEFAULT_RUBRIC,
+                    rubric,
                     juryEnabled: config.juryEnabled ?? false,
                     juryWeight: config.juryWeight ?? 2,
                   });
                   setSub("ready");
                 }}
+                disabled={rubricPicked.size + customCats.length === 0}
               >
-                Varsayılan seti kabul et →
+                Devam →
               </GoldButton>
               <Segmented
                 label="Jüri ağırlığı"

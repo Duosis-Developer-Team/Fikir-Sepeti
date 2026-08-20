@@ -37,8 +37,8 @@ test.describe("smoke: hackathon", () => {
     await page.getByRole("button", { name: /Oluştur/i }).click();
     await expect(page.getByText(/Takımlar|hazır/i).first()).toBeVisible({ timeout: 20_000 });
 
-    // Jump to Demo via stepper (admin)
-    await page.getByRole("button", { name: "Demo", exact: true }).click();
+    // Jump to Demo/Sunum via stepper (admin)
+    await page.getByRole("button", { name: "Sunum & Puanlama", exact: true }).click();
     await expect(page.getByText(/Demo|Sunum|takım/i).first()).toBeVisible({ timeout: 20_000 });
   });
 });

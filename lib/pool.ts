@@ -2,7 +2,7 @@
 
 import { supabase } from "./supabase";
 import { apiAuthHeaders } from "./api-headers";
-import type { BasketType, PoolIdea } from "./types";
+import type { PoolIdea } from "./types";
 
 export async function listPoolIdeas(tenantId: string): Promise<PoolIdea[]> {
   const { data } = await supabase
@@ -82,25 +82,24 @@ export async function votePoolIdea(input: {
   return { ok: true };
 }
 
-export async function promotePoolIdeas(input: {
+/** Sepetteki fikirleri, kurulumu devam eden bir sepete (lobide "Sepet" seçimi) çeker. */
+export async function attachPoolIdeas(input: {
   pool_idea_ids: string[];
-  type: BasketType;
-  title: string;
-  created_by: string;
+  basket_id: string;
+  actor: string;
   tenant_id: string;
-}): Promise<{ basketId: string } | null> {
+}): Promise<{ ok: boolean; error?: string }> {
   const res = await fetch("/api/pool/promote", {
     method: "POST",
-    headers: await apiAuthHeaders(input.created_by, input.tenant_id),
+    headers: await apiAuthHeaders(input.actor, input.tenant_id),
     body: JSON.stringify({
       pool_idea_ids: input.pool_idea_ids,
-      type: input.type,
-      title: input.title,
+      basket_id: input.basket_id,
     }),
   });
-  if (!res.ok) return null;
-  const json = (await res.json()) as { basketId: string };
-  return json.basketId ? { basketId: json.basketId } : null;
+  const json = (await res.json().catch(() => ({}))) as { error?: string };
+  if (!res.ok) return { ok: false, error: json.error };
+  return { ok: true };
 }
 
 export async function returnIdeaToPool(input: {

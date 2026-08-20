@@ -25,6 +25,7 @@ export async function POST(req: Request) {
     pool_idea_ids?: string[];
     type?: BasketType;
     title?: string;
+    basket_id?: string;
   };
   try {
     body = await req.json();
@@ -33,20 +34,8 @@ export async function POST(req: Request) {
   }
 
   const ids = body.pool_idea_ids?.filter(Boolean) ?? [];
-  const type = body.type ?? "hackathon";
-  const title = body.title?.trim() ?? "";
-  if (!ids.length || title.length < 2) {
+  if (!ids.length) {
     return NextResponse.json({ error: "invalid_input" }, { status: 400 });
-  }
-
-  const createPerm = type === "hackathon" ? "hackathon.create" : "etkinlik.create";
-  const canCreate = await userHasPermission(
-    identity.tenantId,
-    identity.userId,
-    createPerm,
-    req);
-  if (!canCreate) {
-    return NextResponse.json({ error: "forbidden", permission: createPerm }, { status: 403 });
   }
 
   const sb = getDb(req);
@@ -58,6 +47,86 @@ export async function POST(req: Request) {
 
   if (pErr || !poolRows?.length) {
     return NextResponse.json({ error: "ideas_not_found" }, { status: 404 });
+  }
+
+  // Attach mode: pull selected pool ideas into a basket that's already being
+  // set up (the lobby's "Fikir nereden gelecek? → Sepet" step) instead of
+  // spinning up a brand new one. Replaces the old "pick ideas on the pool
+  // page, then a type dropdown creates the basket" flow — sourcing now
+  // happens from the hackathon/etkinlik side, in one place.
+  if (body.basket_id) {
+    const { data: basket } = await sb
+      .from("baskets")
+      .select("id, tenant_id, type, created_by, config")
+      .eq("id", body.basket_id)
+      .maybeSingle();
+    if (!basket || basket.tenant_id !== identity.tenantId) {
+      return NextResponse.json({ error: "basket_not_found" }, { status: 404 });
+    }
+    const isCreator = basket.created_by === identity.email;
+    if (!isCreator) {
+      const canManage = await userHasPermission(
+        identity.tenantId,
+        identity.userId,
+        "hackathon.manage",
+        req
+      );
+      if (!canManage) {
+        return NextResponse.json({ error: "forbidden" }, { status: 403 });
+      }
+    }
+
+    const ideaInserts = poolRows.map((row) => ({
+      basket_id: basket.id,
+      text: row.text as string,
+      tag: (row.category as string) || null,
+      created_by: row.created_by as string,
+      tenant_id: identity.tenantId,
+      vote_count: 0,
+    }));
+    const { error: iErr } = await sb.from("ideas").insert(ideaInserts).select();
+    if (iErr) {
+      return NextResponse.json({ error: iErr.message }, { status: 500 });
+    }
+
+    const prevConfig = (basket.config as Record<string, unknown>) ?? {};
+    const prevIds = Array.isArray(prevConfig.repoPoolIdeaIds) ? (prevConfig.repoPoolIdeaIds as string[]) : [];
+    const nextIds = [...new Set([...prevIds, ...ids])];
+    await sb
+      .from("baskets")
+      .update({
+        config: {
+          ...prevConfig,
+          ideaSource: "repo",
+          repoPoolIdeaId: (prevConfig.repoPoolIdeaId as string) ?? nextIds[0],
+          repoPoolIdeaIds: nextIds,
+        },
+      })
+      .eq("id", basket.id);
+
+    await sb
+      .from("idea_pool")
+      .update({ status: "promoted", promoted_basket_id: basket.id })
+      .in("id", ids);
+
+    return NextResponse.json({ basketId: basket.id }, { status: 200 });
+  }
+
+  // Create mode: no existing basket given — spin up a new one from scratch.
+  const type = body.type ?? "hackathon";
+  const title = body.title?.trim() ?? "";
+  if (title.length < 2) {
+    return NextResponse.json({ error: "invalid_input" }, { status: 400 });
+  }
+
+  const createPerm = type === "hackathon" ? "hackathon.create" : "etkinlik.create";
+  const canCreate = await userHasPermission(
+    identity.tenantId,
+    identity.userId,
+    createPerm,
+    req);
+  if (!canCreate) {
+    return NextResponse.json({ error: "forbidden", permission: createPerm }, { status: 403 });
   }
 
   const primary = poolRows[0];
