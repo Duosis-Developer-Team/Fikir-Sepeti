@@ -38,7 +38,7 @@ const EASE = [0.16, 1, 0.3, 1] as const;
 /** Maskeli satır-reveal — editorial giriş. */
 function Reveal({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
   return (
-    <span className="block overflow-hidden pb-[0.08em]">
+    <span className="block overflow-hidden pb-[0.16em]">
       <motion.span className="block" initial={{ y: "118%" }} animate={{ y: 0 }} transition={{ duration: 0.95, ease: EASE, delay }}>
         {children}
       </motion.span>
@@ -447,7 +447,7 @@ export default function Home() {
             <span className="text-[0.72rem] font-semibold uppercase tracking-[0.34em]" style={{ color: T.muted }}>Duosis · Karar &amp; Hackathon</span>
           </motion.div>
 
-          <h1 className="font-display mt-8 flex flex-col items-center font-bold leading-[0.9] tracking-[-0.03em] text-[clamp(3.4rem,9.5vw,7.4rem)]" style={{ color: T.text }}>
+          <h1 className="font-display mt-8 flex flex-wrap items-baseline justify-center gap-x-[0.28em] font-bold leading-[1.02] tracking-[-0.03em] text-[clamp(3.4rem,9.5vw,7.4rem)]" style={{ color: T.text }}>
             <Reveal delay={0.12}><span>Bugün</span></Reveal>
             <Reveal delay={0.26}><RotatingQuestion /></Reveal>
           </h1>
