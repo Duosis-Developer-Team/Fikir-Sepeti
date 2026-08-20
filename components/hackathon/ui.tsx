@@ -84,9 +84,9 @@ export function StageHeadline({
         <span className="block overflow-hidden pb-[0.09em]">
           <motion.span
             className="block"
-            initial={{ y: "122%" }}
+            initial={{ y: 10 }}
             animate={{ y: 0 }}
-            transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
           >
             {pre ? `${pre} ` : ""}
             <span style={{ color }}>{accent}</span>
@@ -96,8 +96,8 @@ export function StageHeadline({
       </h2>
       {sub && (
         <motion.p
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ y: 12 }}
+          animate={{ y: 0 }}
           transition={{ duration: 0.6, ease: EASE, delay: 0.28 }}
           className="mx-auto mt-6 max-w-[540px] text-[1.13rem] leading-snug"
           style={{ color: dim(0.55) }}

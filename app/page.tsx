@@ -35,11 +35,15 @@ const T = {
 // editorial ease — yumuşak, kendinden emin çıkış
 const EASE = [0.16, 1, 0.3, 1] as const;
 
-/** Maskeli satır-reveal — editorial giriş. */
+/**
+ * Satır-giriş — editorial açılış. FS-15: JS gelmeden (veya hidrasyon
+ * gecikirse) içerik görünür kalsın diye maske %118 yerine küçük bir
+ * kayma; opacity hiç sıfırlanmıyor.
+ */
 function Reveal({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
   return (
     <span className="block overflow-hidden pb-[0.16em]">
-      <motion.span className="block" initial={{ y: "118%" }} animate={{ y: 0 }} transition={{ duration: 0.95, ease: EASE, delay }}>
+      <motion.span className="block" initial={{ y: 10 }} animate={{ y: 0 }} transition={{ duration: 0.6, ease: EASE, delay }}>
         {children}
       </motion.span>
     </span>
@@ -438,8 +442,8 @@ export default function Home() {
         {/* HERO — editorial, kinetik */}
         <section className="pt-[clamp(56px,9vw,120px)] text-center">
           <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ y: 8 }}
+            animate={{ y: 0 }}
             transition={{ duration: 0.6, ease: EASE }}
             className="flex items-center justify-center gap-2.5"
           >
@@ -453,8 +457,8 @@ export default function Home() {
           </h1>
 
           <motion.p
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ y: 14 }}
+            animate={{ y: 0 }}
             transition={{ duration: 0.7, ease: EASE, delay: 0.62 }}
             className="mx-auto mt-10 max-w-[46ch] text-[1.13rem] leading-[1.55]"
             style={{ color: T.t3 }}
@@ -465,8 +469,8 @@ export default function Home() {
 
         {/* üç tab — Sepet · Hackathon · Etkinlik */}
         <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ y: 12 }}
+          animate={{ y: 0 }}
           transition={{ duration: 0.6, ease: EASE, delay: 0.8 }}
           className="mt-[clamp(48px,7vw,72px)] flex justify-center"
         >
@@ -558,8 +562,8 @@ export default function Home() {
                 {live.map((b, i) => (
                   <motion.div
                     key={b.id}
-                    initial={{ opacity: 0, y: 28 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    initial={{ y: 28 }}
+                    animate={{ y: 0 }}
                     transition={{ duration: 0.7, ease: EASE, delay: 0.2 + i * 0.08 }}
                   >
                     <Featured basket={b} ideas={ideasBy[b.id] ?? []} />
@@ -570,8 +574,8 @@ export default function Home() {
                     {activeRest.map((b, i) => (
                       <motion.div
                         key={b.id}
-                        initial={{ opacity: 0, y: 28 }}
-                        animate={{ opacity: 1, y: 0 }}
+                        initial={{ y: 28 }}
+                        animate={{ y: 0 }}
                         transition={{ duration: 0.6, ease: EASE, delay: 0.25 + i * 0.07 }}
                       >
                         <RichCard basket={b} ideas={ideasBy[b.id] ?? []} />

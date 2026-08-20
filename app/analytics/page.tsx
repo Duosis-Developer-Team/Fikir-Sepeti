@@ -22,12 +22,14 @@ export default function AnalyticsPage() {
   const [note, setNote] = useState("");
   const [effort, setEffort] = useState("");
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     if (!name || !tenantId) return;
     const t = await fetchAnalyticsTeaser({ email: name, tenantId });
     if (!t) {
       setError("Analitik yüklenemedi");
+      setLoading(false);
       return;
     }
     setTeaser(t.teaser);
@@ -44,6 +46,7 @@ export default function AnalyticsPage() {
       setFull(null);
       setDenied(false);
     }
+    setLoading(false);
   }, [name, tenantId]);
 
   useEffect(() => {
@@ -103,6 +106,14 @@ export default function AnalyticsPage() {
         <p className="mb-4 text-[0.9rem]" style={{ color: "#F2795F" }} data-testid="analytics-error">
           {error}
         </p>
+      )}
+
+      {loading && (
+        <div className="flex flex-col gap-4" data-testid="analytics-loading">
+          <div className="h-28 animate-pulse rounded-2xl" style={{ background: "var(--card)" }} />
+          <div className="h-40 animate-pulse rounded-2xl" style={{ background: "var(--card)" }} />
+          <div className="h-24 animate-pulse rounded-2xl" style={{ background: "var(--card)" }} />
+        </div>
       )}
 
       {/* Teaser — always */}
