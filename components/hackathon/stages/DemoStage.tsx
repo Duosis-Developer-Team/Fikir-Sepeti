@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { upsertScore, voteTeam } from "@/lib/hackathon";
 import { DEFAULT_RUBRIC, type RubricCategory } from "@/lib/scoring";
@@ -9,12 +9,17 @@ import type { StageContext } from "../contract";
 import { GOLD, GOLD_SOFT, dim } from "../contract";
 import { Avatar, StageHeadline } from "../ui";
 
-export function DemoStage({ data, user, config, refresh }: StageContext) {
+export function DemoStage({ data, user, config, refresh, readOnly }: StageContext) {
   const { basket, teams, members, teamVotes, participants, ideas, scores } = data;
   const selected = ideas.find((i) => i.id === basket.selected_idea_id) ?? null;
   const mode = config.scoringMode ?? "simple";
   const rubric: RubricCategory[] = config.rubric?.length ? config.rubric : DEFAULT_RUBRIC;
-  const [activeTeam, setActiveTeam] = useState<string | null>(teams[0]?.id ?? null);
+  const myTeamId = members.find((m) => m.user_id === user.email || m.user_id === user.id)?.team_id ?? null;
+  // Kendi takımını oylayamaz/puanlayamazsın — başkasını değerlendirebilirsin (bkz. talep #8).
+  // Tek takım varsa (herkes aynı takımda, karşılaştıracak başka kimse yok) istisna —
+  // o zaman kendi (tek) takımını puanlayabilirsin, aksi halde ekran boş kalır.
+  const votableTeams = teams.length > 1 ? teams.filter((t) => t.id !== myTeamId) : teams;
+  const [activeTeam, setActiveTeam] = useState<string | null>(votableTeams[0]?.id ?? null);
 
   const votesOf = (teamId: string) => teamVotes.filter((v) => v.team_id === teamId).length;
   const sorted = [...teams].sort((a, b) => votesOf(b.id) - votesOf(a.id));
@@ -26,12 +31,17 @@ export function DemoStage({ data, user, config, refresh }: StageContext) {
     return p?.display_name || p?.email || uid;
   };
   const vote = async (teamId: string) => {
+    if (readOnly || teamId === myTeamId) return;
     await voteTeam(basket.id, teamId, user.email, basket.tenant_id);
     refresh();
   };
 
   const [pendingStars, setPendingStars] = useState<Record<string, number>>({});
   const starsKey = (teamId: string, key: string) => `${teamId}:${key}`;
+  // Aynı kategoriye art arda tıklamalar farklı sırada dönebilir (ağ gecikmesi) — sadece
+  // en son tıklamanın cevabı bekleyen göstergeyi temizlesin, yoksa eski/geç gelen bir
+  // cevap daha yeni bir tıklamayı "geç gelip" ezebilir (bkz. talep #10).
+  const requestSeq = useRef<Record<string, number>>({});
 
   const myStars = (teamId: string, key: string) => {
     const k = starsKey(teamId, key);
@@ -45,9 +55,12 @@ export function DemoStage({ data, user, config, refresh }: StageContext) {
   };
 
   const setStars = (teamId: string, key: string, stars: number) => {
+    if (readOnly || teamId === myTeamId) return;
     // Puanı önce yerelde göster - bekleyen ağ isteği/reload olmadan tıklama anında
     // görsel geri bildirim verir (realtime abonelik zaten scores değişince yeniden yükler).
     const k = starsKey(teamId, key);
+    const seq = (requestSeq.current[k] ?? 0) + 1;
+    requestSeq.current[k] = seq;
     setPendingStars((prev) => ({ ...prev, [k]: stars }));
     void upsertScore({
       basket_id: basket.id,
@@ -58,6 +71,7 @@ export function DemoStage({ data, user, config, refresh }: StageContext) {
       stars,
     })
       .then(() => {
+        if (requestSeq.current[k] !== seq) return; // daha yeni bir tıklama zaten devrede
         setPendingStars((prev) => {
           const next = { ...prev };
           delete next[k];
@@ -66,6 +80,7 @@ export function DemoStage({ data, user, config, refresh }: StageContext) {
         refresh();
       })
       .catch(() => {
+        if (requestSeq.current[k] !== seq) return;
         setPendingStars((prev) => {
           const next = { ...prev };
           delete next[k];
@@ -74,8 +89,21 @@ export function DemoStage({ data, user, config, refresh }: StageContext) {
       });
   };
 
+  const teamsLinkBanner = config.teamsLink && (
+    <a
+      href={config.teamsLink}
+      target="_blank"
+      rel="noreferrer"
+      className="mb-6 flex items-center justify-center gap-2 rounded-2xl px-5 py-3.5 text-center text-[0.95rem] font-semibold transition hover:opacity-90"
+      style={{ background: "rgba(231,169,63,0.14)", border: `1px solid ${GOLD}`, color: GOLD_SOFT }}
+      data-testid="demo-teams-link"
+    >
+      📞 Sunumlar için Teams toplantısına katıl →
+    </a>
+  );
+
   if (mode === "rubric") {
-    const team = teams.find((t) => t.id === activeTeam) ?? teams[0];
+    const team = votableTeams.find((t) => t.id === activeTeam) ?? votableTeams[0];
     return (
       <div className="mx-auto max-w-[1100px]">
         <StageHeadline
@@ -83,8 +111,9 @@ export function DemoStage({ data, user, config, refresh }: StageContext) {
           accent="puanla"
           sub="Her takımı kategorilerde 1–5 yıldızla değerlendir."
         />
+        {teamsLinkBanner}
         <div className="mb-5 flex flex-wrap gap-2">
-          {teams.map((t) => (
+          {votableTeams.map((t) => (
             <button
               key={t.id}
               type="button"
@@ -100,6 +129,11 @@ export function DemoStage({ data, user, config, refresh }: StageContext) {
             </button>
           ))}
         </div>
+        {myTeamId && teams.length > 1 && (
+          <p className="mb-4 text-[0.85rem]" style={{ color: dim(0.4) }}>
+            Kendi takımını puanlayamazsın — listede sadece diğer takımlar var.
+          </p>
+        )}
 
         {team && (
           <div
@@ -119,8 +153,9 @@ export function DemoStage({ data, user, config, refresh }: StageContext) {
                         <button
                           key={n}
                           type="button"
+                          disabled={readOnly}
                           onClick={() => setStars(team.id, cat.key, n)}
-                          className="grid h-9 w-9 place-items-center rounded-full text-[1.05rem] font-bold transition"
+                          className="grid h-9 w-9 place-items-center rounded-full text-[1.05rem] font-bold transition disabled:cursor-not-allowed disabled:opacity-60"
                           style={{
                             background: current >= n ? GOLD : "var(--surface-2)",
                             color: current >= n ? "#17150F" : dim(0.5),
@@ -153,6 +188,7 @@ export function DemoStage({ data, user, config, refresh }: StageContext) {
   return (
     <div className="mx-auto max-w-[1100px]">
       <StageHeadline pre="En iyi yapımı" accent="seç" sub={selected ? selected.text : "Bir takıma dokun — oyunu ver."} />
+      {teamsLinkBanner}
       <div className="mb-4 flex items-baseline justify-end px-1">
         <span className="text-[0.95rem]" style={{ color: dim(0.5) }}>
           <span className="font-display font-bold" style={{ color: "var(--text)" }}>{teamVotes.length}</span> oy verildi
@@ -169,15 +205,18 @@ export function DemoStage({ data, user, config, refresh }: StageContext) {
               (selected ? selected.text : null);
             const lead = n === leader && leader > 0;
             const mine = myVote?.team_id === t.id;
+            const isOwnTeam = t.id === myTeamId && teams.length > 1;
             const mem = members.filter((m) => m.team_id === t.id);
             return (
               <motion.button
                 key={t.id}
                 layout
+                type="button"
+                disabled={readOnly || isOwnTeam}
                 onClick={() => vote(t.id)}
                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                className="relative overflow-hidden rounded-[20px] text-left"
-                style={{ background: "rgba(var(--border-rgb),0.035)", border: `1px solid ${mine ? GOLD : lead ? "rgba(231,169,63,0.5)" : "rgba(var(--border-rgb),0.08)"}`, boxShadow: lead ? "0 14px 50px -26px rgba(231,169,63,0.6)" : "none" }}
+                className="relative overflow-hidden rounded-[20px] text-left disabled:cursor-not-allowed"
+                style={{ background: "rgba(var(--border-rgb),0.035)", border: `1px solid ${mine ? GOLD : lead ? "rgba(231,169,63,0.5)" : "rgba(var(--border-rgb),0.08)"}`, boxShadow: lead ? "0 14px 50px -26px rgba(231,169,63,0.6)" : "none", opacity: isOwnTeam ? 0.55 : 1 }}
               >
                 <motion.div className="absolute inset-y-0 left-0" initial={false} animate={{ width: `${pct}%` }} transition={{ type: "spring", stiffness: 140, damping: 26 }} style={{ background: lead ? "rgba(231,169,63,0.18)" : "rgba(var(--border-rgb),0.05)" }} />
                 <div className="relative flex items-center gap-5 px-6 py-4">
@@ -194,6 +233,7 @@ export function DemoStage({ data, user, config, refresh }: StageContext) {
                       {mem.map((m) => <Avatar key={m.id} name={nameOf(m.user_id)} size={26} />)}
                     </div>
                   </div>
+                  {isOwnTeam && <span className="shrink-0 text-[0.8rem] font-semibold" style={{ color: dim(0.45) }}>kendi takımın</span>}
                   {mine && <span className="shrink-0 text-[0.8rem] font-semibold" style={{ color: GOLD }}>senin oyun ✓</span>}
                   <span className="tnum font-display shrink-0 text-[2.4rem] font-extrabold" style={{ color: lead ? GOLD : dim(0.85) }}>{n}</span>
                 </div>

@@ -83,12 +83,17 @@ export function LobbyStage({ data, config, isAdmin, user, refresh, needsJoinActi
     listPoolIdeas(basket.tenant_id).then((all) => {
       if (cancelled) return;
       const attached = new Set(config.repoPoolIdeaIds ?? []);
+      // Hackathonda henüz kullanılmamış TÜM fikirler adaydır — oylamaya girmiş
+      // (status "voting") ya da "etkinlik" etiketli olması onu burada dışlamamalı,
+      // sadece başka bir sepete zaten organize edilmiş / arşivlenmiş / reddedilmiş
+      // ya da bu kuruluma zaten eklenmiş olanlar hariç tutulur.
       setPoolIdeas(
         all.filter(
           (i) =>
             !i.parent_idea_id &&
-            i.status === "new" &&
-            i.track_hint !== "etkinlik" &&
+            i.status !== "promoted" &&
+            i.status !== "archived" &&
+            i.status !== "rejected" &&
             !attached.has(i.id)
         )
       );

@@ -83,6 +83,16 @@ export type PoolIdea = {
   created_at: string;
 };
 
+export type PoolComment = {
+  id: string;
+  tenant_id: string;
+  pool_idea_id: string;
+  author_id: string | null;
+  author_name: string | null;
+  text: string;
+  created_at: string;
+};
+
 export type Basket = {
   id: string;
   title: string;

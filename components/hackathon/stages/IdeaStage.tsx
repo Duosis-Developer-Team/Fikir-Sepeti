@@ -14,7 +14,7 @@ import { GOLD, GOLD_SOFT, dim } from "../contract";
 import { Card, GoldButton, StageHeadline, Avatar } from "../ui";
 
 export function IdeaStage(ctx: StageContext) {
-  const { data, config, user, isAdmin, refresh } = ctx;
+  const { data, config, user, isAdmin, refresh, readOnly } = ctx;
   const { basket, ideas } = data;
   const selected = ideas.find((i) => i.id === basket.selected_idea_id) ?? null;
   const [draft, setDraft] = useState("");
@@ -33,6 +33,7 @@ export function IdeaStage(ctx: StageContext) {
   }, [basket.id, user.email, ideas]);
 
   const submitIdea = async () => {
+    if (readOnly) return;
     const t = draft.trim();
     if (t.length < 2) return;
     const created = await addIdea({
@@ -47,6 +48,7 @@ export function IdeaStage(ctx: StageContext) {
   };
 
   const voteFor = async (ideaId: string) => {
+    if (readOnly) return;
     await supabase.from("votes").delete().eq("basket_id", basket.id).eq("phase", "idea").eq("voter", user.email);
     await supabase.from("votes").insert({
       idea_id: ideaId,
@@ -171,7 +173,7 @@ export function IdeaStage(ctx: StageContext) {
             className="flex-1 rounded-2xl px-6 py-5 text-[1.2rem] outline-none transition focus:border-[rgba(231,169,63,0.5)]"
             style={{ background: "var(--surface-2)", border: "1px solid rgba(var(--border-rgb),0.1)", color: "var(--text)" }}
           />
-          <GoldButton onClick={submitIdea} disabled={draft.trim().length < 2}>Ekle</GoldButton>
+          <GoldButton onClick={submitIdea} disabled={readOnly || draft.trim().length < 2}>Ekle</GoldButton>
         </div>
       )}
 
@@ -199,9 +201,11 @@ export function IdeaStage(ctx: StageContext) {
                   <div className="flex items-center gap-3.5">
                     <span className="tnum font-display text-[1.7rem] font-bold" style={{ color: mine ? GOLD : GOLD_SOFT }}>{idea.vote_count}</span>
                     <motion.button
+                      type="button"
+                      disabled={readOnly}
                       whileTap={{ scale: 0.94 }}
                       onClick={() => voteFor(idea.id)}
-                      className="rounded-full px-5 py-2.5 text-[0.9rem] font-semibold transition"
+                      className="rounded-full px-5 py-2.5 text-[0.9rem] font-semibold transition disabled:cursor-not-allowed disabled:opacity-50"
                       style={mine ? { background: GOLD, color: "#17150F" } : { border: "1px solid rgba(var(--border-rgb),0.2)", color: dim(0.85) }}
                     >
                       {mine ? "✓ oyun" : "oy ver"}

@@ -47,7 +47,7 @@ export async function createFlags(
   sb: SupabaseClient,
   input: {
     tenant_id: string;
-    entity_type: "idea" | "pool" | "feedback";
+    entity_type: "idea" | "pool" | "feedback" | "pool_comment";
     entity_id: string;
     created_by: string;
     hits: { ruleId: string; matched: string }[];

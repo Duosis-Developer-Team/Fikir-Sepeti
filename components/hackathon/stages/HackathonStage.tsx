@@ -44,9 +44,14 @@ export function HackathonStage({ data, isAdmin, refresh }: StageContext) {
       </div>
 
       {isAdmin && (
-        <div className="mt-12 flex items-center justify-center gap-3">
-          <button onClick={back} className="rounded-full border px-6 py-3 text-[0.95rem] transition hover:bg-[rgba(var(--border-rgb),0.08)]" style={{ borderColor: "rgba(var(--border-rgb),0.2)", color: dim(0.85) }}>← Takım</button>
-          <GoldButton onClick={finish}>Hackathon&apos;u bitir → Demo</GoldButton>
+        <div className="mt-12 flex flex-col items-center gap-3">
+          <div className="flex items-center justify-center gap-3">
+            <button onClick={back} className="rounded-full border px-6 py-3 text-[0.95rem] transition hover:bg-[rgba(var(--border-rgb),0.08)]" style={{ borderColor: "rgba(var(--border-rgb),0.2)", color: dim(0.85) }}>← Takım</button>
+            <GoldButton onClick={finish} disabled={!over}>Hackathon&apos;u bitir → Demo</GoldButton>
+          </div>
+          {!over && (
+            <p className="text-[0.85rem]" style={{ color: dim(0.4) }}>Süre bitmeden bir sonraki aşamaya geçilemez.</p>
+          )}
         </div>
       )}
       {!isAdmin && <p className="mt-8 text-[0.95rem]" style={{ color: dim(0.45) }}>Sunan bitirince demoya geçilecek.</p>}

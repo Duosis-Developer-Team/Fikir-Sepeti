@@ -9,7 +9,7 @@ import type { StageContext } from "../contract";
 import { dim } from "../contract";
 import { Card, GoldButton, StageHeadline, initials } from "../ui";
 
-export function FeedbackStage({ data, user }: StageContext) {
+export function FeedbackStage({ data, user, readOnly }: StageContext) {
   const { basket, teams, members, ideas } = data;
   const [items, setItems] = useState<Feedback[]>([]);
   const [draft, setDraft] = useState("");
@@ -63,6 +63,7 @@ export function FeedbackStage({ data, user }: StageContext) {
   };
 
   const submit = async () => {
+    if (readOnly) return;
     const t = draft.trim();
     if (t.length < 2) return;
     const selectedTeam = teams.find((x) => x.id === teamId) ?? null;
@@ -123,7 +124,8 @@ export function FeedbackStage({ data, user }: StageContext) {
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && void submit()}
             placeholder="Bu projeye özel yorum…"
-            className="flex-1 rounded-xl px-4 py-3 text-[1rem] outline-none"
+            disabled={readOnly}
+            className="flex-1 rounded-xl px-4 py-3 text-[1rem] outline-none disabled:opacity-50"
             style={{
               background: "var(--surface-2)",
               border: "1px solid rgba(var(--border-rgb),0.09)",
@@ -131,7 +133,7 @@ export function FeedbackStage({ data, user }: StageContext) {
             }}
             data-testid="feedback-draft"
           />
-          <GoldButton onClick={() => void submit()} disabled={draft.trim().length < 2}>
+          <GoldButton onClick={() => void submit()} disabled={readOnly || draft.trim().length < 2}>
             Gönder
           </GoldButton>
         </div>

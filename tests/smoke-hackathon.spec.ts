@@ -1,5 +1,12 @@
 import { test, expect } from "@playwright/test";
+import { createClient } from "@supabase/supabase-js";
 import { loginAs, expectHome, openNewBasketModal, newBasketModal, SEED } from "./helpers";
+
+function admin() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+  return createClient(url, key, { auth: { persistSession: false } });
+}
 
 test.describe("smoke: hackathon", () => {
   test("lobby → idea → team → demo", async ({ page }) => {
@@ -37,8 +44,12 @@ test.describe("smoke: hackathon", () => {
     await page.getByRole("button", { name: /Oluştur/i }).click();
     await expect(page.getByText(/Takımlar|hazır/i).first()).toBeVisible({ timeout: 20_000 });
 
-    // Jump to Demo/Sunum via stepper (admin)
-    await page.getByRole("button", { name: "Sunum & Puanlama", exact: true }).click();
+    // Admin stepper artık henüz ulaşılmamış aşamalara atlatmıyor (bkz. HackathonRunner) —
+    // "hackathon" fazının süresi (varsayılan 1 gün) gerçek zamanda beklenemeyeceği için
+    // Demo/Sunum'a servis rolüyle doğrudan geçiliyor, seed testlerindeki desenle aynı.
+    const basketId = new URL(page.url()).pathname.split("/").pop()!;
+    await admin().from("baskets").update({ phase: "demo" }).eq("id", basketId);
+    await page.reload();
     await expect(page.getByText(/Demo|Sunum|takım/i).first()).toBeVisible({ timeout: 20_000 });
   });
 });
