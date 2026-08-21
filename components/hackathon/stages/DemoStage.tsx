@@ -18,6 +18,7 @@ export function DemoStage({ data, user, config, refresh, readOnly }: StageContex
   // Kendi takımını oylayamaz/puanlayamazsın — başkasını değerlendirebilirsin (bkz. talep #8).
   // Tek takım varsa (herkes aynı takımda, karşılaştıracak başka kimse yok) istisna —
   // o zaman kendi (tek) takımını puanlayabilirsin, aksi halde ekran boş kalır.
+  const blockedSelfTeam = (teamId: string) => teams.length > 1 && teamId === myTeamId;
   const votableTeams = teams.length > 1 ? teams.filter((t) => t.id !== myTeamId) : teams;
   const [activeTeam, setActiveTeam] = useState<string | null>(votableTeams[0]?.id ?? null);
 
@@ -31,7 +32,7 @@ export function DemoStage({ data, user, config, refresh, readOnly }: StageContex
     return p?.display_name || p?.email || uid;
   };
   const vote = async (teamId: string) => {
-    if (readOnly || teamId === myTeamId) return;
+    if (readOnly || blockedSelfTeam(teamId)) return;
     await voteTeam(basket.id, teamId, user.email, basket.tenant_id);
     refresh();
   };
@@ -55,7 +56,7 @@ export function DemoStage({ data, user, config, refresh, readOnly }: StageContex
   };
 
   const setStars = (teamId: string, key: string, stars: number) => {
-    if (readOnly || teamId === myTeamId) return;
+    if (readOnly || blockedSelfTeam(teamId)) return;
     // Puanı önce yerelde göster - bekleyen ağ isteği/reload olmadan tıklama anında
     // görsel geri bildirim verir (realtime abonelik zaten scores değişince yeniden yükler).
     const k = starsKey(teamId, key);
@@ -205,7 +206,7 @@ export function DemoStage({ data, user, config, refresh, readOnly }: StageContex
               (selected ? selected.text : null);
             const lead = n === leader && leader > 0;
             const mine = myVote?.team_id === t.id;
-            const isOwnTeam = t.id === myTeamId && teams.length > 1;
+            const isOwnTeam = blockedSelfTeam(t.id);
             const mem = members.filter((m) => m.team_id === t.id);
             return (
               <motion.button
