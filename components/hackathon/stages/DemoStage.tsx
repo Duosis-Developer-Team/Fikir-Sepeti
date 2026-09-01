@@ -90,16 +90,39 @@ export function DemoStage({ data, user, config, refresh, readOnly }: StageContex
       });
   };
 
+  // Sunum aşaması = canlı sunum + puanlama. Bu ekran ne kadar öne çıkarsa
+  // katılımcılar toplantıya o kadar erken katılır — puanlamadan önce izlemeleri gereken
+  // asıl şey burada oluyor, o yüzden linke değil bir davete benzemesi lazım (bkz. talep #7).
   const teamsLinkBanner = config.teamsLink && (
     <a
       href={config.teamsLink}
       target="_blank"
       rel="noreferrer"
-      className="mb-6 flex items-center justify-center gap-2 rounded-2xl px-5 py-3.5 text-center text-[0.95rem] font-semibold transition hover:opacity-90"
-      style={{ background: "rgba(231,169,63,0.14)", border: `1px solid ${GOLD}`, color: GOLD_SOFT }}
       data-testid="demo-teams-link"
+      className="mb-8 flex flex-col items-center gap-4 rounded-[26px] px-8 py-7 text-center transition hover:opacity-95 sm:flex-row sm:justify-between sm:text-left"
+      style={{
+        background: "linear-gradient(135deg, rgba(231,169,63,0.18), rgba(231,169,63,0.05))",
+        border: `1px solid ${GOLD}`,
+        boxShadow: "0 24px 70px -32px rgba(231,169,63,0.55)",
+      }}
     >
-      📞 Sunumlar için Teams toplantısına katıl →
+      <div>
+        <span className="text-[0.72rem] font-bold uppercase tracking-[0.22em]" style={{ color: GOLD }}>
+          Canlı sunum
+        </span>
+        <p className="font-display mt-1 text-[1.3rem] font-bold" style={{ color: "var(--text)" }}>
+          Sunumlar Teams toplantısında yapılıyor
+        </p>
+        <p className="mt-1 text-[0.9rem]" style={{ color: dim(0.55) }}>
+          Puanlamadan önce toplantıya katıl — takımlar orada canlı sunum yapıyor.
+        </p>
+      </div>
+      <span
+        className="inline-flex shrink-0 items-center gap-2 rounded-full px-6 py-3.5 text-[0.95rem] font-semibold"
+        style={{ background: GOLD, color: "#17150F" }}
+      >
+        📞 Toplantıya katıl →
+      </span>
     </a>
   );
 
@@ -107,13 +130,13 @@ export function DemoStage({ data, user, config, refresh, readOnly }: StageContex
     const team = votableTeams.find((t) => t.id === activeTeam) ?? votableTeams[0];
     return (
       <div className="mx-auto max-w-[1100px]">
+        {teamsLinkBanner}
         <StageHeadline
           pre="Rubrik"
           accent="puanla"
           sub="Her takımı kategorilerde 1–5 yıldızla değerlendir."
         />
-        {teamsLinkBanner}
-        <div className="mb-5 flex flex-wrap gap-2">
+        <div className="mb-5 mt-6 flex flex-wrap gap-2">
           {votableTeams.map((t) => (
             <button
               key={t.id}
@@ -188,9 +211,9 @@ export function DemoStage({ data, user, config, refresh, readOnly }: StageContex
   // ── simple mode (default) ──
   return (
     <div className="mx-auto max-w-[1100px]">
-      <StageHeadline pre="En iyi yapımı" accent="seç" sub={selected ? selected.text : "Bir takıma dokun — oyunu ver."} />
       {teamsLinkBanner}
-      <div className="mb-4 flex items-baseline justify-end px-1">
+      <StageHeadline pre="En iyi yapımı" accent="seç" sub={selected ? selected.text : "Bir takıma dokun — oyunu ver."} />
+      <div className="mb-4 mt-6 flex items-baseline justify-end px-1">
         <span className="text-[0.95rem]" style={{ color: dim(0.5) }}>
           <span className="font-display font-bold" style={{ color: "var(--text)" }}>{teamVotes.length}</span> oy verildi
         </span>
