@@ -20,10 +20,12 @@ export async function POST(req: Request) {
   const body = (await req.json()) as {
     basket_id?: string;
     text?: string;
+    description?: string | null;
     tag?: string | null;
     acknowledge?: boolean;
   };
   const text = body.text?.trim() ?? "";
+  const description = body.description?.trim() || null;
   const basketId = body.basket_id;
   if (!basketId || text.length < 2) {
     return NextResponse.json({ error: "invalid_body" }, { status: 400 });
@@ -39,7 +41,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
-  const check = await evaluateText(sb, identity.tenantId, text);
+  const check = await evaluateText(sb, identity.tenantId, description ? `${text}\n${description}` : text);
   if (check.action === "block") {
     return NextResponse.json(
       { error: "blocked", hits: check.hits },
@@ -62,6 +64,7 @@ export async function POST(req: Request) {
     .insert({
       basket_id: basketId,
       text,
+      description,
       tag: body.tag ?? null,
       created_by: identity.email,
       tenant_id: identity.tenantId,

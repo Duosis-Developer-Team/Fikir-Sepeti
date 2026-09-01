@@ -15,6 +15,7 @@ import { setBasketPhase } from "@/lib/db";
 import { ACCENTS } from "@/lib/accent";
 import type { Idea } from "@/lib/types";
 import { RaffleRevealStage } from "@/components/shared/RaffleRevealStage";
+import { IdeaAttachment } from "../IdeaAttachment";
 import type { StageContext } from "../contract";
 import { GOLD, dim } from "../contract";
 import { GoldButton, Avatar, StageHeadline } from "../ui";
@@ -145,8 +146,8 @@ export function TeamStage(ctx: StageContext) {
     refresh();
   };
 
-  const ideaText = (id: string | null | undefined) =>
-    ideas.find((i) => i.id === id)?.text ?? null;
+  const ideaOf = (id: string | null | undefined) =>
+    ideas.find((i) => i.id === id) ?? null;
 
   // ── kurulmuş takımlar ──
   if (built) {
@@ -176,7 +177,8 @@ export function TeamStage(ctx: StageContext) {
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {teams.map((t, idx) => {
             const mem = members.filter((m) => m.team_id === t.id);
-            const assigned = ideaText(t.idea_id) ?? (lockedIdeas.length === 1 ? lockedIdeas[0].text : null);
+            const assignedIdea = ideaOf(t.idea_id) ?? (lockedIdeas.length === 1 ? lockedIdeas[0] : null);
+            const assigned = assignedIdea?.text ?? null;
             return (
               <motion.div
                 key={t.id}
@@ -227,6 +229,12 @@ export function TeamStage(ctx: StageContext) {
                     Fikir: {assigned}
                   </p>
                 )}
+                {assignedIdea?.description && (
+                  <p className="mt-1.5 text-[0.85rem] leading-relaxed" style={{ color: dim(0.55) }}>
+                    {assignedIdea.description}
+                  </p>
+                )}
+                {assignedIdea && <IdeaAttachment ideaId={assignedIdea.id} />}
                 {showAngle && (
                   <div className="mt-3">
                     <input

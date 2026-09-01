@@ -33,6 +33,10 @@ metadata:
     # Açık SSE bağlantısı varsayılan 60 sn okuma zaman aşımına takılırdı.
     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    # nginx varsayılanı (genelde 1m) fikir eki yüklemesini (app tarafında
+    # 15MB'a kadar kabul ediliyor, bkz. app/api/ideas/[id]/attachment) sessizce
+    # 413'e düşürürdü — sınırı uygulama tarafıyla eşleştir.
+    nginx.ingress.kubernetes.io/proxy-body-size: "16m"
 spec:
   ingressClassName: nginx
   tls:

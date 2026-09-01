@@ -6,9 +6,11 @@ import { addIdea } from "@/lib/db";
 import { lockIdeas, setSelectedIdea } from "@/lib/hackathon";
 import { pickRandomIdeas } from "@/lib/assignment";
 import { apiFetch } from "@/lib/api-headers";
+import { uploadIdeaAttachment } from "@/lib/attachments";
 import { ACCENTS } from "@/lib/accent";
 import type { Idea } from "@/lib/types";
 import { RaffleRevealStage } from "@/components/shared/RaffleRevealStage";
+import { IdeaAttachment } from "../IdeaAttachment";
 import type { StageContext } from "../contract";
 import { GOLD, GOLD_SOFT, dim } from "../contract";
 import { Card, GoldButton, StageHeadline, Avatar } from "../ui";
@@ -20,6 +22,13 @@ export function IdeaStage(ctx: StageContext) {
   const [draft, setDraft] = useState("");
   const [myVoteId, setMyVoteId] = useState<string | null>(null);
   const [rafflePick, setRafflePick] = useState<Idea[] | null>(null);
+
+  // "Fikir var" (static) formu: başlık + açıklama + opsiyonel dosya eki.
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const [submittingStatic, setSubmittingStatic] = useState(false);
 
   useEffect(() => {
     // Kendi oyunu okumak `vote.view_all` izni gerektirmiyor; sunucu bunu
@@ -44,6 +53,29 @@ export function IdeaStage(ctx: StageContext) {
     });
     setDraft("");
     if (config.ideaSource === "static" && created) await setSelectedIdea(basket.id, created.id);
+    refresh();
+  };
+
+  const submitStaticIdea = async () => {
+    if (readOnly || submittingStatic) return;
+    const t = title.trim();
+    if (t.length < 2) return;
+    setSubmittingStatic(true);
+    const created = await addIdea({
+      basket_id: basket.id,
+      text: t,
+      description: description.trim() || null,
+      created_by: user.email,
+      tenant_id: basket.tenant_id,
+    });
+    if (created && file) {
+      await uploadIdeaAttachment(created.id, file);
+    }
+    if (created) await setSelectedIdea(basket.id, created.id);
+    setTitle("");
+    setDescription("");
+    setFile(null);
+    setSubmittingStatic(false);
     refresh();
   };
 
@@ -117,6 +149,12 @@ export function IdeaStage(ctx: StageContext) {
               <h2 className="font-display text-[clamp(1.6rem,3.4vw,2.6rem)] font-extrabold leading-tight" style={{ color: GOLD }}>
                 {idea.text}
               </h2>
+              {idea.description && (
+                <p className="mt-3 text-[1rem] leading-relaxed" style={{ color: dim(0.65) }}>
+                  {idea.description}
+                </p>
+              )}
+              <IdeaAttachment ideaId={idea.id} />
             </Card>
           ))}
         </div>
@@ -125,13 +163,63 @@ export function IdeaStage(ctx: StageContext) {
   }
 
   if (config.ideaSource === "static") {
+    const onDrop = (e: React.DragEvent) => {
+      e.preventDefault();
+      setDragOver(false);
+      const f = e.dataTransfer.files?.[0];
+      if (f) setFile(f);
+    };
     return (
       <div className="mx-auto max-w-[640px]">
         <StageHeadline pre="Fikri" accent="koy" sub={isAdmin ? "Üzerinde çalışacağınız tek fikir." : undefined} />
         {isAdmin ? (
           <Card>
-            <textarea value={draft} onChange={(e) => setDraft(e.target.value)} rows={3} placeholder="Örn: PR'ları otomatik özetleyen bot" className="w-full resize-none rounded-xl px-4 py-3 text-[1.1rem] outline-none" style={{ background: "var(--surface-2)", border: "1px solid rgba(var(--border-rgb),0.09)", color: "var(--text)" }} />
-            <div className="mt-4 flex justify-center"><GoldButton onClick={submitIdea} disabled={draft.trim().length < 2}>Fikri belirle →</GoldButton></div>
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Başlık — örn: PR'ları otomatik özetleyen bot"
+              className="w-full rounded-xl px-4 py-3 text-[1.1rem] outline-none"
+              style={{ background: "var(--surface-2)", border: "1px solid rgba(var(--border-rgb),0.09)", color: "var(--text)" }}
+              data-testid="static-idea-title"
+            />
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={4}
+              placeholder="Açıklama (opsiyonel) — konunun içeriğini, kapsamını anlat"
+              className="mt-3 w-full resize-none rounded-xl px-4 py-3 text-[0.98rem] outline-none"
+              style={{ background: "var(--surface-2)", border: "1px solid rgba(var(--border-rgb),0.09)", color: "var(--text)" }}
+              data-testid="static-idea-description"
+            />
+            <label
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={onDrop}
+              className="mt-3 flex cursor-pointer flex-col items-center gap-1.5 rounded-xl px-4 py-6 text-center transition"
+              style={{
+                background: dragOver ? "rgba(231,169,63,0.1)" : "var(--surface-2)",
+                border: `1px dashed ${dragOver ? GOLD : "rgba(var(--border-rgb),0.2)"}`,
+              }}
+              data-testid="static-idea-file-drop"
+            >
+              <input
+                type="file"
+                className="hidden"
+                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              />
+              {file ? (
+                <span className="text-[0.92rem]" style={{ color: GOLD_SOFT }}>📎 {file.name} — değiştirmek için tıkla</span>
+              ) : (
+                <span className="text-[0.9rem]" style={{ color: dim(0.5) }}>
+                  Dosya sürükle bırak ya da tıklayıp seç (opsiyonel)
+                </span>
+              )}
+            </label>
+            <div className="mt-4 flex justify-center">
+              <GoldButton onClick={submitStaticIdea} disabled={submittingStatic || title.trim().length < 2}>
+                {submittingStatic ? "…" : "Fikri belirle →"}
+              </GoldButton>
+            </div>
           </Card>
         ) : (
           <p className="text-center text-[1rem]" style={{ color: dim(0.5) }}>Admin fikri giriyor…</p>

@@ -186,6 +186,8 @@ export type Idea = {
   id: string;
   basket_id: string;
   text: string;
+  /** Fikrin detay açıklaması — hackathon "fikir belirtme" formunda opsiyonel. */
+  description: string | null;
   tag: string | null;
   is_finalist: boolean;
   demo_url: string | null;
@@ -193,6 +195,18 @@ export type Idea = {
   live_at: string | null;
   created_by: string | null;
   vote_count: number;
+  created_at: string;
+};
+
+/** Bir fikre eklenen dosyanın meta verisi — baytlar ayrı bir uçtan çekilir. */
+export type IdeaAttachment = {
+  id: string;
+  idea_id: string;
+  tenant_id: string;
+  filename: string;
+  mime_type: string;
+  size_bytes: number;
+  uploaded_by: string | null;
   created_at: string;
 };
 

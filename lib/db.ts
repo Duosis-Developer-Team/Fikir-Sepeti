@@ -116,6 +116,7 @@ export async function resolveBasket(id: string, winnerIdeaId: string, phase: Pha
 export async function addIdea(input: {
   basket_id: string;
   text: string;
+  description?: string | null;
   tag?: string | null;
   created_by: string;
   tenant_id: string;
@@ -126,6 +127,7 @@ export async function addIdea(input: {
     tenantId: input.tenant_id,
     basket_id: input.basket_id,
     text: input.text,
+    description: input.description,
     tag: input.tag,
   });
   return (idea as Idea) ?? null;
