@@ -30,9 +30,9 @@ test.describe("smoke: hackathon", () => {
     await page.getByRole("button", { name: /Başlat/i }).click();
 
     // Idea stage (static)
-    const ideaBox = page.locator("textarea");
-    await expect(ideaBox).toBeVisible({ timeout: 20_000 });
-    await ideaBox.fill("Smoke bot fikri");
+    const ideaTitle = page.getByTestId("static-idea-title");
+    await expect(ideaTitle).toBeVisible({ timeout: 20_000 });
+    await ideaTitle.fill("Smoke bot fikri");
     await page.getByRole("button", { name: /Fikri belirle/i }).click();
     await expect(page.getByText("Smoke bot fikri").first()).toBeVisible();
     await expect(page.getByText("Fikir belli").or(page.getByText("belli")).first()).toBeVisible();
