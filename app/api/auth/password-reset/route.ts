@@ -7,6 +7,7 @@ import {
   sendEmail,
   setPassword,
 } from "@/lib/server/auth";
+import { publicOrigin } from "@/lib/request-origin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,7 +26,7 @@ export async function POST(req: Request) {
   const cred = await findCredential(lower);
   if (cred) {
     const token = await createPasswordReset(lower);
-    const origin = new URL(req.url).origin;
+    const origin = publicOrigin(req);
     await sendEmail({
       to: lower,
       kind: "reset",

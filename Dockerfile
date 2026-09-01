@@ -45,6 +45,13 @@ COPY --from=builder /repo/scripts/migrate.mjs ./scripts/migrate.mjs
 COPY --from=builder /repo/db ./db
 COPY --from=builder /repo/supabase/migrations ./supabase/migrations
 
+# Next'in görsel optimizasyon önbelleği ÇALIŞMA ANINDA yazılıyor; dizin
+# yoksa `node` kullanıcısı /app altında oluşturamıyor ve her görsel isteğinde
+# log'a `EACCES: permission denied, mkdir '/app/.next/cache'` düşüyor
+# (unhandledRejection olarak). Dizin build sırasında açılıp sahipliği
+# veriliyor.
+RUN mkdir -p /app/.next/cache && chown -R node:node /app/.next
+
 # Root olmayan kullanıcı — node:alpine'da hazır gelen `node` kullanıcısı.
 USER node
 

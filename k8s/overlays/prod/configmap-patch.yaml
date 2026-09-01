@@ -6,6 +6,7 @@ metadata:
 data:
   NODE_ENV: "production"
   EMAIL_PROVIDER: "log_only"
+  PUBLIC_ORIGIN: "https://fikirsepeti-84-247-180-173.sslip.io"
   # Uygulama kaydı SINGLE-TENANT ("Yalnızca kuruluşum") olduğu için tenant
   # GUID'i ŞART: /organizations veya /common uçları tek-kiracılı uygulamalar
   # için AADSTS50194 ile reddediliyor. Duosis tenant'ı.

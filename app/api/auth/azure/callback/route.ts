@@ -19,12 +19,21 @@ export const dynamic = "force-dynamic";
  */
 export async function GET(req: Request) {
   const url = new URL(req.url);
+
+  // Yönlendirmeler GÖRECELİ veriliyor. Mutlak URL kurmak origin gerektiriyor
+  // ve Next standalone'da `req.url` pod'un bind adresini taşıyabiliyor
+  // (`http://0.0.0.0:3000/...`) — 2026-09-01'de Microsoft girişi başarılı
+  // olduğu halde kullanıcı `https://0.0.0.0:3000/login`'e atıldı ve "bu siteye
+  // ulaşılamıyor" gördü. Göreceli Location'ı tarayıcı kendi adres çubuğuna
+  // göre çözüyor, yani hangi host'tan gelindiyse oraya dönülüyor; hedefin
+  // uygulama içi olduğunu consumeRedirectTarget garanti ediyor.
+  const goto = (path: string) =>
+    new NextResponse(null, { status: 302, headers: { Location: path } });
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
   const oauthError = url.searchParams.get("error_description") ?? url.searchParams.get("error");
 
-  const fail = (message: string) =>
-    NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(message)}`, url), 302);
+  const fail = (message: string) => goto(`/login?error=${encodeURIComponent(message)}`);
 
   if (oauthError) return fail(oauthError);
   if (!code || !state) return fail("Microsoft yanıtı eksik geldi.");
@@ -65,7 +74,7 @@ export async function GET(req: Request) {
 
   const target = await consumeRedirectTarget(state);
   // Tenant yoksa kullanıcı çalışma alanı kurma akışına düşsün.
-  const res = NextResponse.redirect(new URL(tenantId ? target : "/register", url), 302);
+  const res = goto(tenantId ? target : "/register");
   res.headers.set("Set-Cookie", sessionCookie(token, expiresAt, isSecureRequest(req)));
   return res;
 }

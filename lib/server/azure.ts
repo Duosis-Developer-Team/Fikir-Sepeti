@@ -4,6 +4,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose";
 import { query, queryOne } from "./pg";
 import { AUTH_TTL } from "./auth";
+import { publicOrigin } from "../request-origin";
 
 /**
  * Azure Entra ID (v2.0) — Authorization Code + PKCE.
@@ -65,10 +66,7 @@ export function redirectUri(req: Request): string {
   // güvenilmez olabilir); yoksa isteğin kendi origin'i.
   const explicit = process.env.AZURE_REDIRECT_URI;
   if (explicit) return explicit;
-  const url = new URL(req.url);
-  const proto = req.headers.get("x-forwarded-proto")?.split(",")[0].trim() ?? url.protocol.replace(":", "");
-  const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? url.host;
-  return `${proto}://${host}/api/auth/azure/callback`;
+  return `${publicOrigin(req)}/api/auth/azure/callback`;
 }
 
 /** Yetkilendirme URL'i üretir; state + code_verifier veritabanına yazılır. */

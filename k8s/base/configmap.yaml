@@ -10,6 +10,12 @@ data:
   # tablosuna yazılır (LogiSlot'taki desenin aynısı). SMTP hazır olunca
   # secret'a SMTP_* eklenip bu değer "smtp" yapılır.
   EMAIL_PROVIDER: "log_only"
+  # Uygulamanın dışarıdan görünen adresi. Mutlak link ve yönlendirmeler
+  # bundan kuruluyor (publicOrigin). Boş bırakılırsa proxy başlıklarına
+  # düşülüyor; açıkça vermek hem Host enjeksiyonunu kapatıyor hem de
+  # Next standalone'un `req.url`'i 0.0.0.0:3000 olarak görmesine karşı
+  # kesin çözüm.
+  PUBLIC_ORIGIN: ""
   # Azure Entra: 'organizations' = herhangi bir iş/okul hesabı. Tek bir
   # şirkete kilitlemek istenirse buraya o tenant'ın GUID'i yazılır.
   AZURE_TENANT_ID: "organizations"
