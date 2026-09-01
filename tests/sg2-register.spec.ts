@@ -30,8 +30,9 @@ test.describe("SG2 self-serve register", () => {
     await page.goto("/register");
 
     await page.getByPlaceholder(/iş e-postan/i).fill(email);
-    await page.getByPlaceholder(/şifre/i).fill(DEV_AUTH_PASSWORD);
     await page.getByRole("button", { name: "Devam" }).click();
+    await page.getByPlaceholder(/şifre/i).fill(DEV_AUTH_PASSWORD);
+    await page.getByRole("button", { name: "Kayıt ol" }).click();
 
     await expect(page.getByRole("button", { name: /Çalışma alanı oluştur/i })).toBeVisible({
       timeout: 20_000,
@@ -69,8 +70,9 @@ test.describe("SG2 self-serve register", () => {
     await page.goto("/register");
 
     await page.getByPlaceholder(/iş e-postan/i).fill(email);
-    await page.getByPlaceholder(/şifre/i).fill(DEV_AUTH_PASSWORD);
     await page.getByRole("button", { name: "Devam" }).click();
+    await page.getByPlaceholder(/şifre/i).fill(DEV_AUTH_PASSWORD);
+    await page.getByRole("button", { name: "Kayıt ol" }).click();
 
     await expect(page.getByRole("button", { name: /Yeni sepet|\+ Yeni/i }).first()).toBeVisible({
       timeout: 25_000,
@@ -121,8 +123,9 @@ test.describe("SG2 self-serve register", () => {
     await page.goto("/register");
 
     await page.getByPlaceholder(/iş e-postan/i).fill(email);
-    await page.getByPlaceholder(/şifre/i).fill(DEV_AUTH_PASSWORD);
     await page.getByRole("button", { name: "Devam" }).click();
+    await page.getByPlaceholder(/şifre/i).fill(DEV_AUTH_PASSWORD);
+    await page.getByRole("button", { name: "Kayıt ol" }).click();
     await expect(page.getByRole("button", { name: /Davet koduyla katıl/i })).toBeVisible({
       timeout: 20_000,
     });
