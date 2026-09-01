@@ -4,6 +4,7 @@ import {
   getDb,
   userHasPermission,
 } from "@/lib/server-auth";
+import { withIdentity } from "@/lib/server/pg";
 
 export async function GET(req: Request) {
   const identity = await resolveIdentity(req);
@@ -21,7 +22,32 @@ export async function GET(req: Request) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-  return NextResponse.json({ ideas: data ?? [] });
+
+  const ideas = (data ?? []) as { id: string; promoted_basket_id: string | null }[];
+
+  // Kullanıcının kendi oyları: pool_votes'u doğrudan okumak `vote.view_all`
+  // ister (kimin ne oyladığı gizli), ama kişi kendi oyunu görmeli. RPC tam
+  // olarak bu ayrım için var (0006).
+  const myVoteRows = await withIdentity(identity.email, async (c) => {
+    const r = await c.query<{ pool_idea_id: string }>("select * from public.list_my_pool_votes()");
+    return r.rows;
+  });
+
+  // "→ Hackathon'da kullanıldı" rozeti için dönüştürülen sepetin tipi/başlığı.
+  const basketIds = [...new Set(ideas.map((i) => i.promoted_basket_id).filter((v): v is string => !!v))];
+  const promotedBaskets: Record<string, { type: string; title: string }> = {};
+  if (basketIds.length) {
+    const { data: rows } = await sb.from("baskets").select("id, type, title").in("id", basketIds);
+    for (const b of (rows ?? []) as { id: string; type: string; title: string }[]) {
+      promotedBaskets[b.id] = { type: b.type, title: b.title };
+    }
+  }
+
+  return NextResponse.json({
+    ideas,
+    myVotes: myVoteRows.map((r) => r.pool_idea_id),
+    promotedBaskets,
+  });
 }
 
 export async function POST(req: Request) {
