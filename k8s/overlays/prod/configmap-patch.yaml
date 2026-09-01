@@ -6,7 +6,10 @@ metadata:
 data:
   NODE_ENV: "production"
   EMAIL_PROVIDER: "log_only"
-  AZURE_TENANT_ID: "organizations"
+  # Uygulama kaydı SINGLE-TENANT ("Yalnızca kuruluşum") olduğu için tenant
+  # GUID'i ŞART: /organizations veya /common uçları tek-kiracılı uygulamalar
+  # için AADSTS50194 ile reddediliyor. Duosis tenant'ı.
+  AZURE_TENANT_ID: "6d7f5e10-f771-470c-b372-5ddab61689cf"
   # Azure yönlendirme adresi. Entra uygulama kaydındaki redirect URI ile
   # BİREBİR aynı olmak zorunda ve HTTPS ŞART — Entra `http://localhost`
   # dışında http kabul etmiyor, NodePort adresi (http://…:30090) bu yüzden

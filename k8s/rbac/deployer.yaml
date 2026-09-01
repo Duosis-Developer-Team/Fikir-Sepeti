@@ -1,0 +1,101 @@
+# CI'ın kullandığı dağıtım kimliği — YETKİSİ YALNIZCA fikirsepeti-prod.
+#
+# Neden cluster-admin kubeconfig'i DEĞİL: node1'deki `/root/.kube/config`
+# tüm kümeye cluster-admin veriyor (Hermes, LogiSlot, Drake prod dahil). Repo
+# public ve main'e push yetkisi olan birden fazla kişi var; GitHub Actions
+# secret'ı log'da maskeli olsa da bir workflow ekleyip dışarı taşımak kolay.
+# Bu SA sızsa bile başka bir namespace'e dokunamaz.
+#
+# Bu dosya overlay'e DAHİL DEĞİL (kustomization'da yok): kimliğin kendisi
+# deploy'un ön koşulu, deploy'un çıktısı değil. Elle uygulanır:
+#   kubectl apply -f k8s/rbac/deployer.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: fikirsepeti-deployer
+  namespace: fikirsepeti-prod
+---
+# Uzun ömürlü token. k8s 1.24+ ServiceAccount'a otomatik token secret'ı
+# üretmiyor; CI'ın süresi dolmayan bir jetona ihtiyacı olduğu için açıkça
+# oluşturuluyor.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: fikirsepeti-deployer-token
+  namespace: fikirsepeti-prod
+  annotations:
+    kubernetes.io/service-account.name: fikirsepeti-deployer
+type: kubernetes.io/service-account-token
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: fikirsepeti-deployer
+  namespace: fikirsepeti-prod
+rules:
+  # deploy-k8s.yml'nin yaptıkları: secret üret/güncelle, default SA'ya
+  # imagePullSecrets yamala, manifestleri uygula, job log'u oku,
+  # port-forward ile sağlık kontrolü yap.
+  - apiGroups: [""]
+    resources: [configmaps, secrets, services, serviceaccounts, pods, pods/log, events, persistentvolumeclaims]
+    verbs: [get, list, watch, create, update, patch]
+  - apiGroups: [""]
+    resources: [pods/portforward]
+    verbs: [create]
+  - apiGroups: [apps]
+    resources: [deployments, statefulsets, replicasets]
+    verbs: [get, list, watch, create, update, patch]
+  - apiGroups: [batch]
+    resources: [jobs]
+    # Tamamlanmış bir Job yeniden apply edilemediği için delete BURADA şart.
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [networking.k8s.io]
+    resources: [ingresses]
+    verbs: [get, list, watch, create, update, patch]
+  # cert-manager'ın ürettiklerini görebilsin (teşhis için; oluşturan o değil).
+  - apiGroups: [cert-manager.io]
+    resources: [certificates, certificaterequests]
+    verbs: [get, list, watch]
+# DELETE BİLİNÇLİ OLARAK YOK — job dışında hiçbir kaynakta. En kritik olan:
+# PVC delete verilmiyor. local-path StorageClass'ın reclaimPolicy'si `Delete`,
+# yani PVC silmek VERİYİ SİLER ve geri dönüşü yok.
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: fikirsepeti-deployer
+  namespace: fikirsepeti-prod
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: fikirsepeti-deployer
+subjects:
+  - kind: ServiceAccount
+    name: fikirsepeti-deployer
+    namespace: fikirsepeti-prod
+---
+# Namespace cluster-scoped bir kaynak, Role ile verilemiyor. `resourceNames`
+# ile TEK bir namespace'e kısıtlandı — başka namespace'i okuyamaz bile.
+# `create` YOK: fikirsepeti-prod zaten var, apply get+patch ile ilerliyor.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: fikirsepeti-deployer-namespace
+rules:
+  - apiGroups: [""]
+    resources: [namespaces]
+    resourceNames: [fikirsepeti-prod]
+    verbs: [get, patch, update]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: fikirsepeti-deployer-namespace
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: fikirsepeti-deployer-namespace
+subjects:
+  - kind: ServiceAccount
+    name: fikirsepeti-deployer
+    namespace: fikirsepeti-prod

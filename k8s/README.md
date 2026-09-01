@@ -82,13 +82,48 @@ kubectl -n fikirsepeti-prod rollout status deploy/fikirsepeti-web
 
 ### Gereken GitHub secret'ları
 
-| Secret | Ne için |
-|---|---|
-| `KUBE_CONFIG` | base64'lenmiş kubeconfig (node1'deki `/root/.kube/config`) |
-| `PROD_POSTGRES_PASSWORD` | Postgres sahip rolü |
-| `PROD_APP_DB_PASSWORD` | `fikirsepeti_app` rolü |
-| `GHCR_PULL_TOKEN` | `read:packages` PAT — imaj private ise şart |
-| `PROD_AZURE_CLIENT_ID` / `PROD_AZURE_CLIENT_SECRET` | Microsoft girişi (opsiyonel) |
+| Secret | Ne için | Durum |
+|---|---|---|
+| `KUBE_CONFIG` | base64'lenmiş kubeconfig — **`fikirsepeti-deployer` SA'sı**, node1'in admin config'i DEĞİL (aşağı bak) | ✅ |
+| `PROD_POSTGRES_PASSWORD` | Postgres sahip rolü | ✅ |
+| `PROD_APP_DB_PASSWORD` | `fikirsepeti_app` rolü | ✅ |
+| `PROD_AZURE_CLIENT_ID` / `PROD_AZURE_CLIENT_SECRET` | Microsoft girişi | ✅ |
+| `GHCR_PULL_TOKEN` | `read:packages` PAT | **gerekmiyor** — `ghcr-pull` secret'ı namespace'te zaten var ve default SA'ya bağlı |
+
+#### Deploy kimliği — neden admin kubeconfig değil
+
+`KUBE_CONFIG` içindeki kimlik `k8s/rbac/deployer.yaml` ile tanımlı
+`fikirsepeti-deployer` ServiceAccount'u ve yetkisi **yalnızca
+`fikirsepeti-prod`**. node1'deki `/root/.kube/config` tüm kümeye cluster-admin
+verir (Hermes, LogiSlot, Drake prod dahil); repo public ve main'e push
+yetkisi olan birden fazla kişi var — Actions secret'ı log'da maskeli olsa da
+bir workflow ekleyip dışarı taşımak kolay. Sızma durumunda bu SA başka bir
+namespace'e dokunamaz.
+
+`delete` yetkisi **yalnızca Job'larda** (tamamlanmış Job yeniden apply
+edilemediği için şart). PVC delete bilinçli olarak verilmedi — local-path
+reclaimPolicy=Delete, PVC silmek veriyi siler.
+
+Kimlik deploy'un ön koşulu olduğu için overlay'e dahil değil, elle uygulanır:
+
+```bash
+kubectl apply -f k8s/rbac/deployer.yaml
+
+# kubeconfig'i yeniden üretmek (token rotasyonu vb.)
+TOKEN=$(kubectl -n fikirsepeti-prod get secret fikirsepeti-deployer-token \
+  -o jsonpath='{.data.token}' | base64 -d)
+CA=$(kubectl -n fikirsepeti-prod get secret fikirsepeti-deployer-token \
+  -o jsonpath='{.data.ca\.crt}')
+```
+
+Doğrulaması (kubeconfig elinizdeyken):
+
+```bash
+kubectl auth can-i get pods -n fikirsepeti-prod        # yes
+kubectl auth can-i get pods -n hermes-test             # no
+kubectl auth can-i delete pvc -n fikirsepeti-prod      # no
+kustomize build k8s/overlays/prod | kubectl diff -f -  # sapma var mı
+```
 
 Deploy workflow'u secret'ı her koşuda yeniden yazıyor; parolayı değiştirmek =
 secret'ı güncelleyip deploy etmek (migration `fikirsepeti_app` rolünün
@@ -136,7 +171,10 @@ kubectl -n fikirsepeti-prod exec -i fikirsepeti-postgres-0 -c postgres -- \
 
 ## Microsoft (Azure Entra) girişi
 
-1. Entra portalında uygulama kaydı aç.
+1. Entra portalında uygulama kaydı aç. **Kayıt tek-kiracılı ("Yalnızca
+   kuruluşum") ise `AZURE_TENANT_ID`'ye tenant GUID'i yazmak ŞART** —
+   `organizations` / `common` uçları tek-kiracılı uygulamaları AADSTS50194 ile
+   reddediyor. Mevcut kurulum tek-kiracılı: tenant `6d7f5e10-…-5ddab61689cf`.
 2. Redirect URI (**Web** tipi):
    `https://fikirsepeti-84-247-180-173.sslip.io/api/auth/azure/callback`
    — `AZURE_REDIRECT_URI` ile **birebir** aynı olmak zorunda.
@@ -152,6 +190,13 @@ kubectl -n fikirsepeti-prod exec -i fikirsepeti-postgres-0 -c postgres -- \
 
 Yapılandırılmadığında `/api/auth/azure/start` **503** döner ve arayüz bunu
 açıkça söyler; e-posta+şifre girişi etkilenmez.
+
+**Kurulu (2026-09-01):** uygulama `Fikir Sepeti`, client
+`b891cc0a-2aec-4ac3-b730-9a616e398074`, tek-kiracılı. `/api/auth/azure/start`
+302 ile Microsoft giriş sayfasına gidiyor, AADSTS hatası yok. Client secret
+GitHub secret'ında; süresi dolduğunda Entra'da yeni secret üretip
+`PROD_AZURE_CLIENT_SECRET`'ı güncellemek ve deploy etmek yeterli (secret değeri
+Entra'da yalnızca oluşturulurken bir kez gösteriliyor, sonradan okunamıyor).
 
 ---
 
