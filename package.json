@@ -15,7 +15,8 @@
     "db:env": "node scripts/write-env-from-supabase.mjs",
     "db:seed": "NODE_OPTIONS=--conditions=react-server tsx scripts/seed.mts",
     "verify:db": "NODE_OPTIONS=--conditions=react-server tsx scripts/verify-pgrest.mts",
-    "stress": "NODE_OPTIONS=--conditions=react-server tsx scripts/stress.mts"
+    "stress": "NODE_OPTIONS=--conditions=react-server tsx scripts/stress.mts",
+    "start:standalone": "cp -R public .next/standalone/ && cp -R .next/static .next/standalone/.next/ && node .next/standalone/server.js"
   },
   "dependencies": {
     "@types/pg": "^8.23.1",
