@@ -61,7 +61,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     });
   }
 
-  return new NextResponse(file.data, {
+  return new NextResponse(file.data ?? null, {
     headers: {
       "Content-Type": file.mime_type || "application/octet-stream",
       "Content-Disposition": `inline; filename="${encodeURIComponent(file.filename)}"`,
