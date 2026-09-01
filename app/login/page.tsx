@@ -19,6 +19,8 @@ export default function LoginPage() {
     loginAzure,
     loginWithPassword,
     requestPasswordReset,
+    passwordRecovery,
+    updatePassword,
     devLogin,
     signOut,
     clearLoginError,
@@ -29,6 +31,99 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [resetMsg, setResetMsg] = useState<string | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [newPasswordConfirm, setNewPasswordConfirm] = useState("");
+  const [newPasswordDone, setNewPasswordDone] = useState(false);
+
+  // PASSWORD_RECOVERY: "Şifremi unuttum" linkiyle dönüldü — normal giriş yerine
+  // yeni şifre formu göster (recoveryda bile isek AuthGate yönlendirmiyor).
+  if (passwordRecovery) {
+    const onSubmitNewPassword = async () => {
+      if (newPassword.length < 6) return;
+      if (newPassword !== newPasswordConfirm) {
+        clearLoginError();
+        setResetMsg(null);
+        return;
+      }
+      setSubmitting(true);
+      clearLoginError();
+      try {
+        await updatePassword(newPassword);
+        setNewPasswordDone(true);
+      } catch {
+        /* loginError set */
+      } finally {
+        setSubmitting(false);
+      }
+    };
+    const mismatch = newPasswordConfirm.length > 0 && newPassword !== newPasswordConfirm;
+    return (
+      <div className="flex min-h-screen items-center justify-center px-6" style={{ background: "var(--bg)" }}>
+        <div
+          className="w-full max-w-sm rounded-[22px] p-8"
+          style={{ background: "var(--card)", border: "1px solid rgba(var(--border-rgb),0.09)" }}
+        >
+          <BrandIcon size="md" priority />
+          <h1 className="font-display mt-5 text-[1.5rem] font-bold tracking-tight" style={{ color: "var(--text)" }}>
+            Yeni şifre belirle
+          </h1>
+          <p className="mt-1.5 text-[0.92rem]" style={{ color: "var(--text-muted)" }}>
+            {newPasswordDone ? "Şifren güncellendi." : "Hesabına yeni bir şifre belirle."}
+          </p>
+          {loginError && (
+            <p className="mt-3 rounded-lg px-3 py-2 text-[0.85rem]" style={{ background: "rgba(242,121,95,0.12)", color: "#F2795F" }} role="alert">
+              {loginError}
+            </p>
+          )}
+          {newPasswordDone ? (
+            <button
+              type="button"
+              onClick={() => window.location.assign("/")}
+              className="mt-6 w-full rounded-full py-3 text-[0.95rem] font-semibold transition disabled:opacity-40"
+              style={{ background: "var(--text)", color: "var(--bg)" }}
+            >
+              Sepete git →
+            </button>
+          ) : (
+            <>
+              <input
+                autoFocus
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="yeni şifre (en az 6 karakter)"
+                className="mt-6 w-full rounded-lg px-3.5 py-3 text-[0.95rem] outline-none"
+                style={{ background: "var(--surface-2)", border: "1px solid rgba(var(--border-rgb),0.09)", color: "var(--text)" }}
+                disabled={submitting}
+              />
+              <input
+                type="password"
+                value={newPasswordConfirm}
+                onChange={(e) => setNewPasswordConfirm(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && void onSubmitNewPassword()}
+                placeholder="yeni şifre (tekrar)"
+                className="mt-3 w-full rounded-lg px-3.5 py-3 text-[0.95rem] outline-none"
+                style={{ background: "var(--surface-2)", border: "1px solid rgba(var(--border-rgb),0.09)", color: "var(--text)" }}
+                disabled={submitting}
+              />
+              {mismatch && (
+                <p className="mt-2 text-[0.82rem]" style={{ color: "#F2795F" }}>Şifreler eşleşmiyor.</p>
+              )}
+              <button
+                type="button"
+                onClick={() => void onSubmitNewPassword()}
+                disabled={submitting || newPassword.length < 6 || newPassword !== newPasswordConfirm}
+                className="mt-3 w-full rounded-full py-3 text-[0.95rem] font-semibold transition disabled:opacity-40"
+                style={{ background: "var(--text)", color: "var(--bg)" }}
+              >
+                {submitting ? "…" : "Şifreyi güncelle"}
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   if (!ready || user?.tenantId) {
     return (

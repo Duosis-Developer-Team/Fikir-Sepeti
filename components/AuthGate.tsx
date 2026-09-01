@@ -39,6 +39,10 @@ type Ctx = {
   loginWithPassword: (email: string, password: string) => Promise<void>;
   /** Sends a password-reset email via Supabase. */
   requestPasswordReset: (email: string) => Promise<void>;
+  /** True while a PASSWORD_RECOVERY session is active — /login shows the "new password" form. */
+  passwordRecovery: boolean;
+  /** Sets the new password during a PASSWORD_RECOVERY session. */
+  updatePassword: (password: string) => Promise<void>;
   /** Email+password sign-up / sign-in for /register. */
   registerWithPassword: (email: string, password: string) => Promise<void>;
   /** True right after signUp when Supabase requires email confirmation. */
@@ -65,6 +69,8 @@ const SessionContext = createContext<Ctx>({
   devLogin: async () => {},
   loginWithPassword: async () => {},
   requestPasswordReset: async () => {},
+  passwordRecovery: false,
+  updatePassword: async () => {},
   registerWithPassword: async () => {},
   needsConfirmation: false,
   confirmationEmail: null,
@@ -167,6 +173,11 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   const [loginError, setLoginError] = useState<string | null>(null);
   const [needsConfirmation, setNeedsConfirmation] = useState(false);
   const [confirmationEmail, setConfirmationEmail] = useState<string | null>(null);
+  // "Şifremi unuttum" linkiyle dönüldüğünde Supabase PASSWORD_RECOVERY olayını
+  // tetikler — bu, kullanıcı zaten oturum açmış gibi görünse de asıl amaç yeni
+  // şifre belirlemek, o yüzden bu true iken normal "zaten girişlisin" yönlendirmesi
+  // devre dışı kalır (aksi halde eski şifre hiç değişmeden uygulamaya atılıyordu).
+  const [passwordRecovery, setPasswordRecovery] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
 
@@ -209,7 +220,8 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     // artık localStorage'da olduğu için sorunsuz giriyordu (rapor edilen bug).
     // Çözüm: tek doğruluk kaynağı onAuthStateChange — bu her zaman Supabase'in kendi
     // URL/token işlemesinden SONRA tetiklenir, ilk tetiklendiğinde "ready" işaretlenir.
-    const { data: sub } = supabase.auth.onAuthStateChange(async (_e, session) => {
+    const { data: sub } = supabase.auth.onAuthStateChange(async (e, session) => {
+      if (e === "PASSWORD_RECOVERY") setPasswordRecovery(true);
       await applySession(session);
       clearTimeout(timeout);
       markReady();
@@ -229,10 +241,11 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       router.replace(REGISTER_PATH);
       return;
     }
+    if (passwordRecovery) return;
     if (user?.tenantId && (pathname === LOGIN_PATH || pathname === REGISTER_PATH)) {
       router.replace("/");
     }
-  }, [ready, user, needsWorkspace, pathname, router]);
+  }, [ready, user, needsWorkspace, pathname, router, passwordRecovery]);
 
   const loginAzure = () => {
     setLoginError(null);
@@ -289,6 +302,22 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
       redirectTo: typeof window !== "undefined" ? `${window.location.origin}/login` : undefined,
     });
+  };
+
+  /** PASSWORD_RECOVERY oturumunda yeni şifreyi kaydeder — /login bunu recovery ekranında çağırır. */
+  const updatePassword = async (password: string) => {
+    setLoginError(null);
+    if (password.length < 6) {
+      const message = "Şifre en az 6 karakter olmalı.";
+      setLoginError(message);
+      throw new Error(message);
+    }
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) {
+      setLoginError(error.message);
+      throw error;
+    }
+    setPasswordRecovery(false);
   };
 
   const clearNeedsConfirmation = () => {
@@ -426,6 +455,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     setTenantDenied(false);
     setDeniedEmail(null);
     setLoginError(null);
+    setPasswordRecovery(false);
   };
 
   const clearLoginError = () => setLoginError(null);
@@ -443,6 +473,8 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     devLogin,
     loginWithPassword,
     requestPasswordReset,
+    passwordRecovery,
+    updatePassword,
     registerWithPassword,
     needsConfirmation,
     confirmationEmail,
