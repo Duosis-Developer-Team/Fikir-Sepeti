@@ -4,14 +4,16 @@ Vercel + Supabase yerine kendi kümemizde çalışan kurulum. Hermes ve LogiSlot
 ile aynı desen: küme içi PostgreSQL (StatefulSet + local-path PVC), GHCR
 imajı, migration Job'u, NodePort/ingress.
 
-**Canlı:** http://84.247.180.172:30090 · namespace `fikirsepeti-prod`
+**Canlı:** https://fikirsepeti-84-247-180-173.sslip.io · namespace `fikirsepeti-prod`
+(NodePort `http://84.247.180.172:30090` geri dönüş yolu olarak açık kalıyor)
 
 ---
 
 ## Mimari
 
 ```
-Tarayıcı ──► NodePort 30090 ──► fikirsepeti-web (Next.js standalone, :3000)
+Tarayıcı ──► node2:443 (TLS) ──► ingress-nginx ──► fikirsepeti-web (Next.js standalone, :3000)
+         └─► NodePort 30090 (http, yedek) ──────►
                                       │
                                       ├── /api/*        REST — tüm veri erişimi
                                       ├── /api/realtime SSE — LISTEN/NOTIFY köprüsü
@@ -135,34 +137,72 @@ kubectl -n fikirsepeti-prod exec -i fikirsepeti-postgres-0 -c postgres -- \
 ## Microsoft (Azure Entra) girişi
 
 1. Entra portalında uygulama kaydı aç.
-2. Redirect URI (**Web** tipi): `http://84.247.180.172:30090/api/auth/azure/callback`
-   — domain bağlanınca bu da değişir ve `AZURE_REDIRECT_URI` ile **birebir**
-   aynı olmak zorunda.
+2. Redirect URI (**Web** tipi):
+   `https://fikirsepeti-84-247-180-173.sslip.io/api/auth/azure/callback`
+   — `AZURE_REDIRECT_URI` ile **birebir** aynı olmak zorunda.
+   **HTTPS şart:** Entra `http://localhost` dışında http redirect URI kabul
+   etmiyor; NodePort adresi (`http://…:30090`) bu yüzden kaydedilemiyordu.
 3. Client secret üret.
 4. Token yapılandırmasında `email` claim'ini iste (yoksa
    `preferred_username`/`upn`'e düşülüyor ama garanti değil).
 5. `PROD_AZURE_CLIENT_ID` / `PROD_AZURE_CLIENT_SECRET` secret'larını ekle,
-   deploy et.
+   deploy et. **GitHub secret'ı olarak eklemek şart** — deploy workflow'u
+   `fikirsepeti-secrets`'ı her koşuda yeniden yazıyor, yani kümedeki değeri
+   elle set etmek bir sonraki deploy'da boşalır.
 
 Yapılandırılmadığında `/api/auth/azure/start` **503** döner ve arayüz bunu
 açıkça söyler; e-posta+şifre girişi etkilenmez.
 
 ---
 
-## Domain bağlama (sonraki adım)
+## HTTPS / TLS sertifikası
 
-Şu an NodePort. Domain için:
+**Kurulu ve çalışıyor** (2026-09-01). Adres:
+`https://fikirsepeti-84-247-180-173.sslip.io` — Let's Encrypt, tarayıcının
+güvendiği gerçek sertifika, self-signed değil.
 
-1. `k8s/base/ingress.yaml` içindeki `REPLACE_HOST`'u gerçek host ile değiştirip
-   overlay'e ekleyin (`kustomization.yaml` → `resources`).
-2. **Ingress class `nginx` olmalı.** Kümede üç controller var; seçim kriteri
-   class adı değil, controller'ın hangi namespace'leri izlediği:
-   `ingress-nginx-test` node1'de 80/443'ü karşılıyor ama **yalnızca
-   `hermes-test`'i izliyor** — buradaki bir Ingress'i asla görmez.
-   (LogiSlot bu tuzağa düşüp bir gün kaybetti.)
-3. `ingress-nginx`'in NodePort'ları 31412/30772; 80/443 Hermes'te. LogiSlot'un
-   yaptığı gibi Cloudflare + origin portu (8443 → 30772) yönlendirmesi gerekir.
-4. `AZURE_REDIRECT_URI`'yi ve Entra kaydındaki redirect URI'yi güncelleyin.
+Nasıl çalışıyor:
+
+- **Host:** `sslip.io` gerçek bir public DNS servisi; `<ad>-84-247-180-173.sslip.io`
+  doğrudan `84.247.180.173`'e (node2) çözülür. Domain satın almadan gerçek
+  sertifika almanın yolu bu — Drake de aynı deseni kullanıyor
+  (`drake-84-247-180-173.sslip.io`).
+- **Neden node2:** `ingress-nginx` controller'ı (class `nginx`, tüm
+  namespace'leri izler) node2'de **hostNetwork** ile çalışıyor ve 80/443'ü
+  doğrudan dinliyor. node1'in 80/443'ü ise iptables ile `ingress-nginx-test`'e
+  gidiyor ve o controller **yalnızca `hermes-test`'i** izliyor — oraya yazılan
+  bir Ingress hiç görülmez. (LogiSlot bu tuzakta bir gün kaybetti.)
+- **Sertifika:** cert-manager kümede kurulu, `letsencrypt-prod` ClusterIssuer
+  Ready. `k8s/base/ingress.yaml`'daki `cert-manager.io/cluster-issuer`
+  anotasyonu yeterli: Certificate → Order → HTTP-01 challenge → `fikirsepeti-tls`
+  secret'ı otomatik doluyor, 60 günde bir kendi yeniliyor. Kurulumda ~40 saniye
+  sürdü.
+- **HTTP → HTTPS:** ingress TLS tanımlı olduğu için nginx `308` ile yönlendiriyor;
+  HSTS başlığı da controller'dan geliyor.
+- **Uygulama tarafı:** `isSecureRequest` `x-forwarded-proto`'yu okuduğu için
+  oturum çerezleri HTTPS'te `Secure` bayrağıyla çıkıyor — ek ayar gerekmedi.
+
+Durum kontrolü:
+
+```bash
+kubectl -n fikirsepeti-prod get certificate,order,challenge
+echo | openssl s_client -connect fikirsepeti-84-247-180-173.sslip.io:443 \
+  -servername fikirsepeti-84-247-180-173.sslip.io 2>/dev/null \
+  | openssl x509 -noout -subject -issuer -dates
+```
+
+### Kendi alan adına geçmek
+
+1. DNS: `fikirsepeti.duosis.com` → **A kaydı `84.247.180.173`** (node2!).
+   Cloudflare'de **proxy KAPALI / gri bulut** — turuncu bulut HTTP-01
+   doğrulamasını kırar (Cloudflare kendi sertifikasıyla araya girer).
+2. `k8s/overlays/prod/ingress-patch.yaml` içindeki iki host satırı.
+3. `k8s/overlays/prod/configmap-patch.yaml` → `AZURE_REDIRECT_URI`.
+4. Entra uygulama kaydındaki redirect URI (birebir aynı olmalı).
+5. `kubectl apply -k k8s/overlays/prod` + `rollout restart deploy/fikirsepeti-web`
+   (ConfigMap değişikliği pod'u kendiliğinden yeniden başlatmaz).
+
+Eski sertifika ismine bağlı, porta değil; NodePort erişimi bundan etkilenmiyor.
 
 SSE için ingress annotation'ları hazır (`proxy-buffering: off`,
 `proxy-read-timeout: 3600`) — bunlar olmadan nginx olayları tamponlar ve

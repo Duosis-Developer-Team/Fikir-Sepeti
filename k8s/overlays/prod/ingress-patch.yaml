@@ -1,0 +1,28 @@
+# PROD host'u. sslip.io gerçek public DNS'tir: `<isim>-84-247-180-173.sslip.io`
+# doğrudan 84.247.180.173'e (node2) çözülür. node2'de 80/443'ü tüm
+# namespace'leri izleyen `nginx` controller dinlediği için hem HTTP-01
+# doğrulaması hem de trafiğin kendisi buradan geçer. Drake'te aynı desen
+# kullanıldı (drake-84-247-180-173.sslip.io) ve Let's Encrypt sertifika verdi.
+#
+# Kendi alan adına geçince: A kaydı 84.247.180.173, Cloudflare proxy KAPALI
+# (turuncu bulut HTTP-01'i kırar), burada + AZURE_REDIRECT_URI'de + Entra
+# uygulama kaydında host birlikte değişir.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: fikirsepeti
+spec:
+  tls:
+    - hosts:
+        - fikirsepeti-84-247-180-173.sslip.io
+      secretName: fikirsepeti-tls
+  rules:
+    - host: fikirsepeti-84-247-180-173.sslip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: fikirsepeti-web
+                port: { name: http }

@@ -14,3 +14,4 @@ images:
     newTag: prod
 patches:
   - path: configmap-patch.yaml
+  - path: ingress-patch.yaml

@@ -1,20 +1,30 @@
-# Host tabanlı ingress. İLK KURULUMDA KULLANILMIYOR — erişim NodePort 30090
-# üzerinden (bkz. overlays/prod/nodeport-service.yaml). Domain bağlandığında
-# overlay'de host patch'lenip bu kaynak devreye alınır.
+# Host tabanlı ingress + TLS. Erişim NodePort 30090 üzerinden de açık kalıyor
+# (geri dönüş yolu), ama asıl adres artık HTTPS.
 #
 # INGRESS CLASS — `nginx`. Kümede üç controller var; SEÇİM KRİTERİ class adı
-# değil, controller'ın HANGİ NAMESPACE'LERİ izlediğidir:
-#   ingress-nginx       nginx        (watch: hepsi)     80:31412  443:30772
-#   ingress-nginx-test  nginx-test   (watch: hermes-test SADECE)
-#   drake-nginx         drake-nginx  -
-# `nginx-test` node1'de 80/443'ü karşılıyor olsa da yalnızca hermes-test'i
-# izliyor; buradaki bir Ingress'i hiçbir zaman görmez. (LogiSlot bu tuzağa
-# düşüp bir gün kaybetti — bkz. onların ingress-patch.yaml notu.)
+# değil, controller'ın HANGİ NAMESPACE'LERİ izlediği ve HANGİ PORTU açtığıdır:
+#   ingress-nginx       nginx        watch: HEPSİ · node2'de hostNetwork,
+#                                    80/443'ü DOĞRUDAN dinliyor · NodePort
+#                                    31412/30772 de aynı controller
+#   ingress-nginx-test  nginx-test   watch: hermes-test SADECE · node1'in
+#                                    80/443'ü (iptables) — buradaki bir
+#                                    Ingress'i hiçbir zaman görmez
+#   drake-nginx         drake-nginx  Drake'e ait, NodePort 30773
+# `nginx-test` node1'de 80/443'ü karşıladığı için "public olan o" sanılıyor;
+# LogiSlot bu tuzağa düşüp bir gün kaybetti. Doğrusu: host node2'ye (…173)
+# çözülüyorsa class `nginx`.
+#
+# SERTİFİKA — cert-manager kümede kurulu, `letsencrypt-prod` ClusterIssuer
+# Ready. Aşağıdaki anotasyon yeter: cert-manager Certificate + Order + HTTP-01
+# challenge'ı kendi üretir, secret'ı doldurur, 60 günde bir yeniler.
+# HTTP-01 port 80 üzerinden doğrulanıyor — host'un A kaydı node2'yi (…173)
+# göstermek ZORUNDA, çünkü 80'i dinleyen controller orada.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: fikirsepeti
   annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
     # SSE (/api/realtime) için ZORUNLU: nginx varsayılan olarak yanıtı
     # tamponluyor ve olaylar istemciye ancak tampon dolunca ulaşıyor — yani
     # "canlı" oylama canlı olmuyor. Uygulama X-Accel-Buffering: no da
@@ -25,6 +35,10 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
 spec:
   ingressClassName: nginx
+  tls:
+    - hosts:
+        - REPLACE_HOST
+      secretName: fikirsepeti-tls
   rules:
     - host: REPLACE_HOST
       http:

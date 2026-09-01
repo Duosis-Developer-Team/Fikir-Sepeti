@@ -7,7 +7,8 @@ data:
   NODE_ENV: "production"
   EMAIL_PROVIDER: "log_only"
   AZURE_TENANT_ID: "organizations"
-  # Azure yönlendirme adresi. NodePort erişimi kullanılırken bu adres Entra
-  # uygulama kaydındaki redirect URI ile BİREBİR aynı olmak zorunda; domain
-  # bağlanınca ikisi birlikte değiştirilir.
-  AZURE_REDIRECT_URI: "http://84.247.180.172:30090/api/auth/azure/callback"
+  # Azure yönlendirme adresi. Entra uygulama kaydındaki redirect URI ile
+  # BİREBİR aynı olmak zorunda ve HTTPS ŞART — Entra `http://localhost`
+  # dışında http kabul etmiyor, NodePort adresi (http://…:30090) bu yüzden
+  # kaydedilemiyordu. Host değişirse burası + Entra kaydı birlikte değişir.
+  AZURE_REDIRECT_URI: "https://fikirsepeti-84-247-180-173.sslip.io/api/auth/azure/callback"
