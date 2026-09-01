@@ -1,52 +1,24 @@
-import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
+import "server-only";
+
 import type { Permission } from "./permissions";
-
-let _admin: SupabaseClient | null = null;
-
-function supabaseUrl(): string {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  if (!url) throw new Error("NEXT_PUBLIC_SUPABASE_URL required");
-  return url;
-}
-
-function anonKey(): string {
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!key) throw new Error("NEXT_PUBLIC_SUPABASE_ANON_KEY required");
-  return key;
-}
-
-/** Service-role client (CI / local bypass). Throws if key missing. */
-export function supabaseAdmin(): SupabaseClient {
-  if (_admin) return _admin;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!key) {
-    throw new Error("SUPABASE_SERVICE_ROLE_KEY required for server operations");
-  }
-  _admin = createClient(supabaseUrl(), key, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-  return _admin;
-}
+import { dbForIdentity, type Db } from "./server/pgrest";
+import { resolveIdentity as resolveIdentityImpl } from "./server/identity";
 
 /**
- * DB client for an API request.
- * Prefers service role when set; otherwise uses the caller's Bearer JWT (RLS).
+ * Route handler'ların kimlik + veritabanı girişi.
+ *
+ * DIŞA AÇIK API BİLEREK AYNI KALDI (`resolveIdentity`, `getDb`,
+ * `userHasPermission`, `userHasPermissionAnyTenant`): 32 route handler bu
+ * modülü kullanıyor ve hiçbiri değişmedi. Değişen sadece gövde — Supabase
+ * istemcisi yerine `pg` üstünde PostgREST uyumlu kurucu (lib/server/pgrest.ts).
+ *
+ * KALDIRILAN: `supabaseAdmin()` ve service-role kavramı. Eskiden `getDb`
+ * SUPABASE_SERVICE_ROLE_KEY varsa RLS'i TAMAMEN atlayan bir istemci
+ * döndürüyordu. Artık her sorgu çağıranın kimliğiyle ve RLS altında koşuyor.
+ * Bu, üretimin bugünkü davranışıyla da uyumlu: prod'da service role anahtarı
+ * hiç ayarlanmamıştı (bkz. docs/sprints/gap-analysis-after-S11.md), yani
+ * canlı sistem zaten kullanıcı kimliğiyle çalışıyordu.
  */
-export function getDb(req: Request): SupabaseClient {
-  if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    return supabaseAdmin();
-  }
-  const auth = req.headers.get("authorization");
-  if (auth?.startsWith("Bearer ")) {
-    return createClient(supabaseUrl(), anonKey(), {
-      global: { headers: { Authorization: auth } },
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
-  }
-  throw new Error(
-    "SUPABASE_SERVICE_ROLE_KEY or Authorization Bearer required for database access"
-  );
-}
 
 export type RequestIdentity = {
   userId: string;
@@ -54,109 +26,62 @@ export type RequestIdentity = {
   tenantId: string;
 };
 
-/** Prefer primary email; fall back to identity providers (Azure). */
-export function emailFromAuthUser(user: User): string | null {
-  const primary = (user.email ?? "").trim().toLowerCase();
-  if (primary) return primary;
-  for (const id of user.identities ?? []) {
-    const data = id.identity_data as Record<string, unknown> | undefined;
-    const e = String(data?.email ?? data?.preferred_username ?? "")
-      .trim()
-      .toLowerCase();
-    if (e.includes("@")) return e;
-  }
-  const meta = user.user_metadata as Record<string, unknown> | undefined;
-  const me = String(meta?.email ?? "").trim().toLowerCase();
-  return me.includes("@") ? me : null;
-}
-
-async function lookupAppUser(
-  sb: SupabaseClient,
-  email: string
-): Promise<RequestIdentity | null> {
-  const { data: appUser } = await sb
-    .from("app_users")
-    .select("tenant_id, user_id, email")
-    .ilike("email", email)
-    .maybeSingle();
-  if (!appUser) return null;
+export async function resolveIdentity(req: Request): Promise<RequestIdentity | null> {
+  const identity = await resolveIdentityImpl(req);
+  if (!identity) return null;
   return {
-    userId: appUser.user_id as string,
-    email: String(appUser.email ?? email).toLowerCase(),
-    tenantId: appUser.tenant_id as string,
+    userId: identity.userId,
+    email: identity.email,
+    tenantId: identity.tenantId,
   };
 }
 
-export async function resolveIdentity(req: Request): Promise<RequestIdentity | null> {
-  // Prefer real session JWT (production + bypass-with-session)
-  const auth = req.headers.get("authorization");
-  if (auth?.startsWith("Bearer ")) {
-    const token = auth.slice(7);
-    const verify = createClient(supabaseUrl(), anonKey(), {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
-    const { data, error } = await verify.auth.getUser(token);
-    if (error || !data.user) return null;
-
-    const email = emailFromAuthUser(data.user);
-    if (!email) return null;
-
-    try {
-      return await lookupAppUser(getDb(req), email);
-    } catch {
-      return null;
-    }
-  }
-
-  const bypass = process.env.NEXT_PUBLIC_AUTH_BYPASS === "1";
-  const devHeader = req.headers.get("x-dev-user");
-  if (bypass && devHeader) {
-    try {
-      const u = JSON.parse(devHeader) as {
-        email?: string;
-        tenantId?: string;
-      };
-      if (u.email && u.tenantId) {
-        const email = u.email.toLowerCase();
-        return { userId: email, email, tenantId: u.tenantId };
-      }
-    } catch {
-      /* ignore */
-    }
-  }
-
-  return null;
+/**
+ * İstek için veritabanı erişimi. Kimlik TEMBEL çözülüyor: route'lar bunu
+ * senkron çağırıyor (`const sb = getDb(req)`), oysa kimliği çözmek asenkron.
+ * İlk sorguda bir kez çözülüp saklanıyor.
+ */
+export function getDb(req: Request): Db {
+  return dbForIdentity(async () => {
+    const identity = await resolveIdentityImpl(req);
+    return identity?.email ?? null;
+  });
 }
 
 function isRequestLike(v: unknown): v is Request {
   return Boolean(v && typeof (v as Request).headers?.get === "function");
 }
 
-function resolveDb(reqOrDb?: Request | SupabaseClient): SupabaseClient {
-  if (!reqOrDb) return supabaseAdmin();
+function resolveDb(reqOrDb?: Request | Db): Db {
+  if (!reqOrDb) {
+    // Kimliksiz erişim: RLS hiçbir satır döndürmez. Eskiden burası
+    // supabaseAdmin() ile RLS'i atlıyordu; artık atlamıyor.
+    return dbForIdentity(null);
+  }
   if (isRequestLike(reqOrDb)) return getDb(reqOrDb);
   return reqOrDb;
 }
 
 /**
- * scopeBasketId may be omitted; callers often pass `req` as the 4th argument.
- * Overloads: (tenant, user, perm, req) | (tenant, user, perm, basketId, req)
+ * İzin kontrolü. İmza korundu — çağıranlar hem `(t, u, p, req)` hem
+ * `(t, u, p, basketId, req)` şeklinde çağırıyor.
  */
 export async function userHasPermission(
   tenantId: string,
   userId: string,
   permission: Permission,
-  scopeOrReq?: string | null | Request | SupabaseClient,
-  reqOrDb?: Request | SupabaseClient
+  scopeOrReq?: string | null | Request | Db,
+  reqOrDb?: Request | Db
 ): Promise<boolean> {
   let scopeBasketId: string | null | undefined;
-  let dbSource: Request | SupabaseClient | undefined;
+  let dbSource: Request | Db | undefined;
   if (scopeOrReq == null || typeof scopeOrReq === "string") {
     scopeBasketId = scopeOrReq;
     dbSource = reqOrDb;
   } else {
-    dbSource = scopeOrReq;
+    dbSource = scopeOrReq as Request | Db;
   }
+
   const sb = resolveDb(dbSource);
   const { data: rows } = await sb
     .from("user_roles")
@@ -164,15 +89,17 @@ export async function userHasPermission(
     .eq("tenant_id", tenantId)
     .eq("user_id", userId);
 
-  if (!rows?.length) return false;
+  const list = (rows ?? []) as { role_id: string; scope_basket_id: string | null }[];
+  if (!list.length) return false;
 
-  const roleIds = rows
+  const roleIds = list
     .filter((r) => {
-      const scope = r.scope_basket_id as string | null;
+      const scope = r.scope_basket_id;
       if (scope == null) return true;
+      // Sepet-kapsamlı rol (jüri) yalnızca o sepette geçerli.
       return Boolean(scopeBasketId && scope === scopeBasketId);
     })
-    .map((r) => r.role_id as string);
+    .map((r) => r.role_id);
 
   if (!roleIds.length) return false;
 
@@ -182,14 +109,14 @@ export async function userHasPermission(
     .in("role_id", roleIds)
     .eq("permission_key", permission);
 
-  return (perms?.length ?? 0) > 0;
+  return ((perms ?? []) as unknown[]).length > 0;
 }
 
-/** True if the user holds the permission on any tenant (platform_owner). */
+/** Kullanıcı bu izni HERHANGİ bir tenant'ta taşıyor mu (platform_owner). */
 export async function userHasPermissionAnyTenant(
   userId: string,
   permission: Permission,
-  reqOrDb?: Request | SupabaseClient
+  reqOrDb?: Request | Db
 ): Promise<boolean> {
   const sb = resolveDb(reqOrDb);
   const { data: rows } = await sb
@@ -198,13 +125,17 @@ export async function userHasPermissionAnyTenant(
     .eq("user_id", userId)
     .is("scope_basket_id", null);
 
-  if (!rows?.length) return false;
-  const roleIds = rows.map((r) => r.role_id as string);
+  const list = (rows ?? []) as { role_id: string }[];
+  if (!list.length) return false;
+
   const { data: perms } = await sb
     .from("role_permissions")
     .select("permission_key")
-    .in("role_id", roleIds)
+    .in(
+      "role_id",
+      list.map((r) => r.role_id)
+    )
     .eq("permission_key", permission);
 
-  return (perms?.length ?? 0) > 0;
+  return ((perms ?? []) as unknown[]).length > 0;
 }

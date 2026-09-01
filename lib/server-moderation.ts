@@ -1,8 +1,8 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Db } from "./server/pgrest";
 import { checkContent, type CheckResult, type ContentRule } from "./moderation";
 
 export async function loadTenantRules(
-  sb: SupabaseClient,
+  sb: Db,
   tenantId: string
 ): Promise<ContentRule[]> {
   const { data } = await sb
@@ -14,7 +14,7 @@ export async function loadTenantRules(
 }
 
 export async function evaluateText(
-  sb: SupabaseClient,
+  sb: Db,
   tenantId: string,
   text: string
 ): Promise<CheckResult> {
@@ -23,7 +23,7 @@ export async function evaluateText(
 }
 
 export async function writeAudit(
-  sb: SupabaseClient,
+  sb: Db,
   input: {
     tenant_id: string;
     actor: string;
@@ -44,7 +44,7 @@ export async function writeAudit(
 }
 
 export async function createFlags(
-  sb: SupabaseClient,
+  sb: Db,
   input: {
     tenant_id: string;
     entity_type: "idea" | "pool" | "feedback" | "pool_comment";

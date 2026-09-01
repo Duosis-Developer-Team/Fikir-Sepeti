@@ -107,7 +107,13 @@ export type AzureIdentity = {
   displayName: string | null;
 };
 
-function emailFromClaims(claims: JWTPayload): string | null {
+/**
+ * Claim'lerden iş e-postasını seçer. Azure her zaman `email` claim'i
+ * göndermiyor (uygulama kaydında opsiyonel talep); o yüzden sırayla
+ * email → preferred_username → upn deneniyor. GoTrue'daki
+ * emailFromAuthUser'ın bu kurulumdaki karşılığı.
+ */
+export function emailFromClaims(claims: JWTPayload): string | null {
   const candidates = [
     claims.email,
     claims.preferred_username,

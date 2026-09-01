@@ -13,7 +13,8 @@
     "db:stop": "npx supabase stop",
     "db:reset": "npx supabase db reset",
     "db:env": "node scripts/write-env-from-supabase.mjs",
-    "db:seed": "node scripts/seed.mjs"
+    "db:seed": "node scripts/seed.mjs",
+    "verify:db": "NODE_OPTIONS=--conditions=react-server tsx scripts/verify-pgrest.mts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.0",
@@ -40,6 +41,7 @@
     "eslint-config-next": "16.2.10",
     "playwright": "^1.61.1",
     "tailwindcss": "^4",
+    "tsx": "^4.23.13",
     "typescript": "^5"
   }
 }

@@ -4,10 +4,10 @@ import {
   getDb,
   userHasPermission,
 } from "@/lib/server-auth";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Db } from "@/lib/server/pgrest";
 
 async function canViewBasket(
-  sb: SupabaseClient,
+  sb: Db,
   req: Request,
   tenantId: string,
   userId: string,
