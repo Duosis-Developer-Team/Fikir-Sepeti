@@ -71,14 +71,19 @@ export function DemoStage({ data, user, config, refresh, isAdmin, readOnly }: St
       category_key: key,
       stars,
     })
-      .then(() => {
+      .then(async () => {
         if (requestSeq.current[k] !== seq) return; // daha yeni bir tıklama zaten devrede
+        // Bekleyen (optimistic) değeri, gerçek veri (scores) yenilenmeden ÖNCE silersek
+        // aradaki anda myStars() eski/boş değere düşer — yıldız bir an söner, sonra
+        // yenilenen veriyle tekrar yanar (rapor edilen "yıldızlar yanıp sönüyor" bug'ı).
+        // Önce refresh'in bitmesini bekle, sonra optimistic override'ı kaldır.
+        await refresh();
+        if (requestSeq.current[k] !== seq) return; // refresh sürerken daha yeni bir tıklama oldu
         setPendingStars((prev) => {
           const next = { ...prev };
           delete next[k];
           return next;
         });
-        refresh();
       })
       .catch(() => {
         if (requestSeq.current[k] !== seq) return;
