@@ -1,15 +1,12 @@
 import "server-only";
 
-import { createHash, randomBytes, scrypt as scryptCb, timingSafeEqual } from "node:crypto";
-import { promisify } from "node:util";
+import { createHash, randomBytes } from "node:crypto";
+import { hashPassword, verifyPassword } from "../password";
 import { query, queryOne } from "./pg";
 
-const scrypt = promisify(scryptCb) as (
-  password: string | Buffer,
-  salt: string | Buffer,
-  keylen: number,
-  options: { N: number; r: number; p: number }
-) => Promise<Buffer>;
+// Parola hash'leme lib/password.ts'te — testler ve seed betiği de kullanıyor,
+// onlar `server-only` korumalı bu dosyayı import edemez.
+export { hashPassword, verifyPassword };
 
 /**
  * Kimlik katmanı — Supabase Auth (GoTrue) yerine.
@@ -27,40 +24,11 @@ const SESSION_TTL_DAYS = 30;
 const RESET_TTL_MINUTES = 60;
 const OAUTH_STATE_TTL_MINUTES = 15;
 
-// scrypt parametreleri. N=2^15 tek hash'te ~60-100ms — giriş uç noktası için
-// kabul edilebilir, kaba kuvvet için pahalı.
-const SCRYPT = { N: 32768, r: 8, p: 1 } as const;
-const KEYLEN = 32;
 
 export type SessionIdentity = {
   email: string;
   displayName: string | null;
 };
-
-// ── Parola ──────────────────────────────────────────────────────────────────
-
-export async function hashPassword(password: string): Promise<string> {
-  const salt = randomBytes(16);
-  const hash = await scrypt(password, salt, KEYLEN, SCRYPT);
-  return `scrypt$${SCRYPT.N}$${SCRYPT.r}$${SCRYPT.p}$${salt.toString("base64")}$${hash.toString("base64")}`;
-}
-
-export async function verifyPassword(password: string, stored: string | null): Promise<boolean> {
-  if (!stored) return false;
-  const parts = stored.split("$");
-  if (parts.length !== 6 || parts[0] !== "scrypt") return false;
-  const [, n, r, p, saltB64, hashB64] = parts;
-  const salt = Buffer.from(saltB64, "base64");
-  const expected = Buffer.from(hashB64, "base64");
-  const actual = await scrypt(password, salt, expected.length, {
-    N: Number(n),
-    r: Number(r),
-    p: Number(p),
-  });
-  // Uzunluklar farklıysa timingSafeEqual fırlatır; önce kontrol et.
-  if (actual.length !== expected.length) return false;
-  return timingSafeEqual(actual, expected);
-}
 
 // ── Oturum ──────────────────────────────────────────────────────────────────
 

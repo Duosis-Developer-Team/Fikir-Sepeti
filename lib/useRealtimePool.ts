@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { supabase } from "./supabase";
+import { apiFetch } from "./api-headers";
+import { subscribeChanges } from "./realtime";
 import { votePoolIdea } from "./pool";
 import type { BasketType, PoolIdea } from "./types";
 
@@ -33,46 +34,25 @@ export function useRealtimePool(tenantId: string | null, voter: string) {
   const fetchAll = useCallback(async () => {
     if (!tenantId) return;
 
-    const ideasRes = await supabase
-      .from("idea_pool")
-      .select("*")
-      .eq("tenant_id", tenantId)
-      .order("created_at", { ascending: false });
+    // Üç sorgu (fikirler + kendi oyların + dönüştürülen sepetler) tek uçta.
+    // Kendi oyunu okumak `vote.view_all` istemiyor — ayrım sunucuda
+    // list_my_pool_votes RPC'siyle yapılıyor.
+    const res = await apiFetch<{
+      ideas: PoolIdea[];
+      myVotes: string[];
+      promotedBaskets: Record<string, PromotedBasketInfo>;
+    }>("/api/pool", { tenantId });
 
-    let votedIds: string[] = [];
-    const rpc = await supabase.rpc("list_my_pool_votes");
-    if (!rpc.error && rpc.data) {
-      votedIds = (rpc.data as { pool_idea_id: string }[]).map((r) => r.pool_idea_id);
-    } else {
-      const votesRes = await supabase
-        .from("pool_votes")
-        .select("pool_idea_id")
-        .eq("tenant_id", tenantId)
-        .eq("voter", voter);
-      votedIds = ((votesRes.data as { pool_idea_id: string }[]) ?? []).map((r) => r.pool_idea_id);
-    }
-
-    const rows = (ideasRes.data as PoolIdea[]) ?? [];
-    const byId = new Map<string, PoolIdea>();
-    for (const row of rows) byId.set(row.id, row);
-
-    const basketIds = [...new Set(rows.map((r) => r.promoted_basket_id).filter((id): id is string => !!id))];
-    const promotedBaskets: Record<string, PromotedBasketInfo> = {};
-    if (basketIds.length) {
-      const basketsRes = await supabase.from("baskets").select("id, type, title").in("id", basketIds);
-      for (const b of (basketsRes.data as { id: string; type: BasketType; title: string }[]) ?? []) {
-        promotedBaskets[b.id] = { type: b.type, title: b.title };
-      }
-    }
+    if (!res.ok || !res.data) return;
 
     setState((prev) => ({
       ...prev,
-      ideas: [...byId.values()],
-      myVotes: new Set(votedIds),
-      promotedBaskets,
+      ideas: res.data!.ideas ?? [],
+      myVotes: new Set(res.data!.myVotes ?? []),
+      promotedBaskets: res.data!.promotedBaskets ?? {},
       loading: false,
     }));
-  }, [tenantId, voter]);
+  }, [tenantId]);
 
   const stopPolling = useCallback(() => {
     if (pollRef.current) {
@@ -93,45 +73,48 @@ export function useRealtimePool(tenantId: string | null, voter: string) {
     let active = true;
     void fetchAll();
 
-    const channel = supabase
-      .channel("pool:" + tenantId)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "idea_pool", filter: `tenant_id=eq.${tenantId}` },
-        (payload) => {
-          if (!active) return;
-          const row = (payload.new ?? payload.old) as PoolIdea | undefined;
-          if (!row?.id) {
-            void fetchAll();
-            return;
-          }
-          setState((prev) => {
-            if (payload.eventType === "DELETE") {
-              return { ...prev, ideas: prev.ideas.filter((i) => i.id !== row.id) };
-            }
-            const map = new Map(prev.ideas.map((i) => [i.id, i]));
-            map.set(row.id, row);
-            return { ...prev, ideas: [...map.values()].sort((a, b) => (a.created_at < b.created_at ? 1 : -1)) };
-          });
-        }
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "pool_votes", filter: `tenant_id=eq.${tenantId}` },
-        () => {
-          if (active) void fetchAll();
-        }
-      )
-      .subscribe((status) => {
+    const unsubscribe = subscribeChanges({
+      filters: [
+        { table: "idea_pool", column: "tenant_id", value: tenantId },
+        { table: "pool_votes", column: "tenant_id", value: tenantId },
+      ],
+      onChange: (payload) => {
         if (!active) return;
-        if (status === "SUBSCRIBED") {
-          setState((p) => ({ ...p, connected: true }));
-          stopPolling();
-        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
-          setState((p) => ({ ...p, connected: false }));
-          startPolling();
+
+        // pool_votes: sayaç idea_pool UPDATE'i olarak da geliyor ama kendi
+        // oyunu bilmek için yeniden çekmek gerekiyor (oy sahipleri gizli).
+        if (payload.table === "pool_votes") {
+          void fetchAll();
+          return;
         }
-      });
+
+        const row = (payload.new ?? payload.old) as PoolIdea | undefined;
+        // truncated: satır 8KB'ı aştı ya da gizli içerik (moderasyon) —
+        // sunucudan doğrusunu iste.
+        if (payload.truncated || !row?.id) {
+          void fetchAll();
+          return;
+        }
+
+        setState((prev) => {
+          if (payload.eventType === "DELETE") {
+            return { ...prev, ideas: prev.ideas.filter((i) => i.id !== row.id) };
+          }
+          const map = new Map(prev.ideas.map((i) => [i.id, i]));
+          map.set(row.id, row);
+          return {
+            ...prev,
+            ideas: [...map.values()].sort((a, b) => (a.created_at < b.created_at ? 1 : -1)),
+          };
+        });
+      },
+      onStatus: (isConnected) => {
+        if (!active) return;
+        setState((p) => ({ ...p, connected: isConnected }));
+        if (isConnected) stopPolling();
+        else startPolling();
+      },
+    });
 
     const onVis = () => {
       if (document.visibilityState === "visible") void fetchAll();
@@ -142,7 +125,7 @@ export function useRealtimePool(tenantId: string | null, voter: string) {
       active = false;
       document.removeEventListener("visibilitychange", onVis);
       stopPolling();
-      void supabase.removeChannel(channel);
+      unsubscribe();
     };
   }, [tenantId, fetchAll, startPolling, stopPolling]);
 

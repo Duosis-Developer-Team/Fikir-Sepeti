@@ -68,7 +68,9 @@ export default function LoginPage() {
             Yeni şifre belirle
           </h1>
           <p className="mt-1.5 text-[0.92rem]" style={{ color: "var(--text-muted)" }}>
-            {newPasswordDone ? "Şifren güncellendi." : "Hesabına yeni bir şifre belirle."}
+            {newPasswordDone
+              ? "Şifren güncellendi. Yeni şifrenle giriş yapabilirsin."
+              : "Hesabına yeni bir şifre belirle."}
           </p>
           {loginError && (
             <p className="mt-3 rounded-lg px-3 py-2 text-[0.85rem]" style={{ background: "rgba(242,121,95,0.12)", color: "#F2795F" }} role="alert">
@@ -76,13 +78,18 @@ export default function LoginPage() {
             </p>
           )}
           {newPasswordDone ? (
+            /* Sıfırlama linki OTURUM AÇTIRMIYOR — yalnızca yeni şifre
+               belirlemeye yetiyor (ve sunucu eski oturumların hepsini iptal
+               ediyor). O yüzden buradan "/"'a göndermek anlamsız olurdu:
+               AuthGate hemen /login'e geri atardı. Kullanıcı giriş formuna
+               düşüyor ve yeni şifresiyle giriyor. */
             <button
               type="button"
-              onClick={() => window.location.assign("/")}
+              onClick={() => window.location.assign("/login")}
               className="mt-6 w-full rounded-full py-3 text-[0.95rem] font-semibold transition disabled:opacity-40"
               style={{ background: "var(--text)", color: "var(--bg)" }}
             >
-              Sepete git →
+              Giriş yap →
             </button>
           ) : (
             <>

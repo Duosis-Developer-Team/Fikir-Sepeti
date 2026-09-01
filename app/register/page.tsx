@@ -5,7 +5,7 @@ import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
 import { BrandIcon } from "@/components/BrandIcon";
 import { useSession } from "@/components/AuthGate";
-import { supabase } from "@/lib/supabase";
+import { apiFetch } from "@/lib/api-headers";
 import {
   normalizeDomainInput,
   normalizeInviteCode,
@@ -104,10 +104,11 @@ export default function RegisterPage() {
     }
     setBusy(true);
     try {
-      const { data: peekRows } = await supabase.rpc("peek_tenant_for_email", {
-        p_email: clean,
-      });
-      const row = Array.isArray(peekRows) ? peekRows[0] : peekRows;
+      const peek = await apiFetch<{ tenant: { id: string; name: string; via: string } | null }>(
+        `/api/tenant/peek?email=${encodeURIComponent(clean)}`
+      );
+      const t = peek.data?.tenant ?? null;
+      const row = t ? { tenant_id: t.id, tenant_name: t.name, via: t.via } : null;
       const route = routeAfterPeek(
         row
           ? {

@@ -7,7 +7,7 @@ import { BrandIcon } from "@/components/BrandIcon";
 import { Avatars } from "@/components/shared/Avatars";
 import { loadHome } from "@/lib/db";
 import { accentFor, soft } from "@/lib/accent";
-import { supabase } from "@/lib/supabase";
+import { subscribeChanges } from "@/lib/realtime";
 import { listSuggestions, createSuggestion, voteSuggestion, setSuggestionStatus, deleteSuggestion } from "@/lib/suggestions";
 import type { Basket, Idea, Suggestion } from "@/lib/types";
 
@@ -86,11 +86,10 @@ export default function ProfilePage() {
   useEffect(() => {
     void refresh();
     if (!tenantId) return;
-    const ch = supabase
-      .channel("profil:live")
-      .on("postgres_changes", { event: "*", schema: "public", table: "baskets" }, () => void refresh())
-      .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return subscribeChanges({
+      filters: [{ table: "baskets" }],
+      onChange: () => void refresh(),
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tenantId]);
 

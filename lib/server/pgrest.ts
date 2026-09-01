@@ -457,21 +457,14 @@ export type Db = {
  * transaction'ında ve `SET LOCAL app.user_email` altında koşuyor —
  * PostgREST'in istek başına transaction davranışıyla aynı.
  */
-export function dbForIdentity(
-  email: string | null | (() => Promise<string | null>)
+/**
+ * Verilen çalıştırıcı üstünde bir Db kurar. Kimliğin nasıl belirlendiğini
+ * (ve hangi bağlantıyla çalışıldığını) çağıran seçer — uygulama RLS'li app
+ * rolüyle, testler/seed sahip rolüyle bağlanıyor.
+ */
+export function makeDb(
+  run: <R>(fn: (client: PoolClient) => Promise<R>) => Promise<R>
 ): Db {
-  // Kimlik tembel de verilebiliyor: route'lar `const sb = getDb(req)` diye
-  // SENKRON çağırıyor, ama kimliği çözmek asenkron. Çözüm bir kez yapılıp
-  // saklanıyor — aynı istekte her sorgu için tekrar tekrar çözülmüyor.
-  let cached: Promise<string | null> | null = null;
-  const resolve = (): Promise<string | null> => {
-    if (typeof email !== "function") return Promise.resolve(email);
-    cached ??= email();
-    return cached;
-  };
-  const run = async <R,>(fn: (client: PoolClient) => Promise<R>) =>
-    withIdentity(await resolve(), fn);
-
   return {
     from: (table: string) => new Builder(table, run),
     rpc: async (fn: string, args?: Record<string, unknown>) => {
@@ -488,12 +481,7 @@ export function dbForIdentity(
         // Skaler dönen fonksiyonlar (resolve_tenant_for_claims gibi) tek
         // kolonlu tek satır verir; Supabase bunu düz değer olarak döndürüyor.
         if (rows.length === 1 && Object.keys(rows[0]).length === 1) {
-          return {
-            data: Object.values(rows[0])[0],
-            error: null,
-            count: null,
-            status: 200,
-          };
+          return { data: Object.values(rows[0])[0], error: null, count: null, status: 200 };
         }
         return { data: rows, error: null, count: null, status: 200 };
       } catch (err) {
@@ -501,4 +489,22 @@ export function dbForIdentity(
       }
     },
   };
+}
+
+export function dbForIdentity(
+  email: string | null | (() => Promise<string | null>)
+): Db {
+  // Kimlik tembel de verilebiliyor: route'lar `const sb = getDb(req)` diye
+  // SENKRON çağırıyor, ama kimliği çözmek asenkron. Çözüm bir kez yapılıp
+  // saklanıyor — aynı istekte her sorgu için tekrar tekrar çözülmüyor.
+  let cached: Promise<string | null> | null = null;
+  const resolve = (): Promise<string | null> => {
+    if (typeof email !== "function") return Promise.resolve(email);
+    cached ??= email();
+    return cached;
+  };
+  const run = async <R,>(fn: (client: PoolClient) => Promise<R>) =>
+    withIdentity(await resolve(), fn);
+
+  return makeDb(run);
 }

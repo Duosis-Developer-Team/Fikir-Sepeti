@@ -1,16 +1,12 @@
 import { test, expect } from "@playwright/test";
-import { createClient } from "@supabase/supabase-js";
 import { loginAs, expectHome, SEED } from "./helpers";
 import { DUOSIS_TENANT_ID, OTHER_TENANT_ID } from "../lib/tenant";
+import { serviceClient } from "./db";
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 test.describe("S1 tenant isolation (app layer)", () => {
   test("no row has null tenant_id", async () => {
-    const sb = createClient(url, process.env.SUPABASE_SERVICE_ROLE_KEY || anon, {
-      auth: { persistSession: false },
-    });
+    const sb = serviceClient();
     for (const table of [
       "baskets",
       "ideas",

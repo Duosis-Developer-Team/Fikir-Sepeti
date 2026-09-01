@@ -6,7 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useNameContext } from "@/components/AuthGate";
 import { SocialBasket } from "@/components/social/SocialBasket";
 import { HackathonRunner } from "@/components/hackathon/HackathonRunner";
-import { supabase } from "@/lib/supabase";
+import { apiFetch } from "@/lib/api-headers";
 import { deleteBasket, updateBasketTitle } from "@/lib/db";
 import { accentFor } from "@/lib/accent";
 import type { Basket } from "@/lib/types";
@@ -49,13 +49,8 @@ export default function BasketDetail() {
       if (!tenantId) return;
       setNotFound(false);
       setBasket(null);
-      const { data } = await supabase
-        .from("baskets")
-        .select("*")
-        .eq("id", id)
-        .eq("tenant_id", tenantId)
-        .maybeSingle();
-      if (data) setBasket(data as Basket);
+      const res = await apiFetch<{ basket: Basket }>(`/api/basket/${id}/live`, { tenantId });
+      if (res.ok && res.data?.basket) setBasket(res.data.basket);
       else setNotFound(true);
     })();
   }, [id, tenantId]);

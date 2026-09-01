@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { setBasketPhase } from "@/lib/db";
-import { supabase } from "@/lib/supabase";
+import { patchBasket, setBasketPhase } from "@/lib/db";
 import type { StageContext } from "../contract";
 import { GOLD, dim } from "../contract";
 import { GoldButton, StageHeadline } from "../ui";
@@ -30,11 +29,7 @@ export function HackathonStage({ data, isAdmin, refresh }: StageContext) {
   const back = () => setBasketPhase(basket.id, "team").then(refresh);
   // GEÇİCİ TEST BUTONU — test için süreyi beklemeden bitirir, iş bitince kaldır.
   const forceTimeUp = () =>
-    supabase
-      .from("baskets")
-      .update({ hackathon_ends_at: new Date().toISOString() })
-      .eq("id", basket.id)
-      .then(() => refresh());
+    patchBasket(basket.id, { hackathon_ends_at: new Date().toISOString() }).then(() => refresh());
 
   return (
     <div className="mx-auto flex min-h-[58vh] max-w-[960px] flex-col items-center justify-center text-center">

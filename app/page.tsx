@@ -13,7 +13,7 @@ import { PoolPanel } from "@/components/pool/PoolPanel";
 import { LandingPage } from "@/components/LandingPage";
 import { Avatars } from "@/components/shared/Avatars";
 import { createBasket, loadHome } from "@/lib/db";
-import { supabase } from "@/lib/supabase";
+import { subscribeChanges } from "@/lib/realtime";
 import { accentFor, soft, type Accent } from "@/lib/accent";
 import type { Basket, BasketType, Idea, ResolveMethod } from "@/lib/types";
 
@@ -349,12 +349,12 @@ export default function Home() {
       return;
     }
     void refresh();
-    const ch = supabase
-      .channel("home:live")
-      .on("postgres_changes", { event: "*", schema: "public", table: "baskets" }, () => void refresh())
-      .on("postgres_changes", { event: "*", schema: "public", table: "ideas" }, () => void refresh())
-      .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    // Tenant genelinde: SSE akışı zaten yalnızca kendi tenant'ının olaylarını
+    // taşıyor, o yüzden ek filtre gerekmiyor.
+    return subscribeChanges({
+      filters: [{ table: "baskets" }, { table: "ideas" }],
+      onChange: () => void refresh(),
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh closes over tenantId
   }, [tenantId, user]);
 

@@ -8,13 +8,20 @@ import {
   useState,
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import type { Session } from "@supabase/supabase-js";
 import { BrandIcon } from "@/components/BrandIcon";
-import { supabase } from "@/lib/supabase";
+import { apiFetch } from "@/lib/api-headers";
 import { DEV_AUTH_PASSWORD } from "@/lib/dev-auth";
-import { azureTenantIdFromUser } from "@/lib/azure-claims";
 import { isPublicPath } from "@/lib/public-paths";
-import { normalizeInviteCode } from "@/lib/register";
+
+/**
+ * Oturum kapısı.
+ *
+ * Supabase Auth (GoTrue) kaldırıldı. Oturum artık httpOnly ÇEREZDE ve tüm
+ * kimlik işleri /api/auth/* üzerinden — JavaScript'in jetona erişimi yok.
+ *
+ * DIŞA AÇIK SÖZLEŞME (Ctx) BİLEREK AYNI: login/register sayfaları ve
+ * useNameContext kullanan ~15 bileşen değişmedi.
+ */
 
 export type SessionUser = {
   id: string;
@@ -33,19 +40,14 @@ type Ctx = {
   needsWorkspace: boolean;
   bypass: boolean;
   loginAzure: () => void;
-  /** Bypass/dev password login (seed or known domain). */
   devLogin: (draft: string) => Promise<void>;
-  /** Email+password sign-in for /login. Never falls back to signUp. */
   loginWithPassword: (email: string, password: string) => Promise<void>;
-  /** Sends a password-reset email via Supabase. */
   requestPasswordReset: (email: string) => Promise<void>;
-  /** True while a PASSWORD_RECOVERY session is active — /login shows the "new password" form. */
+  /** URL'de tek kullanımlık sıfırlama jetonu var — /login "yeni şifre" formunu gösterir. */
   passwordRecovery: boolean;
-  /** Sets the new password during a PASSWORD_RECOVERY session. */
+  /** Sıfırlama jetonuyla yeni şifreyi yazar. */
   updatePassword: (password: string) => Promise<void>;
-  /** Email+password sign-up / sign-in for /register. */
   registerWithPassword: (email: string, password: string) => Promise<void>;
-  /** True right after signUp when Supabase requires email confirmation. */
   needsConfirmation: boolean;
   confirmationEmail: string | null;
   resendConfirmation: () => Promise<void>;
@@ -86,13 +88,13 @@ export function useSession() {
   return useContext(SessionContext);
 }
 
-/** Back-compat: old `useNameContext().name` = user identity (work email). */
+/** Geriye uyum: eski `useNameContext().name` = kullanıcı kimliği (iş e-postası). */
 export function useNameContext() {
   const { user } = useSession();
   return { name: user?.email ?? "", setName: () => {}, tenantId: user?.tenantId ?? null };
 }
 
-/** Dev fallback: ONLY on localhost + NEXT_PUBLIC_AUTH_BYPASS=1. Never on prod domain. */
+/** Dev yolu: YALNIZCA localhost + NEXT_PUBLIC_AUTH_BYPASS=1. Prod'da asla. */
 export function isDevBypass(): boolean {
   if (typeof window === "undefined") return false;
   if (process.env.NEXT_PUBLIC_AUTH_BYPASS !== "1") return false;
@@ -100,66 +102,11 @@ export function isDevBypass(): boolean {
   return h === "localhost" || h === "127.0.0.1";
 }
 
-async function resolveTenantForClaims(
-  email: string,
-  azureTid: string | null
-): Promise<string | null> {
-  const { data, error } = await supabase.rpc("resolve_tenant_for_claims", {
-    p_email: email,
-    p_azure_tid: azureTid,
-  });
-  if (error) {
-    console.warn("resolve_tenant_for_claims", error);
-    const legacy = await supabase.rpc("resolve_tenant_id_for_email", {
-      p_email: email,
-    });
-    if (legacy.error) {
-      console.error("resolve_tenant_id_for_email", legacy.error);
-      return null;
-    }
-    return (legacy.data as string | null) ?? null;
-  }
-  return (data as string | null) ?? null;
-}
-
-async function ensureMembership(email: string, tenantId: string) {
-  const { error } = await supabase.rpc("ensure_app_membership", {
-    p_email: email.toLowerCase(),
-    p_tenant_id: tenantId,
-  });
-  if (error) {
-    console.error("ensure_app_membership", error);
-    // Fallback for DBs without 0012 (best-effort; may fail under RLS)
-    await supabase.from("app_users").upsert(
-      {
-        tenant_id: tenantId,
-        user_id: email.toLowerCase(),
-        email: email.toLowerCase(),
-        display_name: email.split("@")[0],
-      },
-      { onConflict: "tenant_id,user_id" }
-    );
-  }
-}
-
-async function bindAfterAuth(
-  email: string,
-  azureTid: string | null
-): Promise<{ tenantId: string | null; denied: boolean }> {
-  const tenantId = await resolveTenantForClaims(email, azureTid);
-  if (!tenantId) return { tenantId: null, denied: true };
-  await ensureMembership(email, tenantId);
-  return { tenantId, denied: false };
-}
-
-function toUserBase(session: Session | null): Omit<SessionUser, "tenantId"> | null {
-  const u = session?.user;
-  if (!u) return null;
-  const email = (u.email ?? "").toLowerCase();
-  const meta = u.user_metadata ?? {};
-  const name = (meta.name as string) || (meta.full_name as string) || email;
-  return { id: u.id, email, name };
-}
+type SessionResponse = {
+  user: SessionUser | null;
+  needsWorkspace: boolean;
+  tenantDenied: boolean;
+};
 
 const LOGIN_PATH = "/login";
 const REGISTER_PATH = "/register";
@@ -171,32 +118,34 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   const [tenantDenied, setTenantDenied] = useState(false);
   const [deniedEmail, setDeniedEmail] = useState<string | null>(null);
   const [loginError, setLoginError] = useState<string | null>(null);
-  const [needsConfirmation, setNeedsConfirmation] = useState(false);
-  const [confirmationEmail, setConfirmationEmail] = useState<string | null>(null);
-  // "Şifremi unuttum" linkiyle dönüldüğünde Supabase PASSWORD_RECOVERY olayını
-  // tetikler — bu, kullanıcı zaten oturum açmış gibi görünse de asıl amaç yeni
-  // şifre belirlemek, o yüzden bu true iken normal "zaten girişlisin" yönlendirmesi
-  // devre dışı kalır (aksi halde eski şifre hiç değişmeden uygulamaya atılıyordu).
-  const [passwordRecovery, setPasswordRecovery] = useState(false);
+  /**
+   * Şifre sıfırlama jetonu — e-postadaki link `/login?reset=<token>` şeklinde.
+   *
+   * SUPABASE'DEN FARKI ÖNEMLİ: GoTrue'nun kurtarma linki kullanıcıyı gerçekten
+   * OTURUM AÇTIRIYORDU (PASSWORD_RECOVERY olayı); yani linki ele geçiren biri
+   * hesabın içinde gezinebiliyordu. Burada link yalnızca tek kullanımlık bir
+   * jeton taşıyor: sahibi olan kişi SADECE yeni şifre belirleyebiliyor,
+   * uygulamaya giremiyor. Sunucu şifre değişince tüm eski oturumları da
+   * iptal ediyor (bkz. app/api/auth/password-reset PUT).
+   */
+  const [resetToken, setResetToken] = useState<string | null>(null);
   const pathname = usePathname();
   const router = useRouter();
 
-  const applySession = useCallback(async (session: Session | null) => {
-    const base = toUserBase(session);
-    if (!base) {
+  /** Sunucudaki oturumun tek doğru kaynağı: /api/auth/session. */
+  const syncSession = useCallback(async () => {
+    const res = await apiFetch<SessionResponse>("/api/auth/session");
+    const data = res.data;
+    if (!res.ok || !data?.user) {
       setUser(null);
       setTenantDenied(false);
       setDeniedEmail(null);
-      return;
+      return null;
     }
-    setNeedsConfirmation(false);
-    setConfirmationEmail(null);
-    const azureTid = azureTenantIdFromUser(session?.user);
-    const { tenantId, denied } = await bindAfterAuth(base.email, azureTid);
-    setTenantDenied(denied);
-    setDeniedEmail(denied ? base.email : null);
-    // Keep session identity even without a tenant (SG2 onboarding).
-    setUser({ ...base, tenantId });
+    setUser(data.user);
+    setTenantDenied(data.tenantDenied);
+    setDeniedEmail(data.tenantDenied ? data.user.email : null);
+    return data.user;
   }, []);
 
   useEffect(() => {
@@ -207,27 +156,25 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       setReady(true);
     };
 
-    // Safety net: a hung request (cold-starting DB, dead connection) should
-    // never leave the app stuck on the loading skeleton forever.
+    // Emniyet ağı: asılı kalan bir istek (soğuk başlayan DB, ölü bağlantı)
+    // uygulamayı sonsuza kadar yükleme iskeletinde bırakmamalı.
     const timeout = setTimeout(markReady, 8000);
 
-    // Microsoft OAuth dönüşünde (redirectTo=origin) URL'de "#access_token=..." olur.
-    // Supabase istemcisi bunu kendi içinde işleyip session'ı localStorage'a yazar ve
-    // onAuthStateChange'i tetikler — ama bu asenkron. Burada AYRICA getSession()
-    // çağırıp onun ilk (henüz token işlenmeden dönen) sonucuna göre "ready"i
-    // işaretlemek, token henüz kaydedilmeden "giriş yok" sanılmasına yol açıyordu:
-    // kullanıcı Microsoft'tan yeni dönmüşken oturumsuz görünüyor, F5'te ise token
-    // artık localStorage'da olduğu için sorunsuz giriyordu (rapor edilen bug).
-    // Çözüm: tek doğruluk kaynağı onAuthStateChange — bu her zaman Supabase'in kendi
-    // URL/token işlemesinden SONRA tetiklenir, ilk tetiklendiğinde "ready" işaretlenir.
-    const { data: sub } = supabase.auth.onAuthStateChange(async (e, session) => {
-      if (e === "PASSWORD_RECOVERY") setPasswordRecovery(true);
-      await applySession(session);
-      clearTimeout(timeout);
-      markReady();
-    });
-    return () => sub.subscription.unsubscribe();
-  }, [applySession]);
+    void syncSession()
+      .catch((e) => console.error("ilk oturum kontrolü başarısız", e))
+      .finally(() => {
+        clearTimeout(timeout);
+        markReady();
+      });
+
+    return () => clearTimeout(timeout);
+  }, [syncSession]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const token = new URLSearchParams(window.location.search).get("reset");
+    if (token) setResetToken(token);
+  }, [pathname]);
 
   const needsWorkspace = !!user && !user.tenantId;
 
@@ -241,192 +188,125 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       router.replace(REGISTER_PATH);
       return;
     }
-    if (passwordRecovery) return;
+    // Sıfırlama akışındayken uygulamaya atma: kullanıcı buraya yeni şifre
+    // belirlemeye geldi. (Supabase sürümünde tam olarak bu olmuştu — kurtarma
+    // linki oturum açtırdığı için AuthGate hemen "/"'a yönlendiriyor ve
+    // kullanıcı ESKİ şifresiyle içeride kalıyordu.)
+    if (resetToken) return;
     if (user?.tenantId && (pathname === LOGIN_PATH || pathname === REGISTER_PATH)) {
       router.replace("/");
     }
-  }, [ready, user, needsWorkspace, pathname, router, passwordRecovery]);
+  }, [ready, user, needsWorkspace, pathname, router, resetToken]);
 
   const loginAzure = () => {
     setLoginError(null);
-    void supabase.auth.signInWithOAuth({
-      provider: "azure",
-      options: { scopes: "email openid profile", redirectTo: window.location.origin },
-    });
+    // Tam sayfa yönlendirme: OAuth akışı tarayıcıyı Microsoft'a götürüp geri
+    // getiriyor, fetch ile yapılamaz.
+    const back = encodeURIComponent(window.location.pathname);
+    window.location.href = `/api/auth/azure/start?redirect_to=${back}`;
   };
 
   const refreshBinding = async () => {
-    const { data } = await supabase.auth.getSession();
-    await applySession(data.session);
+    await syncSession();
   };
 
-  const ensurePasswordSession = async (email: string, password: string) => {
-    const lower = email.toLowerCase();
-    const first = await supabase.auth.signInWithPassword({ email: lower, password });
-    if (first.data.session) return first.data.session;
-    const { error: upErr } = await supabase.auth.signUp({
-      email: lower,
-      password,
-      options: { data: { name: lower.split("@")[0] } },
-    });
-    if (upErr && !/already|registered/i.test(upErr.message)) {
-      throw new Error(upErr.message);
-    }
-    const second = await supabase.auth.signInWithPassword({ email: lower, password });
-    if (!second.data.session) {
-      throw new Error(second.error?.message ?? "Giriş başarısız");
-    }
-    return second.data.session;
-  };
-
-  /** /login only — never falls back to signUp (a wrong password must not silently create a new account). */
+  /** /login — ASLA kayıt akışına düşmez; yanlış şifre yanlış şifredir. */
   const loginWithPassword = async (email: string, password: string) => {
     setLoginError(null);
     setTenantDenied(false);
     setDeniedEmail(null);
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: email.trim().toLowerCase(),
-      password,
+    const res = await apiFetch("/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
     });
-    if (error || !data.session) {
-      const message = /email not confirmed/i.test(error?.message ?? "")
-        ? "E-posta adresini henüz onaylamadın. Gelen kutunu kontrol et."
-        : "E-posta veya şifre hatalı.";
+    if (!res.ok) {
+      const message = res.error ?? "E-posta veya şifre hatalı.";
       setLoginError(message);
       throw new Error(message);
     }
-    await applySession(data.session);
+    await syncSession();
   };
 
   const requestPasswordReset = async (email: string) => {
-    await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-      redirectTo: typeof window !== "undefined" ? `${window.location.origin}/login` : undefined,
+    await apiFetch("/api/auth/password-reset", {
+      method: "POST",
+      body: JSON.stringify({ email: email.trim().toLowerCase() }),
     });
   };
 
-  /** PASSWORD_RECOVERY oturumunda yeni şifreyi kaydeder — /login bunu recovery ekranında çağırır. */
   const updatePassword = async (password: string) => {
     setLoginError(null);
-    if (password.length < 6) {
-      const message = "Şifre en az 6 karakter olmalı.";
+    if (!resetToken) {
+      const message = "Sıfırlama linki geçersiz ya da süresi dolmuş.";
       setLoginError(message);
       throw new Error(message);
     }
-    const { error } = await supabase.auth.updateUser({ password });
-    if (error) {
-      setLoginError(error.message);
-      throw error;
-    }
-    setPasswordRecovery(false);
-  };
-
-  const clearNeedsConfirmation = () => {
-    setNeedsConfirmation(false);
-    setConfirmationEmail(null);
-  };
-
-  const resendConfirmation = async () => {
-    if (!confirmationEmail) return;
-    await supabase.auth.resend({
-      type: "signup",
-      email: confirmationEmail,
-      options: {
-        emailRedirectTo: typeof window !== "undefined" ? `${window.location.origin}/register?confirmed=1` : undefined,
-      },
+    const res = await apiFetch("/api/auth/password-reset", {
+      method: "PUT",
+      body: JSON.stringify({ token: resetToken, password }),
     });
+    if (!res.ok) {
+      const message = res.error ?? "Şifre güncellenemedi.";
+      setLoginError(message);
+      throw new Error(message);
+    }
+    // Jeton tek kullanımlık ve tüketildi; URL'den de temizleniyor ki sayfa
+    // yenilendiğinde form yeniden açılmasın.
+    setResetToken(null);
+    if (typeof window !== "undefined") {
+      window.history.replaceState(null, "", LOGIN_PATH);
+    }
   };
 
   const registerWithPassword = async (email: string, password: string) => {
     setLoginError(null);
     setTenantDenied(false);
     setDeniedEmail(null);
-    setNeedsConfirmation(false);
-    setConfirmationEmail(null);
-    const lower = email.trim().toLowerCase();
-    try {
-      // Resubmitting the form with an existing, already-confirmed account just signs in.
-      const first = await supabase.auth.signInWithPassword({ email: lower, password });
-      if (first.data.session) {
-        await applySession(first.data.session);
-        return;
-      }
-      const { data: signUpData, error: upErr } = await supabase.auth.signUp({
-        email: lower,
-        password,
-        options: {
-          data: { name: lower.split("@")[0] },
-          emailRedirectTo: `${window.location.origin}/register?confirmed=1`,
-        },
-      });
-      if (upErr) {
-        if (/already|registered/i.test(upErr.message)) {
-          throw new Error("Bu e-posta ile zaten bir hesap var. Şifreni mi unuttun?");
-        }
-        throw new Error(upErr.message);
-      }
-      if (signUpData.session) {
-        await applySession(signUpData.session);
-        return;
-      }
-      // Newer Supabase versions return no error for an already-registered email
-      // (anti-enumeration) but flag it via an empty identities array.
-      if (signUpData.user && signUpData.user.identities?.length === 0) {
-        throw new Error("Bu e-posta ile zaten bir hesap var. Şifreni mi unuttun?");
-      }
-      // signUp succeeded but no session => "Confirm email" is on in Supabase; wait for the link.
-      setNeedsConfirmation(true);
-      setConfirmationEmail(lower);
-    } catch (e) {
-      setLoginError(e instanceof Error ? e.message : "Kayıt başarısız");
-      throw e;
+    const res = await apiFetch("/api/auth/register", {
+      method: "POST",
+      body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
+    });
+    if (!res.ok) {
+      const message = res.error ?? "Kayıt başarısız";
+      setLoginError(message);
+      throw new Error(message);
     }
+    await syncSession();
   };
 
   const createWorkspace = async (name: string, domain?: string | null) => {
     setLoginError(null);
-    const email = user?.email;
-    if (!email) {
-      setLoginError("Önce hesap oluştur");
-      throw new Error("no session");
-    }
-    const { data, error } = await supabase.rpc("create_tenant_for_user", {
-      p_name: name,
-      p_domain: domain ?? null,
-      p_email: email,
+    const res = await apiFetch("/api/auth/workspace", {
+      method: "POST",
+      body: JSON.stringify({ action: "create", name, domain: domain ?? null }),
     });
-    if (error) {
-      setLoginError(error.message);
-      throw error;
+    if (!res.ok) {
+      const message = res.error ?? "Çalışma alanı oluşturulamadı";
+      setLoginError(message);
+      throw new Error(message);
     }
-    if (!data) {
-      setLoginError("Çalışma alanı oluşturulamadı");
-      throw new Error("no tenant");
-    }
-    await applySession((await supabase.auth.getSession()).data.session);
+    await syncSession();
   };
 
   const joinWithInvite = async (code: string) => {
     setLoginError(null);
-    const email = user?.email;
-    if (!email) {
-      setLoginError("Önce hesap oluştur");
-      throw new Error("no session");
-    }
-    const { data, error } = await supabase.rpc("join_tenant_by_invite", {
-      p_code: normalizeInviteCode(code),
-      p_email: email,
+    const res = await apiFetch("/api/auth/workspace", {
+      method: "POST",
+      body: JSON.stringify({ action: "join", code }),
     });
-    if (error) {
-      setLoginError(error.message);
-      throw error;
+    if (!res.ok) {
+      const message = res.error ?? "Davet geçersiz";
+      setLoginError(message);
+      throw new Error(message);
     }
-    if (!data) {
-      setLoginError("Davet geçersiz");
-      throw new Error("no tenant");
-    }
-    await applySession((await supabase.auth.getSession()).data.session);
+    await syncSession();
   };
 
+  /**
+   * CI / yerel geliştirme girişi. Seed kullanıcılar sabit bir parolayla
+   * açılıyor; hesap yoksa kayıt edilip girilir. Prod'da bu yol da normal
+   * giriş uçlarını kullanıyor — ayrı bir arka kapı YOK.
+   */
   const devLogin = async (draft: string) => {
     const clean = draft.trim();
     if (clean.length < 2) return;
@@ -435,27 +315,32 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     setTenantDenied(false);
     setDeniedEmail(null);
 
-    try {
-      const session = await ensurePasswordSession(email, DEV_AUTH_PASSWORD);
-      const base = toUserBase(session);
-      if (!base) return;
-      const azureTid = azureTenantIdFromUser(session.user);
-      const { tenantId, denied } = await bindAfterAuth(base.email, azureTid);
-      setTenantDenied(denied);
-      setDeniedEmail(denied ? base.email : null);
-      setUser({ ...base, name: clean.includes("@") ? base.name : clean, tenantId });
-    } catch (e) {
-      setLoginError(e instanceof Error ? e.message : "Giriş başarısız — seed kullanıcı mı?");
+    const login = await apiFetch("/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password: DEV_AUTH_PASSWORD }),
+    });
+
+    if (!login.ok) {
+      const signup = await apiFetch("/api/auth/register", {
+        method: "POST",
+        body: JSON.stringify({ email, password: DEV_AUTH_PASSWORD }),
+      });
+      if (!signup.ok) {
+        setLoginError(signup.error ?? "Giriş başarısız — seed kullanıcı mı?");
+        return;
+      }
     }
+
+    await syncSession();
   };
 
   const signOut = () => {
-    void supabase.auth.signOut();
-    setUser(null);
-    setTenantDenied(false);
-    setDeniedEmail(null);
-    setLoginError(null);
-    setPasswordRecovery(false);
+    void apiFetch("/api/auth/logout", { method: "POST" }).then(() => {
+      setUser(null);
+      setTenantDenied(false);
+      setDeniedEmail(null);
+      setLoginError(null);
+    });
   };
 
   const clearLoginError = () => setLoginError(null);
@@ -473,13 +358,16 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     devLogin,
     loginWithPassword,
     requestPasswordReset,
-    passwordRecovery,
+    passwordRecovery: resetToken !== null,
     updatePassword,
     registerWithPassword,
-    needsConfirmation,
-    confirmationEmail,
-    resendConfirmation,
-    clearNeedsConfirmation,
+    // E-posta doğrulaması bu kurulumda KAPALI (EMAIL_PROVIDER=log_only):
+    // kayıt olan anında giriyor. Alanlar sözleşmeyi bozmamak için duruyor;
+    // SMTP bağlanınca /api/auth/register bunları yeniden doldurabilir.
+    needsConfirmation: false,
+    confirmationEmail: null,
+    resendConfirmation: async () => {},
+    clearNeedsConfirmation: () => {},
     createWorkspace,
     joinWithInvite,
     clearLoginError,
@@ -496,7 +384,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** Oturum kontrolü sürerken gösterilir — app/loading.tsx ile aynı görsel dil, boş ekran yok. */
+/** Oturum kontrolü sürerken gösterilir — app/loading.tsx ile aynı görsel dil. */
 function AuthLoadingSkeleton() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-bg px-6 text-text">

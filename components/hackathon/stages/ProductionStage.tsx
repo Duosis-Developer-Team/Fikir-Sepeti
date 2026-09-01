@@ -6,7 +6,7 @@ import { markDone, listFeedback } from "@/lib/hackathon";
 import { markPoolWinner, returnIdeaToPool } from "@/lib/pool";
 import { groupFeedbackByTeam } from "@/lib/feedback-groups";
 import { computeTeamScores, DEFAULT_RUBRIC } from "@/lib/scoring";
-import { supabase } from "@/lib/supabase";
+import { subscribeChanges } from "@/lib/realtime";
 import type { Feedback } from "@/lib/types";
 import type { StageContext } from "../contract";
 import { GOLD, GOLD_SOFT, dim } from "../contract";
@@ -50,17 +50,10 @@ export function ProductionStage({ data, config, user, isAdmin }: StageContext) {
 
   useEffect(() => {
     loadFeedback();
-    const ch = supabase
-      .channel(`fb-prod:${basket.id}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "feedback", filter: `basket_id=eq.${basket.id}` },
-        () => loadFeedback()
-      )
-      .subscribe();
-    return () => {
-      supabase.removeChannel(ch);
-    };
+    return subscribeChanges({
+      filters: [{ table: "feedback", column: "basket_id", value: basket.id }],
+      onChange: () => loadFeedback(),
+    });
   }, [basket.id, loadFeedback]);
 
   const teamNames = useMemo(() => {

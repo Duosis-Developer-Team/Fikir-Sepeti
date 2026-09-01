@@ -1,27 +1,19 @@
 import { test, expect } from "@playwright/test";
-import { createClient } from "@supabase/supabase-js";
 import { loginAs, SEED } from "./helpers";
 import { DUOSIS_TENANT_ID } from "../lib/tenant";
 import { DEV_AUTH_PASSWORD } from "../lib/dev-auth";
+import { createAuthUser, serviceClient } from "./db";
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const service = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 function admin() {
-  return createClient(url, service, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
+  return serviceClient();
 }
 
 test.describe("SG2 self-serve register", () => {
   test("unknown domain: create workspace → home", async ({ page }) => {
     const email = `sg2create_${Date.now()}@gmail.com`;
     const sb = admin();
-    await sb.auth.admin.createUser({
-      email,
-      password: DEV_AUTH_PASSWORD,
-      email_confirm: true,
-    });
+    await createAuthUser(email, DEV_AUTH_PASSWORD);
 
     await page.goto("/register");
     await page.evaluate(() => {
@@ -57,11 +49,7 @@ test.describe("SG2 self-serve register", () => {
   test("known domain: register joins DuoSis", async ({ page }) => {
     const email = `sg2join_${Date.now()}@duosis.dev`;
     const sb = admin();
-    await sb.auth.admin.createUser({
-      email,
-      password: DEV_AUTH_PASSWORD,
-      email_confirm: true,
-    });
+    await createAuthUser(email, DEV_AUTH_PASSWORD);
 
     await page.goto("/register");
     await page.evaluate(() => {
@@ -110,11 +98,7 @@ test.describe("SG2 self-serve register", () => {
     }
 
     const email = `sg2inv_${Date.now()}@hotmail.com`;
-    await sb.auth.admin.createUser({
-      email,
-      password: DEV_AUTH_PASSWORD,
-      email_confirm: true,
-    });
+    await createAuthUser(email, DEV_AUTH_PASSWORD);
 
     await page.goto("/register");
     await page.evaluate(() => {
@@ -148,11 +132,7 @@ test.describe("SG2 self-serve register", () => {
   test("isolation: new tenant cannot see DuoSis baskets", async ({ page }) => {
     const email = `sg2iso_${Date.now()}@gmail.com`;
     const sb = admin();
-    await sb.auth.admin.createUser({
-      email,
-      password: DEV_AUTH_PASSWORD,
-      email_confirm: true,
-    });
+    await createAuthUser(email, DEV_AUTH_PASSWORD);
     const { data: tid, error } = await sb.rpc("create_tenant_for_user", {
       p_name: "Iso Co",
       p_domain: null,

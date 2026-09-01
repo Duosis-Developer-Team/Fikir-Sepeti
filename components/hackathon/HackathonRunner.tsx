@@ -2,13 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
-import { supabase } from "@/lib/supabase";
+import { subscribeChanges } from "@/lib/realtime";
 import { setBasketPhase } from "@/lib/db";
-import { joinLobbyGated, listParticipants, listScores, listTeamMembers, listTeamVotes, listTeams, setTeamTurn, startHackathonTimer } from "@/lib/hackathon";
+import { joinLobbyGated, loadHackData, setTeamTurn, startHackathonTimer } from "@/lib/hackathon";
 import { decideLobbyJoin } from "@/lib/lobby";
 import { nextTurnEndsAt } from "@/lib/teamTurn";
 import { useSession } from "@/components/AuthGate";
-import type { Basket, Idea, Score } from "@/lib/types";
 import type { HackData, StageContext, StageDef, StagePhase } from "./contract";
 import { PHASE_ORDER, PHASE_LABEL, GOLD, GOLD_SOFT, dim, configReady } from "./contract";
 import { LobbyStage } from "./stages/LobbyStage";
@@ -46,42 +45,30 @@ export function HackathonRunner({ basketId }: { basketId: string }) {
     setViewPhase(null);
   }, [livePhaseKey]);
 
+  // Tek uç: 7 ayrı sorgu yerine sunucuda paralel koşan tek bir veri paketi.
   const load = useCallback(async () => {
-    const [basketRes, ideasRes, participants, teams, members, teamVotes, scores] = await Promise.all([
-      supabase.from("baskets").select("*").eq("id", basketId).single(),
-      supabase.from("ideas").select("*").eq("basket_id", basketId).order("vote_count", { ascending: false }),
-      listParticipants(basketId),
-      listTeams(basketId),
-      listTeamMembers(basketId),
-      listTeamVotes(basketId),
-      listScores(basketId),
-    ]);
-    const basket = basketRes.data as Basket | null;
-    if (!basket) return;
-    setData({
-      basket,
-      ideas: (ideasRes.data as Idea[]) ?? [],
-      participants,
-      teams,
-      members,
-      teamVotes,
-      scores: scores as Score[],
-    });
+    const bundle = await loadHackData(basketId);
+    if (!bundle) return;
+    setData(bundle);
   }, [basketId]);
 
   useEffect(() => {
     void load();
-    const ch = supabase
-      .channel(`hack:${basketId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "baskets", filter: `id=eq.${basketId}` }, () => load())
-      .on("postgres_changes", { event: "*", schema: "public", table: "ideas", filter: `basket_id=eq.${basketId}` }, () => load())
-      .on("postgres_changes", { event: "*", schema: "public", table: "hackathon_participants", filter: `basket_id=eq.${basketId}` }, () => load())
-      .on("postgres_changes", { event: "*", schema: "public", table: "teams", filter: `basket_id=eq.${basketId}` }, () => load())
-      .on("postgres_changes", { event: "*", schema: "public", table: "team_members", filter: `basket_id=eq.${basketId}` }, () => load())
-      .on("postgres_changes", { event: "*", schema: "public", table: "team_votes", filter: `basket_id=eq.${basketId}` }, () => load())
-      .on("postgres_changes", { event: "*", schema: "public", table: "scores", filter: `basket_id=eq.${basketId}` }, () => load())
-      .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    // Abonelikler eskisiyle birebir aynı tablo/filtre kümesi; taşıyıcı
+    // Supabase Realtime yerine SSE (bkz. lib/realtime.ts). Her olay yine
+    // yeniden yükleme tetikliyor — bu davranış korundu.
+    return subscribeChanges({
+      filters: [
+        { table: "baskets", column: "id", value: basketId },
+        { table: "ideas", column: "basket_id", value: basketId },
+        { table: "hackathon_participants", column: "basket_id", value: basketId },
+        { table: "teams", column: "basket_id", value: basketId },
+        { table: "team_members", column: "basket_id", value: basketId },
+        { table: "team_votes", column: "basket_id", value: basketId },
+        { table: "scores", column: "basket_id", value: basketId },
+      ],
+      onChange: () => void load(),
+    });
   }, [basketId, load]);
 
   const doJoin = useCallback(() => {

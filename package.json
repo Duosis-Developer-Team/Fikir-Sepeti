@@ -13,11 +13,11 @@
     "db:stop": "npx supabase stop",
     "db:reset": "npx supabase db reset",
     "db:env": "node scripts/write-env-from-supabase.mjs",
-    "db:seed": "node scripts/seed.mjs",
-    "verify:db": "NODE_OPTIONS=--conditions=react-server tsx scripts/verify-pgrest.mts"
+    "db:seed": "NODE_OPTIONS=--conditions=react-server tsx scripts/seed.mts",
+    "verify:db": "NODE_OPTIONS=--conditions=react-server tsx scripts/verify-pgrest.mts",
+    "stress": "NODE_OPTIONS=--conditions=react-server tsx scripts/stress.mts"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.110.0",
     "@types/pg": "^8.23.1",
     "canvas-confetti": "^1.9.4",
     "jose": "^6.2.10",

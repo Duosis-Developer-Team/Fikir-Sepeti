@@ -1,16 +1,11 @@
 "use client";
 
-import { supabase } from "./supabase";
-import { apiAuthHeaders } from "./api-headers";
+import { apiAuthHeaders, apiFetch } from "./api-headers";
 import type { PoolComment, PoolIdea } from "./types";
 
 export async function listPoolIdeas(tenantId: string): Promise<PoolIdea[]> {
-  const { data } = await supabase
-    .from("idea_pool")
-    .select("*")
-    .eq("tenant_id", tenantId)
-    .order("created_at", { ascending: false });
-  return (data as PoolIdea[]) ?? [];
+  const res = await apiFetch<{ ideas: PoolIdea[] }>("/api/pool", { tenantId });
+  return res.data?.ideas ?? [];
 }
 
 export async function createPoolIdea(input: {

@@ -39,9 +39,10 @@ export default defineConfig({
     env: {
       ...process.env,
       NEXT_PUBLIC_AUTH_BYPASS: "1",
-      NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
-      SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
+      // Uygulama RLS'e tabi rolle bağlanır; testlerin kurulum yaptığı
+      // ADMIN_DATABASE_URL sunucuya VERİLMEZ — uygulama hiçbir zaman RLS'i
+      // atlayan bir bağlantı görmemeli.
+      DATABASE_URL: process.env.DATABASE_URL ?? "",
     },
   },
 });

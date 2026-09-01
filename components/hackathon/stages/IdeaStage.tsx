@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { addIdea } from "@/lib/db";
 import { lockIdeas, setSelectedIdea } from "@/lib/hackathon";
 import { pickRandomIdeas } from "@/lib/assignment";
-import { supabase } from "@/lib/supabase";
+import { apiFetch } from "@/lib/api-headers";
 import { ACCENTS } from "@/lib/accent";
 import type { Idea } from "@/lib/types";
 import { RaffleRevealStage } from "@/components/shared/RaffleRevealStage";
@@ -22,14 +22,14 @@ export function IdeaStage(ctx: StageContext) {
   const [rafflePick, setRafflePick] = useState<Idea[] | null>(null);
 
   useEffect(() => {
-    supabase
-      .from("votes")
-      .select("idea_id")
-      .eq("basket_id", basket.id)
-      .eq("phase", "idea")
-      .eq("voter", user.email)
-      .maybeSingle()
-      .then(({ data }) => setMyVoteId((data?.idea_id as string) ?? null));
+    // Kendi oyunu okumak `vote.view_all` izni gerektirmiyor; sunucu bunu
+    // list_my_votes RPC'siyle ayırıyor (S3 kararı, korundu).
+    void apiFetch<{ myVotes: { phase: string; idea_id: string }[] }>(
+      `/api/basket/${basket.id}/live`
+    ).then((res) => {
+      const mine = res.data?.myVotes?.find((v) => v.phase === "idea");
+      setMyVoteId(mine?.idea_id ?? null);
+    });
   }, [basket.id, user.email, ideas]);
 
   const submitIdea = async () => {
@@ -49,13 +49,11 @@ export function IdeaStage(ctx: StageContext) {
 
   const voteFor = async (ideaId: string) => {
     if (readOnly) return;
-    await supabase.from("votes").delete().eq("basket_id", basket.id).eq("phase", "idea").eq("voter", user.email);
-    await supabase.from("votes").insert({
-      idea_id: ideaId,
-      basket_id: basket.id,
-      phase: "idea",
-      voter: user.email,
-      tenant_id: basket.tenant_id,
+    await apiFetch(`/api/basket/${basket.id}/vote`, {
+      method: "POST",
+      email: user.email,
+      tenantId: basket.tenant_id,
+      body: JSON.stringify({ idea_id: ideaId, phase: "idea" }),
     });
     refresh();
   };

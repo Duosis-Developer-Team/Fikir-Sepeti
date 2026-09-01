@@ -1,16 +1,12 @@
 import { test, expect } from "@playwright/test";
-import { createClient } from "@supabase/supabase-js";
 import { loginAs, SEED } from "./helpers";
 import { DUOSIS_TENANT_ID, OTHER_TENANT_ID } from "../lib/tenant";
 import { isPermission, PERMISSIONS } from "../lib/permissions";
+import { serviceClient } from "./db";
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const service = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 function adminSb() {
-  return createClient(url, service, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
+  return serviceClient();
 }
 
 function devHeaders(email: string, tenantId: string) {

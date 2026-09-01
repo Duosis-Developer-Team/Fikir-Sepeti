@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { loginAs, SEED } from "./helpers";
 import { DUOSIS_TENANT_ID } from "../lib/tenant";
+import { serviceClient } from "./db";
 
 const BASE = process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000";
 const HACK = SEED.hackathonId;
@@ -16,12 +17,7 @@ test.describe("S11 Lobby", () => {
   test("approval policy: member joins pending; admin approves", async ({
     request,
   }) => {
-    const { createClient } = await import("@supabase/supabase-js");
-    const sb = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { persistSession: false } }
-    );
+        const sb = serviceClient();
 
     // Ensure seed hackathon is in lobby with approval
     await sb
@@ -68,12 +64,7 @@ test.describe("S11 Lobby", () => {
   });
 
   test("started basket without late join → 403", async ({ request }) => {
-    const { createClient } = await import("@supabase/supabase-js");
-    const sb = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { persistSession: false } }
-    );
+        const sb = serviceClient();
 
     const lockedId = "bbbb9999-9999-4999-8999-999999999991";
     await sb.from("hackathon_participants").delete().eq("basket_id", lockedId);

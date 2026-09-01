@@ -1,76 +1,60 @@
 "use client";
 
-import { supabase } from "./supabase";
-import type { DurationUnit, Feedback, HackathonConfig, Participant, Score, Team, TeamMember, TeamVote } from "./types";
+import { apiFetch } from "./api-headers";
+import { patchBasket } from "./db";
+import type {
+  DurationUnit,
+  Feedback,
+  HackathonConfig,
+  Idea,
+  Participant,
+  Score,
+  Team,
+  TeamMember,
+  TeamVote,
+  Basket,
+} from "./types";
 
 const UNIT_MS: Record<DurationUnit, number> = { hour: 3600e3, day: 86400e3, week: 604800e3 };
+
+/**
+ * Hackathon istemci işlemleri — tamamı kendi API'miz üzerinden.
+ * Tarayıcıdan veritabanına doğrudan tek bir çağrı kalmadı.
+ */
+
+// ---- Veri paketi ----
+
+export type HackBundle = {
+  basket: Basket;
+  ideas: Idea[];
+  participants: Participant[];
+  teams: Team[];
+  members: TeamMember[];
+  teamVotes: TeamVote[];
+  scores: Score[];
+};
+
+/**
+ * Tüm hackathon verisi tek çağrıda.
+ *
+ * Eskiden HackathonRunner 7 ayrı sorguyu tarayıcıdan paralel atıyor ve
+ * realtime her olayda hepsini tekrar atıyordu — yoğun bir demo fazında
+ * saniyede onlarca istek. Artık tek uç; sorgular sunucuda paralel koşuyor.
+ */
+export async function loadHackData(basketId: string): Promise<HackBundle | null> {
+  const res = await apiFetch<HackBundle>(`/api/hackathon/${basketId}`);
+  return res.ok ? (res.data as HackBundle) : null;
+}
+
+// ---- Faz / süre ----
 
 /** Hackathon fazına geçerken bitiş zamanını (şimdi + süre) yaz. */
 export async function startHackathonTimer(basketId: string, config: HackathonConfig) {
   const d = config.duration;
   const ms = d ? d.value * UNIT_MS[d.unit] : UNIT_MS.day;
-  const endsAt = new Date(Date.now() + ms).toISOString();
-  await supabase.from("baskets").update({ hackathon_ends_at: endsAt }).eq("id", basketId);
-}
-
-// ---- Lobi / katılımcılar ----
-
-export async function joinLobby(input: {
-  basket_id: string;
-  tenant_id: string;
-  user_id: string;
-  email: string | null;
-  display_name: string | null;
-  role?: "admin" | "member";
-  approved?: boolean;
-}) {
-  await supabase.from("hackathon_participants").upsert(
-    {
-      basket_id: input.basket_id,
-      tenant_id: input.tenant_id,
-      user_id: input.user_id,
-      email: input.email,
-      display_name: input.display_name,
-      role: input.role ?? "member",
-      approved: input.approved ?? true,
-    },
-    { onConflict: "basket_id,user_id" }
-  );
-}
-
-/** Server-gated join via /api/lobby/join. */
-export async function joinLobbyGated(input: {
-  basket_id: string;
-  email: string;
-  tenant_id: string;
-  display_name: string | null;
-}): Promise<{ ok: boolean; approved?: boolean; error?: string }> {
-  const { apiAuthHeaders } = await import("./api-headers");
-  const res = await fetch("/api/lobby/join", {
-    method: "POST",
-    headers: await apiAuthHeaders(input.email, input.tenant_id),
-    body: JSON.stringify({
-      basket_id: input.basket_id,
-      display_name: input.display_name,
-    }),
+  await patchBasket(basketId, {
+    hackathon_ends_at: new Date(Date.now() + ms).toISOString(),
   });
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    return { ok: false, error: (json as { error?: string }).error ?? "join_failed" };
-  }
-  return {
-    ok: true,
-    approved: (json as { approved?: boolean }).approved,
-  };
-}
-
-export async function listParticipants(basketId: string): Promise<Participant[]> {
-  const { data } = await supabase
-    .from("hackathon_participants")
-    .select("*")
-    .eq("basket_id", basketId)
-    .order("joined_at", { ascending: true });
-  return (data as Participant[]) ?? [];
 }
 
 /** Hackathon'u kapat — kazanan fikri işaretle, üretime alındı. */
@@ -79,109 +63,98 @@ export async function markDone(
   winnerIdeaId: string | null,
   meta?: { production_note?: string | null; project_link?: string | null }
 ) {
-  await supabase
-    .from("baskets")
-    .update({
-      status: "resolved",
-      phase: "done",
-      winner_idea_id: winnerIdeaId,
-      ...(meta?.production_note !== undefined
-        ? { production_note: meta.production_note }
-        : {}),
-      ...(meta?.project_link !== undefined
-        ? { project_link: meta.project_link }
-        : {}),
-    })
-    .eq("id", basketId);
+  await patchBasket(basketId, {
+    status: "resolved",
+    phase: "done",
+    winner_idea_id: winnerIdeaId,
+    ...(meta?.production_note !== undefined ? { production_note: meta.production_note } : {}),
+    ...(meta?.project_link !== undefined ? { project_link: meta.project_link } : {}),
+  });
 }
 
 // ---- Config ----
 
 export async function setConfig(basketId: string, config: HackathonConfig) {
-  await supabase.from("baskets").update({ config }).eq("id", basketId);
+  await patchBasket(basketId, { config });
 }
 
 export async function setSelectedIdea(basketId: string, ideaId: string | null) {
-  await supabase.from("baskets").update({ selected_idea_id: ideaId }).eq("id", basketId);
+  await patchBasket(basketId, { selected_idea_id: ideaId });
 }
 
-/** Persist locked ideas: primary selected_idea_id + optional config.lockedIdeaIds. */
-export async function lockIdeas(
-  basketId: string,
-  ideaIds: string[],
-  config: HackathonConfig
-) {
-  const primary = ideaIds[0] ?? null;
-  const next: HackathonConfig = {
-    ...config,
-    lockedIdeaIds: ideaIds.length > 1 ? ideaIds : undefined,
-  };
-  await supabase
-    .from("baskets")
-    .update({ selected_idea_id: primary, config: next })
-    .eq("id", basketId);
+/** Kilitlenen fikirler: birincil selected_idea_id + config.lockedIdeaIds. */
+export async function lockIdeas(basketId: string, ideaIds: string[], config: HackathonConfig) {
+  await patchBasket(basketId, {
+    selected_idea_id: ideaIds[0] ?? null,
+    config: {
+      ...config,
+      lockedIdeaIds: ideaIds.length > 1 ? ideaIds : undefined,
+    },
+  });
 }
 
-export async function assignTeamIdeas(
-  pairs: { teamId: string; ideaId: string }[]
-) {
-  for (const p of pairs) {
-    await supabase.from("teams").update({ idea_id: p.ideaId }).eq("id", p.teamId);
-  }
+// ---- Sıralı takım turu ----
+
+export async function setTeamTurn(basketId: string, idx: number, endsAt: string | null) {
+  await patchBasket(basketId, { team_turn_idx: idx, team_turn_ends_at: endsAt });
 }
 
-export async function setTeamAngle(teamId: string, angle: string) {
-  await supabase.from("teams").update({ angle: angle.trim() || null }).eq("id", teamId);
+// ---- Lobi ----
+
+/** Server-gated join via /api/lobby/join. */
+export async function joinLobbyGated(input: {
+  basket_id: string;
+  email: string;
+  tenant_id: string;
+  display_name: string | null;
+}): Promise<{ ok: boolean; approved?: boolean; error?: string }> {
+  const res = await apiFetch<{ approved?: boolean }>("/api/lobby/join", {
+    method: "POST",
+    email: input.email,
+    tenantId: input.tenant_id,
+    body: JSON.stringify({
+      basket_id: input.basket_id,
+      display_name: input.display_name,
+    }),
+  });
+  if (!res.ok) return { ok: false, error: res.error ?? "join_failed" };
+  return { ok: true, approved: res.data?.approved };
 }
 
 // ---- Takımlar ----
 
-export async function renameTeam(teamId: string, name: string) {
-  await supabase.from("teams").update({ name: name.trim() || "Takım" }).eq("id", teamId);
+async function teamAction(basketId: string, body: Record<string, unknown>) {
+  await apiFetch(`/api/hackathon/${basketId}/teams`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
 }
 
-export async function listTeams(basketId: string): Promise<Team[]> {
-  const { data } = await supabase
-    .from("teams")
-    .select("*")
-    .eq("basket_id", basketId)
-    .order("created_at", { ascending: true });
-  return (data as Team[]) ?? [];
-}
-
-export async function listTeamMembers(basketId: string): Promise<TeamMember[]> {
-  const { data } = await supabase.from("team_members").select("*").eq("basket_id", basketId);
-  return (data as TeamMember[]) ?? [];
-}
-
-/** Takımları sıfırdan kur: mevcut takımları sil, yeni takımlar + üyeleri oluştur. */
+/** Takımları sıfırdan kur: mevcutları sil, yeni takımlar + üyeleri oluştur. */
 export async function rebuildTeams(
   basketId: string,
-  tenantId: string,
+  _tenantId: string,
   teams: { name: string; members: string[] }[]
 ) {
-  await supabase.from("teams").delete().eq("basket_id", basketId);
-  for (const t of teams) {
-    const { data } = await supabase
-      .from("teams")
-      .insert({ basket_id: basketId, tenant_id: tenantId, name: t.name })
-      .select()
-      .single();
-    const team = data as Team | null;
-    if (team && t.members.length) {
-      await supabase.from("team_members").insert(
-        t.members.map((uid) => ({
-          team_id: team.id,
-          basket_id: basketId,
-          tenant_id: tenantId,
-          user_id: uid,
-        }))
-      );
-    }
-  }
+  await teamAction(basketId, { action: "rebuild", teams });
 }
 
-/** N takıma böl (random ya da sıralı). */
+export async function assignTeamIdeas(
+  pairs: { teamId: string; ideaId: string }[],
+  basketId: string
+) {
+  await teamAction(basketId, { action: "assignIdeas", pairs });
+}
+
+export async function renameTeam(teamId: string, name: string, basketId: string) {
+  await teamAction(basketId, { action: "rename", teamId, name });
+}
+
+export async function setTeamAngle(teamId: string, angle: string, basketId: string) {
+  await teamAction(basketId, { action: "angle", teamId, angle });
+}
+
+/** N takıma böl (random ya da sıralı) — saf yardımcı, sunucuya gitmez. */
 export function partition(userIds: string[], count: number, shuffle: boolean): string[][] {
   const ids = [...userIds];
   if (shuffle) {
@@ -195,33 +168,25 @@ export function partition(userIds: string[], count: number, shuffle: boolean): s
   return buckets;
 }
 
-// ---- Demo oyları (takıma) ----
+// ---- Demo oyları ----
 
-export async function listTeamVotes(basketId: string): Promise<TeamVote[]> {
-  const { data } = await supabase.from("team_votes").select("*").eq("basket_id", basketId);
-  return (data as TeamVote[]) ?? [];
-}
-
-/** Demo fazında kişi başı 1 oy — değiştirilebilir (eski oyu sil, yeni ekle). */
+/**
+ * Demo fazında kişi başı 1 oy — değiştirilebilir.
+ * "Kendi takımına oy veremezsin" kuralı artık SUNUCUDA (eskiden sadece
+ * butonun disabled olması vardı, istekle atlanabiliyordu).
+ */
 export async function voteTeam(
   basketId: string,
   teamId: string,
   voter: string,
   tenantId: string
 ) {
-  await supabase.from("team_votes").delete().eq("basket_id", basketId).eq("voter", voter);
-  await supabase.from("team_votes").insert({
-    team_id: teamId,
-    basket_id: basketId,
-    voter,
-    tenant_id: tenantId,
+  await apiFetch(`/api/hackathon/${basketId}/team-vote`, {
+    method: "POST",
+    email: voter,
+    tenantId,
+    body: JSON.stringify({ team_id: teamId }),
   });
-}
-
-// ---- Sıralı takım turu (puanlama + feedback paylaşır) ----
-
-export async function setTeamTurn(basketId: string, idx: number, endsAt: string | null) {
-  await supabase.from("baskets").update({ team_turn_idx: idx, team_turn_ends_at: endsAt }).eq("id", basketId);
 }
 
 // ---- Feedback ----
@@ -248,22 +213,13 @@ export async function addFeedback(input: {
 }
 
 export async function listFeedback(basketId: string): Promise<Feedback[]> {
-  const { data } = await supabase
-    .from("feedback")
-    .select("*")
-    .eq("basket_id", basketId)
-    .order("created_at", { ascending: false });
-  return (data as Feedback[]) ?? [];
+  const res = await apiFetch<{ feedback: Feedback[] }>(`/api/hackathon/${basketId}/feedback`);
+  return res.data?.feedback ?? [];
 }
 
 // ---- Rubric scores (S7) ----
 
-export async function listScores(basketId: string): Promise<Score[]> {
-  const { data } = await supabase.from("scores").select("*").eq("basket_id", basketId);
-  return (data as Score[]) ?? [];
-}
-
-/** Upsert via /api/scores so is_jury is derived server-side from hackathon.jury. */
+/** is_jury sunucuda hackathon.jury izninden türetiliyor — istemci belirleyemez. */
 export async function upsertScore(input: {
   basket_id: string;
   tenant_id: string;
@@ -272,10 +228,10 @@ export async function upsertScore(input: {
   category_key: string;
   stars: number;
 }) {
-  const { apiAuthHeaders } = await import("./api-headers");
-  const res = await fetch("/api/scores", {
+  const res = await apiFetch("/api/scores", {
     method: "POST",
-    headers: await apiAuthHeaders(input.voter, input.tenant_id),
+    email: input.voter,
+    tenantId: input.tenant_id,
     body: JSON.stringify({
       basket_id: input.basket_id,
       team_id: input.team_id,
@@ -283,8 +239,5 @@ export async function upsertScore(input: {
       stars: input.stars,
     }),
   });
-  if (!res.ok) {
-    const json = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(json.error ?? "score_failed");
-  }
+  if (!res.ok) throw new Error(res.error ?? "score_failed");
 }

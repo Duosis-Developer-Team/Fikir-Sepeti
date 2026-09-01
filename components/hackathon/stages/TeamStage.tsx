@@ -48,7 +48,7 @@ export function TeamStage(ctx: StageContext) {
         ideas: lockedIdeas,
         selectedIdeaId: basket.selected_idea_id,
       });
-      await assignTeamIdeas(pairs);
+      await assignTeamIdeas(pairs, basket.id);
     }
     if (!basket.hackathon_ends_at) await startHackathonTimer(basket.id, config);
     await setBasketPhase(basket.id, "hackathon");
@@ -81,7 +81,7 @@ export function TeamStage(ctx: StageContext) {
   const [editName, setEditName] = useState("");
   const saveRename = async () => {
     if (editingId) {
-      await renameTeam(editingId, editName);
+      await renameTeam(editingId, editName, basket.id);
       setEditingId(null);
       refresh();
     }
@@ -107,7 +107,7 @@ export function TeamStage(ctx: StageContext) {
       ideas: lockedIdeas,
       selectedIdeaId: basket.selected_idea_id,
     });
-    await assignTeamIdeas(pairs);
+    await assignTeamIdeas(pairs, basket.id);
     refresh();
   };
 
@@ -115,7 +115,7 @@ export function TeamStage(ctx: StageContext) {
     const pairs = assignCross({ teams, members, ideas: lockedIdeas });
     const animate = config.revealAnimation !== false;
     if (!animate) {
-      void assignTeamIdeas(pairs).then(refresh);
+      void assignTeamIdeas(pairs, basket.id).then(refresh);
       return;
     }
     setCrossPairs(pairs);
@@ -125,7 +125,7 @@ export function TeamStage(ctx: StageContext) {
   const commitCrossStep = async () => {
     if (!crossPairs) return;
     if (crossRevealIdx >= crossPairs.length - 1) {
-      await assignTeamIdeas(crossPairs);
+      await assignTeamIdeas(crossPairs, basket.id);
       setCrossPairs(null);
       refresh();
       return;
@@ -141,7 +141,7 @@ export function TeamStage(ctx: StageContext) {
       })
       .filter(Boolean) as TeamIdeaPair[];
     if (pairs.length !== teams.length) return;
-    await assignTeamIdeas(pairs);
+    await assignTeamIdeas(pairs, basket.id);
     refresh();
   };
 
@@ -234,7 +234,7 @@ export function TeamStage(ctx: StageContext) {
                       onChange={(e) => setAngleDraft((d) => ({ ...d, [t.id]: e.target.value }))}
                       onBlur={() => {
                         const v = angleDraft[t.id];
-                        if (v != null) void setTeamAngle(t.id, v).then(refresh);
+                        if (v != null) void setTeamAngle(t.id, v, basket.id).then(refresh);
                       }}
                       placeholder="Takım açısı (opsiyonel)"
                       className="w-full rounded-lg px-3 py-2 text-[0.85rem] outline-none"

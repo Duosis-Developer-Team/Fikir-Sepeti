@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { addFeedback, listFeedback, setTeamTurn } from "@/lib/hackathon";
 import { groupFeedbackByTeam } from "@/lib/feedback-groups";
 import { feedbackTurnProgress, nextTurnEndsAt, requiredReviewers, teamAtTurn, teamOrder } from "@/lib/teamTurn";
-import { supabase } from "@/lib/supabase";
+import { subscribeChanges } from "@/lib/realtime";
 import type { Feedback } from "@/lib/types";
 import type { StageContext } from "../contract";
 import { dim } from "../contract";
@@ -22,17 +22,10 @@ export function FeedbackStage({ data, config, user, isAdmin, refresh, readOnly }
 
   useEffect(() => {
     load();
-    const ch = supabase
-      .channel(`fb:${basket.id}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "feedback", filter: `basket_id=eq.${basket.id}` },
-        () => load()
-      )
-      .subscribe();
-    return () => {
-      supabase.removeChannel(ch);
-    };
+    return subscribeChanges({
+      filters: [{ table: "feedback", column: "basket_id", value: basket.id }],
+      onChange: () => load(),
+    });
   }, [basket.id, load]);
 
   const teamNames = useMemo(() => {
