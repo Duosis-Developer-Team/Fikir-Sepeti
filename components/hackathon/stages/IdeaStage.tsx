@@ -11,6 +11,7 @@ import { ACCENTS } from "@/lib/accent";
 import type { Idea } from "@/lib/types";
 import { RaffleRevealStage } from "@/components/shared/RaffleRevealStage";
 import { IdeaAttachment } from "../IdeaAttachment";
+import { IdeaDescription } from "../IdeaDescription";
 import type { StageContext } from "../contract";
 import { GOLD, GOLD_SOFT, dim } from "../contract";
 import { Card, GoldButton, StageHeadline, Avatar } from "../ui";
@@ -149,11 +150,7 @@ export function IdeaStage(ctx: StageContext) {
               <h2 className="font-display text-[clamp(1.6rem,3.4vw,2.6rem)] font-extrabold leading-tight" style={{ color: GOLD }}>
                 {idea.text}
               </h2>
-              {idea.description && (
-                <p className="mt-3 text-[1rem] leading-relaxed" style={{ color: dim(0.65) }}>
-                  {idea.description}
-                </p>
-              )}
+              <IdeaDescription text={idea.description} />
               <IdeaAttachment ideaId={idea.id} />
             </Card>
           ))}

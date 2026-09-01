@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
+import { usePermissions } from "@/lib/permissions-client";
 import type { BasketType, ResolveMethod } from "@/lib/types";
 
 const CORAL = "#F2795F";
@@ -84,10 +85,21 @@ export function NewBasketModal({
   onClose: () => void;
   onCreate: (input: { title: string; type: BasketType; resolve_method: ResolveMethod }) => Promise<void>;
 }) {
+  const perms = usePermissions(["hackathon.create", "etkinlik.create"]);
+  const canEtkinlik = perms["etkinlik.create"];
+  const canHackathon = perms["hackathon.create"];
+
   const [title, setTitle] = useState("");
   const [type, setType] = useState<BasketType>("etkinlik");
   const [method, setMethod] = useState<ResolveMethod>("vote");
   const [busy, setBusy] = useState(false);
+
+  // Yetkisi olmayan bir tipte takılı kalmasın — modal açılınca mevcut olana düş.
+  useEffect(() => {
+    if (!open) return;
+    if (type === "hackathon" && !canHackathon && canEtkinlik) setType("etkinlik");
+    if (type === "etkinlik" && !canEtkinlik && canHackathon) setType("hackathon");
+  }, [open, canHackathon, canEtkinlik, type]);
 
   const accent = type === "hackathon" ? GOLD : CORAL;
   const ready = title.trim().length >= 2 && !busy;
@@ -142,21 +154,25 @@ export function NewBasketModal({
               onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(var(--border-rgb),0.1)")}
             />
 
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              <TypeCard
-                v="etkinlik"
-                label="Etkinlik"
-                desc="fikir at, oy ver / kura"
-                selected={type}
-                onSelect={setType}
-              />
-              <TypeCard
-                v="hackathon"
-                label="Hackathon"
-                desc="lobi · takım · demo (lobide kurulur)"
-                selected={type}
-                onSelect={setType}
-              />
+            <div className={`mt-4 grid gap-3 ${canEtkinlik && canHackathon ? "grid-cols-2" : "grid-cols-1"}`}>
+              {canEtkinlik && (
+                <TypeCard
+                  v="etkinlik"
+                  label="Etkinlik"
+                  desc="fikir at, oy ver / kura"
+                  selected={type}
+                  onSelect={setType}
+                />
+              )}
+              {canHackathon && (
+                <TypeCard
+                  v="hackathon"
+                  label="Hackathon"
+                  desc="lobi · takım · demo (lobide kurulur)"
+                  selected={type}
+                  onSelect={setType}
+                />
+              )}
             </div>
 
             <AnimatePresence initial={false}>

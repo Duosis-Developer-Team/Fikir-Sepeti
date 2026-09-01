@@ -16,6 +16,7 @@ import { ACCENTS } from "@/lib/accent";
 import type { Idea } from "@/lib/types";
 import { RaffleRevealStage } from "@/components/shared/RaffleRevealStage";
 import { IdeaAttachment } from "../IdeaAttachment";
+import { IdeaDescription } from "../IdeaDescription";
 import type { StageContext } from "../contract";
 import { GOLD, dim } from "../contract";
 import { GoldButton, Avatar, StageHeadline } from "../ui";
@@ -229,11 +230,7 @@ export function TeamStage(ctx: StageContext) {
                     Fikir: {assigned}
                   </p>
                 )}
-                {assignedIdea?.description && (
-                  <p className="mt-1.5 text-[0.85rem] leading-relaxed" style={{ color: dim(0.55) }}>
-                    {assignedIdea.description}
-                  </p>
-                )}
+                <IdeaDescription text={assignedIdea?.description} />
                 {assignedIdea && <IdeaAttachment ideaId={assignedIdea.id} />}
                 {showAngle && (
                   <div className="mt-3">

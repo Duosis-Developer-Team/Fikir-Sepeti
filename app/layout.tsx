@@ -3,6 +3,7 @@ import { Bricolage_Grotesque, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import AuthGate from "@/components/AuthGate";
 import { AppShell } from "@/components/AppShell";
+import { PermissionsProvider } from "@/lib/permissions-client";
 
 const display = Bricolage_Grotesque({
   variable: "--font-display",
@@ -43,7 +44,9 @@ export default function RootLayout({
       </head>
       <body className="min-h-full">
         <AuthGate>
-          <AppShell>{children}</AppShell>
+          <PermissionsProvider>
+            <AppShell>{children}</AppShell>
+          </PermissionsProvider>
         </AuthGate>
       </body>
     </html>

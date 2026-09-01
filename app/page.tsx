@@ -6,6 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useNameContext, useSession } from "@/components/AuthGate";
+import { usePermissions } from "@/lib/permissions-client";
 import { BrandIcon } from "@/components/BrandIcon";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NewBasketModal } from "@/components/NewBasketModal";
@@ -375,6 +376,15 @@ function Wordmark() {
 export default function Home() {
   const { ready, user } = useSession();
   const { name, tenantId } = useNameContext();
+  const perms = usePermissions([
+    "hackathon.create",
+    "etkinlik.create",
+    "analytics.view",
+    "content.moderate",
+    "platform.manage_tenants",
+    "tenant.manage_roles",
+  ]);
+  const canCreateAny = perms["hackathon.create"] || perms["etkinlik.create"];
   const router = useRouter();
   const [baskets, setBaskets] = useState<Basket[]>([]);
   const [ideasBy, setIdeasBy] = useState<Record<string, Idea[]>>({});
@@ -455,30 +465,42 @@ export default function Home() {
       <header className="sticky top-0 z-20 flex items-center justify-between px-[clamp(24px,5vw,56px)] py-[14px]" style={{ borderBottom: `1px solid ${T.line}`, background: T.bg }}>
         <Wordmark />
         {/* Yeni sepet — ortada */}
-        <button onClick={() => setModal(true)} className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1.5 rounded-full px-[18px] py-[10px] text-[0.9rem] font-semibold transition hover:-translate-y-px sm:inline-flex" style={{ background: T.text, color: "var(--bg)" }}>
-          <span className="text-[1.05rem] leading-none">+</span> Yeni sepet
-        </button>
+        {canCreateAny && (
+          <button onClick={() => setModal(true)} className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1.5 rounded-full px-[18px] py-[10px] text-[0.9rem] font-semibold transition hover:-translate-y-px sm:inline-flex" style={{ background: T.text, color: "var(--bg)" }}>
+            <span className="text-[1.05rem] leading-none">+</span> Yeni sepet
+          </button>
+        )}
         {/* profil — en sağ */}
         <div className="flex items-center gap-3">
           <ThemeToggle />
-          <button onClick={() => setModal(true)} className="inline-flex items-center gap-1 rounded-full px-4 py-2 text-[0.9rem] font-semibold sm:hidden" style={{ background: T.text, color: "var(--bg)" }}>+ Yeni</button>
+          {canCreateAny && (
+            <button onClick={() => setModal(true)} className="inline-flex items-center gap-1 rounded-full px-4 py-2 text-[0.9rem] font-semibold sm:hidden" style={{ background: T.text, color: "var(--bg)" }}>+ Yeni</button>
+          )}
           {name && (
             <>
               <Link href="/archive" className="hidden text-[0.82rem] font-semibold sm:inline" style={{ color: T.muted }} data-testid="nav-archive">
                 Arşiv
               </Link>
-              <Link href="/analytics" className="hidden text-[0.82rem] font-semibold sm:inline" style={{ color: T.muted }} data-testid="nav-analytics">
-                Analitik
-              </Link>
-              <Link href="/moderation" className="hidden text-[0.82rem] font-semibold sm:inline" style={{ color: T.muted }} data-testid="nav-moderation">
-                Moderasyon
-              </Link>
-              <Link href="/admin" className="hidden text-[0.82rem] font-semibold sm:inline" style={{ color: T.muted }} data-testid="nav-admin">
-                Admin
-              </Link>
-              <Link href="/tenant/roles" className="hidden text-[0.82rem] font-semibold sm:inline" style={{ color: T.muted }}>
-                Roller
-              </Link>
+              {perms["analytics.view"] && (
+                <Link href="/analytics" className="hidden text-[0.82rem] font-semibold sm:inline" style={{ color: T.muted }} data-testid="nav-analytics">
+                  Analitik
+                </Link>
+              )}
+              {perms["content.moderate"] && (
+                <Link href="/moderation" className="hidden text-[0.82rem] font-semibold sm:inline" style={{ color: T.muted }} data-testid="nav-moderation">
+                  Moderasyon
+                </Link>
+              )}
+              {perms["platform.manage_tenants"] && (
+                <Link href="/admin" className="hidden text-[0.82rem] font-semibold sm:inline" style={{ color: T.muted }} data-testid="nav-admin">
+                  Admin
+                </Link>
+              )}
+              {perms["tenant.manage_roles"] && (
+                <Link href="/tenant/roles" className="hidden text-[0.82rem] font-semibold sm:inline" style={{ color: T.muted }}>
+                  Roller
+                </Link>
+              )}
               <Link href="/profil" className="flex items-center gap-[9px] rounded-full border py-1 pl-1 pr-[14px] transition hover:border-[rgba(var(--border-rgb),0.2)]" style={{ borderColor: T.line, background: T.card }}>
                 <span className="grid h-7 w-7 place-items-center rounded-full text-[0.78rem] font-bold" style={{ background: "linear-gradient(135deg,#E7A93F,#F2795F)", color: "#0F0F0F" }}>
                   {name.charAt(0).toLocaleUpperCase("tr")}
@@ -601,13 +623,15 @@ export default function Home() {
                 <p style={{ color: T.muted }}>
                   Henüz {mode === "hackathon" ? "hackathon" : "etkinlik"} yok.
                 </p>
-                <button
-                  onClick={() => setModal(true)}
-                  className="mt-3 font-display text-2xl font-semibold"
-                  style={{ color: "#F2795F" }}
-                >
-                  Sepet aç →
-                </button>
+                {(mode === "hackathon" ? perms["hackathon.create"] : perms["etkinlik.create"]) && (
+                  <button
+                    onClick={() => setModal(true)}
+                    className="mt-3 font-display text-2xl font-semibold"
+                    style={{ color: "#F2795F" }}
+                  >
+                    Sepet aç →
+                  </button>
+                )}
               </div>
             ) : statusTab === "aktif" ? (
               <div className="mt-[clamp(28px,4vw,44px)] flex flex-col gap-5">
