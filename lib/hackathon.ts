@@ -218,6 +218,12 @@ export async function voteTeam(
   });
 }
 
+// ---- Sıralı takım turu (puanlama + feedback paylaşır) ----
+
+export async function setTeamTurn(basketId: string, idx: number, endsAt: string | null) {
+  await supabase.from("baskets").update({ team_turn_idx: idx, team_turn_ends_at: endsAt }).eq("id", basketId);
+}
+
 // ---- Feedback ----
 
 export async function addFeedback(input: {

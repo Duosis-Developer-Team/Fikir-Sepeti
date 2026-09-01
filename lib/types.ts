@@ -59,6 +59,8 @@ export type HackathonConfig = {
   allowLateJoin?: boolean;
   /** Paylaşılan Teams toplantı linki (opsiyonel, kurulumda eklenir). */
   teamsLink?: string;
+  /** Sıralı takım turu (puanlama + feedback): takım başına dakika. 0/undefined = süresiz. */
+  teamTurnMinutes?: number;
 };
 
 export type PoolStatus = "new" | "voting" | "promoted" | "archived" | "rejected";
@@ -116,6 +118,10 @@ export type Basket = {
   project_link?: string | null;
   /** S11: new joins blocked when true (unless allowLateJoin). */
   lobby_locked?: boolean;
+  /** Sıralı takım turu: teams[] içinde (created_at sırasına göre) kimin sırası olduğu. */
+  team_turn_idx: number;
+  /** Mevcut takım turunun bitiş zamanı — admin süre koymadıysa null. */
+  team_turn_ends_at: string | null;
 };
 
 export type Tenant = {

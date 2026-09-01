@@ -15,7 +15,7 @@ import { GoldButton, StageHeadline, NumberStepper, Segmented, Avatar } from "../
 import { InvitePanel } from "../InvitePanel";
 import { apiAuthHeaders } from "@/lib/api-headers";
 
-type Sub = "invite" | "ideaSource" | "repoPick" | "poolSelect" | "ideaAssign" | "teamMode" | "groups" | "duration" | "scoring" | "ready";
+type Sub = "invite" | "ideaSource" | "repoPick" | "poolSelect" | "ideaAssign" | "teamMode" | "groups" | "duration" | "scoring" | "teamTurn" | "ready";
 
 const UNITS: { v: "hour" | "day" | "week"; label: string }[] = [
   { v: "hour", label: "Saat" },
@@ -157,7 +157,8 @@ export function LobbyStage({ data, config, isAdmin, user, refresh, needsJoinActi
       case "groups": return "teamMode";
       case "duration": return config.teamMode === "groups" ? "groups" : "teamMode";
       case "scoring": return "duration";
-      case "ready": return "scoring";
+      case "teamTurn": return "scoring";
+      case "ready": return "teamTurn";
       default: return null;
     }
   };
@@ -496,7 +497,7 @@ export function LobbyStage({ data, config, isAdmin, user, refresh, needsJoinActi
             onChange={(v) => {
               if (v === "simple") {
                 patch({ scoringMode: "simple", rubric: undefined, juryEnabled: false });
-                setSub("ready");
+                setSub("teamTurn");
               } else {
                 patch({ scoringMode: "rubric" });
               }
@@ -607,7 +608,7 @@ export function LobbyStage({ data, config, isAdmin, user, refresh, needsJoinActi
                     juryEnabled: config.juryEnabled ?? false,
                     juryWeight: config.juryWeight ?? 2,
                   });
-                  setSub("ready");
+                  setSub("teamTurn");
                 }}
                 disabled={rubricPicked.size + customCats.length === 0}
               >
@@ -632,6 +633,30 @@ export function LobbyStage({ data, config, isAdmin, user, refresh, needsJoinActi
         </>
       )}
 
+      {sub === "teamTurn" && (
+        <>
+          <StageHeadline
+            pre="Takımlar"
+            accent="sıra sıra mı?"
+            sub="Puanlama ve feedback'te takımlar teker teker gelir — herkes bitirince ya da süre dolunca sıradakine geçilir."
+          />
+          <div className="mx-auto flex max-w-[420px] flex-col items-center gap-3">
+            <NumberStepper
+              label="Takım başına süre (dakika)"
+              value={config.teamTurnMinutes ?? 0}
+              min={0}
+              max={30}
+              onChange={(n) => patch({ teamTurnMinutes: n })}
+            />
+            <p className="text-center text-[0.85rem]" style={{ color: dim(0.5) }}>
+              {config.teamTurnMinutes
+                ? `Her takıma ${config.teamTurnMinutes} dakika — süre dolunca ya da herkes bitirince otomatik geçilir.`
+                : "Süresiz — admin sıradaki takıma elle geçer, ya da herkes bitirince otomatik geçilir."}
+            </p>
+          </div>
+        </>
+      )}
+
       {sub === "ready" && (
         <div className="text-center">
           <StageHeadline pre="Hazır" accent="mısın?" sub={"Kurulum tamam. Başlat'a bas, hackathon başlasın."} />
@@ -651,6 +676,7 @@ export function LobbyStage({ data, config, isAdmin, user, refresh, needsJoinActi
         {sub === "ideaAssign" && <GoldButton onClick={() => setSub("teamMode")}>Devam →</GoldButton>}
         {sub === "groups" && <GoldButton onClick={() => setSub("duration")}>Devam →</GoldButton>}
         {sub === "duration" && <GoldButton onClick={() => setSub("scoring")}>Devam →</GoldButton>}
+        {sub === "teamTurn" && <GoldButton onClick={() => setSub("ready")}>Devam →</GoldButton>}
         {sub === "ready" && <GoldButton onClick={start}>Başlat →</GoldButton>}
       </div>
     </div>
@@ -715,6 +741,7 @@ function Summary({ config }: { config: HackathonConfig }) {
     config.scoringMode === "rubric" && "Puanlama: Rubrik",
     (config.scoringMode ?? "simple") === "simple" && "Puanlama: Basit",
     config.duration && `Süre: ${config.duration.value} ${UNITS.find((u) => u.v === config.duration!.unit)?.label ?? ""}`,
+    config.teamTurnMinutes ? `Takım turu: ${config.teamTurnMinutes} dk` : "Takım turu: süresiz",
   ].filter(Boolean) as string[];
   return (
     <div className="mt-2 flex flex-wrap justify-center gap-2">

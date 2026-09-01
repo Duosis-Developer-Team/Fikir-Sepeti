@@ -4,8 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { supabase } from "@/lib/supabase";
 import { setBasketPhase } from "@/lib/db";
-import { joinLobbyGated, listParticipants, listScores, listTeamMembers, listTeamVotes, listTeams, startHackathonTimer } from "@/lib/hackathon";
+import { joinLobbyGated, listParticipants, listScores, listTeamMembers, listTeamVotes, listTeams, setTeamTurn, startHackathonTimer } from "@/lib/hackathon";
 import { decideLobbyJoin } from "@/lib/lobby";
+import { nextTurnEndsAt } from "@/lib/teamTurn";
 import { useSession } from "@/components/AuthGate";
 import type { Basket, Idea, Score } from "@/lib/types";
 import type { HackData, StageContext, StageDef, StagePhase } from "./contract";
@@ -199,6 +200,10 @@ export function HackathonRunner({ basketId }: { basketId: string }) {
   const enterPhase = async (p: StagePhase) => {
     if (p === phase) return;
     if (p === "hackathon" && !data.basket.hackathon_ends_at) await startHackathonTimer(basketId, ctx.config);
+    // Sıralı takım turu (puanlama + feedback) her ikisine girişte de sıfırdan başlar.
+    if (p === "demo" || p === "feedback") {
+      await setTeamTurn(basketId, 0, nextTurnEndsAt(ctx.config.teamTurnMinutes));
+    }
     await setBasketPhase(basketId, p);
     load();
   };
