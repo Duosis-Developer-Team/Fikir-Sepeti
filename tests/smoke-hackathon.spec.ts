@@ -22,12 +22,13 @@ test.describe("smoke: hackathon", () => {
     await expect(page).toHaveURL(/\/basket\//);
     await expect(page.getByRole("button", { name: /Kuruluma geç/i })).toBeVisible();
 
-    // Lobby wizard: invite → ideaSource → teamMode → duration → scoring → ready → start
+    // Lobby wizard: invite → ideaSource → teamMode → duration → scoring → teamTurn → ready → start
     await page.getByRole("button", { name: /Kuruluma geç/i }).click();
     await page.getByRole("button", { name: "Fikir var" }).click();
     await page.getByRole("button", { name: "Herkes tek" }).click();
     await page.getByRole("button", { name: /Devam/i }).click(); // duration → scoring
-    await page.getByRole("button", { name: /Basit oy/i }).click(); // scoring → ready (keeps simple mode)
+    await page.getByRole("button", { name: /Basit oy/i }).click(); // scoring → teamTurn (keeps simple mode)
+    await page.getByRole("button", { name: /Devam/i }).click(); // teamTurn → ready (default: süresiz)
     await page.getByRole("button", { name: /Başlat/i }).click();
 
     // Idea stage (static)
