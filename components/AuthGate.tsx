@@ -200,23 +200,19 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     // never leave the app stuck on the loading skeleton forever.
     const timeout = setTimeout(markReady, 8000);
 
-    supabase.auth
-      .getSession()
-      .then(({ data }) => applySession(data.session))
-      .catch((e) => {
-        console.error("initial session check failed", e);
-      })
-      .finally(() => {
-        clearTimeout(timeout);
-        markReady();
-      });
-
-    if (typeof window !== "undefined" && window.location.hash.includes("access_token")) {
-      window.history.replaceState(null, "", window.location.pathname + window.location.search);
-    }
-
+    // Microsoft OAuth dönüşünde (redirectTo=origin) URL'de "#access_token=..." olur.
+    // Supabase istemcisi bunu kendi içinde işleyip session'ı localStorage'a yazar ve
+    // onAuthStateChange'i tetikler — ama bu asenkron. Burada AYRICA getSession()
+    // çağırıp onun ilk (henüz token işlenmeden dönen) sonucuna göre "ready"i
+    // işaretlemek, token henüz kaydedilmeden "giriş yok" sanılmasına yol açıyordu:
+    // kullanıcı Microsoft'tan yeni dönmüşken oturumsuz görünüyor, F5'te ise token
+    // artık localStorage'da olduğu için sorunsuz giriyordu (rapor edilen bug).
+    // Çözüm: tek doğruluk kaynağı onAuthStateChange — bu her zaman Supabase'in kendi
+    // URL/token işlemesinden SONRA tetiklenir, ilk tetiklendiğinde "ready" işaretlenir.
     const { data: sub } = supabase.auth.onAuthStateChange(async (_e, session) => {
       await applySession(session);
+      clearTimeout(timeout);
+      markReady();
     });
     return () => sub.subscription.unsubscribe();
   }, [applySession]);
