@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { setBasketPhase } from "@/lib/db";
+import { supabase } from "@/lib/supabase";
 import type { StageContext } from "../contract";
 import { GOLD, dim } from "../contract";
 import { GoldButton, StageHeadline } from "../ui";
@@ -27,6 +28,13 @@ export function HackathonStage({ data, isAdmin, refresh }: StageContext) {
 
   const finish = () => setBasketPhase(basket.id, "demo").then(refresh);
   const back = () => setBasketPhase(basket.id, "team").then(refresh);
+  // GEÇİCİ TEST BUTONU — test için süreyi beklemeden bitirir, iş bitince kaldır.
+  const forceTimeUp = () =>
+    supabase
+      .from("baskets")
+      .update({ hackathon_ends_at: new Date().toISOString() })
+      .eq("id", basket.id)
+      .then(() => refresh());
 
   return (
     <div className="mx-auto flex min-h-[58vh] max-w-[960px] flex-col items-center justify-center text-center">
@@ -50,7 +58,17 @@ export function HackathonStage({ data, isAdmin, refresh }: StageContext) {
             <GoldButton onClick={finish} disabled={!over}>Hackathon&apos;u bitir → Demo</GoldButton>
           </div>
           {!over && (
-            <p className="text-[0.85rem]" style={{ color: dim(0.4) }}>Süre bitmeden bir sonraki aşamaya geçilemez.</p>
+            <>
+              <p className="text-[0.85rem]" style={{ color: dim(0.4) }}>Süre bitmeden bir sonraki aşamaya geçilemez.</p>
+              {/* GEÇİCİ TEST BUTONU — kaldırılacak */}
+              <button
+                onClick={forceTimeUp}
+                className="rounded-full border border-dashed px-4 py-2 text-[0.78rem] transition hover:opacity-80"
+                style={{ borderColor: "rgba(var(--border-rgb),0.3)", color: dim(0.35) }}
+              >
+                🧪 (geçici · test) Süreyi hemen bitir
+              </button>
+            </>
           )}
         </div>
       )}
