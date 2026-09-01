@@ -255,11 +255,29 @@ SSE için ingress annotation'ları hazır (`proxy-buffering: off`,
 
 ---
 
-## Vercel'den kesme
+## Vercel'den kesme — TAMAMLANDI (2026-09-01)
 
-Vercel workflow'ları (`deploy.yml`, `sync-vercel-env.yml`) **bilerek duruyor**
-— kesme anına kadar geri dönüş yolu. Küme kurulumu onaylandığında:
+Yapılanlar:
 
-1. `.github/workflows/deploy.yml` ve `sync-vercel-env.yml` silinir.
-2. Vercel projesi (`fikir-sepeti-duosis`) durdurulur.
-3. Supabase projesi durdurulur (veri yok, pilot açılmadı).
+1. ✅ `deploy.yml` ve `sync-vercel-env.yml` silindi. **Sıra önemliydi:** main'e
+   merge CI'ı yeşile çevirince `deploy.yml` Vercel'e prod deploy tetikleyecek
+   ve çalışan Supabase'li sürümün üzerine çalışmayan bir build yazacaktı —
+   yani geri dönüş yolunu yok edecekti. Workflow'lar merge'den ÖNCE kaldırıldı.
+2. ✅ `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`,
+   `SUPABASE_SERVICE_ROLE_KEY` GitHub secret'ları silindi. (Repo public;
+   canlı bir Vercel token'ı orada durmamalıydı.)
+3. ✅ Vercel projesi `fikir-sepeti-duosis` kaldırıldı,
+   `fikir-sepeti-duosis.vercel.app` artık 404. **Dikkat:** `vercel remove
+   <proje-adı>` yalnızca deployment'ları değil PROJENİN TAMAMINI siler
+   (env değişkenleri ve deployment geçmişi dahil, geri alınamaz). Yalnızca
+   deployment silmek isteniyorsa deployment URL'i tek tek verilmeli.
+4. ⏳ **Supabase projesi hâlâ ayakta** — bilinçli. Uygulama ona hiç
+   bağlanmıyor; panelden (Settings → General → Pause project) duraklatılabilir.
+   Duraklatma geri dönüşümlü, silme değil.
+
+Geri dönüş gerekirse: kod git'te, `supabase/migrations/` şemanın tek doğru
+kaynağı olarak duruyor ve Supabase projesi yaşıyor — yeni bir Vercel projesi
+bağlanıp `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+değerleri Supabase panelinden alınarak birkaç dakikada kurulur. Ama artık
+istemci tarafı Supabase'den ayrıldığı için bu, merge öncesi bir commit'e
+dönmek demektir.
