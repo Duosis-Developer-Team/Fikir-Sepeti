@@ -1,10 +1,17 @@
 # GHCR imaj build/push. main → :prod + :prod-<sha7>
 #
 # GHCR YAZMA YETKİSİ: GITHUB_TOKEN yalnızca paket repoya BAĞLIYSA yazabilir.
-# Bağ, Dockerfile'daki org.opencontainers.image.source etiketiyle kuruluyor ve
-# her push'ta tazeleniyor. Paket org seviyesinde elle oluşturulmuşsa bir kereye
-# mahsus repoya "Write" rolü vermek gerekebilir — ya da write:packages yetkili
-# bir PAT'i GHCR_TOKEN secret'ı olarak ekleyin; aşağıdaki login onu tercih eder.
+# Bağ, paketi Actions'ın KENDİSİ oluşturduğunda kurulur.
+#
+# 2026-09-01'de öğrenildi: elle (yerelden PAT ile) push edilerek oluşmuş bir
+# paket repoya bağlı DEĞİLDİR ve `denied: permission_denied: write_package`
+# verir. Dockerfile'daki org.opencontainers.image.source etiketiyle sonradan
+# push etmek de bağı KURMUYOR — etiket yalnızca paket ilk kez oluşurken
+# dikkate alınıyor. Bu yüzden imaj adı `fikir-sepeti-web`'den `fikir-sepeti`'ye
+# alındı: yeni adı ilk kez bu workflow yayınladı, paket repoya bağlı doğdu.
+# (Eski `fikir-sepeti-web` paketi org'da artık kullanılmıyor, silinebilir.)
+# Alternatif: write:packages yetkili bir PAT'i GHCR_TOKEN secret'ı olarak
+# ekleyin; aşağıdaki login onu tercih eder.
 name: Build Images
 
 on:
@@ -54,7 +61,7 @@ jobs:
 
       - name: Build + push
         run: |
-          IMG=ghcr.io/duosis-developer-team/fikir-sepeti-web
+          IMG=ghcr.io/duosis-developer-team/fikir-sepeti
           docker build -t "$IMG:prod" -t "$IMG:${{ steps.meta.outputs.image_tag }}" .
           docker push "$IMG:prod"
           docker push "$IMG:${{ steps.meta.outputs.image_tag }}"

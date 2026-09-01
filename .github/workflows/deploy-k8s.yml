@@ -36,7 +36,7 @@ jobs:
     env:
       NAMESPACE: fikirsepeti-prod
       IMAGE_TAG: ${{ inputs.image_tag || 'prod' }}
-      IMAGE: ghcr.io/duosis-developer-team/fikir-sepeti-web
+      IMAGE: ghcr.io/duosis-developer-team/fikir-sepeti
     steps:
       - uses: actions/checkout@v4
 
@@ -102,7 +102,7 @@ jobs:
           if ! kubectl -n "$NAMESPACE" get secret ghcr-pull >/dev/null 2>&1; then
             echo "::error::'$NAMESPACE' içinde ghcr-pull yok; private GHCR imajı çekilemez."
             echo "Çözüm A: GHCR_PULL_TOKEN repo secret'ı ekleyin (read:packages PAT)."
-            echo "Çözüm B: fikir-sepeti-web paketini public yapın."
+            echo "Çözüm B: fikir-sepeti paketini public yapın."
             exit 1
           fi
           if ! kubectl -n "$NAMESPACE" get serviceaccount default \

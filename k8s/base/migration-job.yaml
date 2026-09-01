@@ -24,7 +24,7 @@ spec:
         - name: migration
           # Web ile AYNI imaj — şema ile onu uygulayan kodun sürüm kayması
           # yapısal olarak imkânsız olsun diye.
-          image: ghcr.io/duosis-developer-team/fikir-sepeti-web:prod
+          image: ghcr.io/duosis-developer-team/fikir-sepeti:prod
           command: ["node", "scripts/migrate.mjs"]
           env:
             # Sahip rolü — YALNIZCA burada. Web pod'unda yok.

@@ -10,7 +10,7 @@ resources:
   - ../../base
   - nodeport-service.yaml
 images:
-  - name: ghcr.io/duosis-developer-team/fikir-sepeti-web
+  - name: ghcr.io/duosis-developer-team/fikir-sepeti
     newTag: prod
 patches:
   - path: configmap-patch.yaml

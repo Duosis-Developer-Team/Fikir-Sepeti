@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: web
-          image: ghcr.io/duosis-developer-team/fikir-sepeti-web:prod
+          image: ghcr.io/duosis-developer-team/fikir-sepeti:prod
           ports:
             - name: http
               containerPort: 3000
