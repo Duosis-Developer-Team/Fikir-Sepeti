@@ -127,6 +127,18 @@ export function LobbyStage({ data, config, isAdmin, user, refresh, needsJoinActi
     patch({ groups: { count: 3, size: 4, assignment: "random", ...config.groups, ...g } });
   const patchDuration = (d: Partial<NonNullable<HackathonConfig["duration"]>>) =>
     patch({ duration: { value: 1, unit: "day", ...config.duration, ...d } });
+  const rubricReady = rubricPicked.size + customCats.length > 0;
+  const continueRubric = () => {
+    if (!rubricReady) return;
+    const rubric = [...SCORE_LIBRARY.filter((c) => rubricPicked.has(c.key)), ...customCats];
+    patch({
+      scoringMode: "rubric",
+      rubric,
+      juryEnabled: config.juryEnabled ?? false,
+      juryWeight: config.juryWeight ?? 2,
+    });
+    setSub("teamTurn");
+  };
 
   const approved = participants.filter((p) => p.approved !== false);
   const pending = participants.filter((p) => p.approved === false);
@@ -413,15 +425,8 @@ export function LobbyStage({ data, config, isAdmin, user, refresh, needsJoinActi
 
       {sub === "ideaAssign" && (
         <>
-          <StageHeadline pre="Dağıtım" accent="nasıl?" sub="Kaç fikir ve kimin fikri kime?" />
-          <div className="mx-auto flex w-full max-w-[640px] flex-col items-center gap-8">
-            <NumberStepper
-              label="Fikir sayısı"
-              value={config.ideaCount ?? 1}
-              min={1}
-              max={8}
-              onChange={(n) => patch({ ideaCount: n })}
-            />
+          <StageHeadline pre="Dağıtım" accent="nasıl?" sub="Kimin fikri kime gidecek?" />
+          <div className="mx-auto flex w-full max-w-[520px] flex-col items-center gap-4">
             <Segmented
               label="Atama"
               value={config.ideaAssignment ?? "same"}
@@ -432,15 +437,9 @@ export function LobbyStage({ data, config, isAdmin, user, refresh, needsJoinActi
                 { v: "manual", label: "Elle" },
               ]}
             />
-            <Segmented
-              label="Çekiliş animasyonu"
-              value={config.revealAnimation === false ? "off" : "on"}
-              onChange={(v) => patch({ revealAnimation: v === "on" })}
-              options={[
-                { v: "on", label: "Açık" },
-                { v: "off", label: "Kapalı" },
-              ]}
-            />
+            <p className="text-center text-[0.88rem] leading-relaxed" style={{ color: dim(0.55) }} data-testid="idea-assign-explain">
+              {ASSIGN_EXPLAIN[config.ideaAssignment ?? "same"]}
+            </p>
           </div>
         </>
       )}
@@ -595,25 +594,6 @@ export function LobbyStage({ data, config, isAdmin, user, refresh, needsJoinActi
                   </button>
                 </div>
               )}
-              <GoldButton
-                onClick={() => {
-                  const rubric = [
-                    ...SCORE_LIBRARY.filter((c) => rubricPicked.has(c.key)),
-                    ...customCats,
-                  ];
-                  if (!rubric.length) return;
-                  patch({
-                    scoringMode: "rubric",
-                    rubric,
-                    juryEnabled: config.juryEnabled ?? false,
-                    juryWeight: config.juryWeight ?? 2,
-                  });
-                  setSub("teamTurn");
-                }}
-                disabled={rubricPicked.size + customCats.length === 0}
-              >
-                Devam →
-              </GoldButton>
               <Segmented
                 label="Jüri ağırlığı"
                 value={config.juryEnabled ? "on" : "off"}
@@ -672,10 +652,22 @@ export function LobbyStage({ data, config, isAdmin, user, refresh, needsJoinActi
         {back && (
           <button onClick={() => setSub(back)} className="rounded-full border px-6 py-3 text-[0.95rem] transition hover:bg-[rgba(var(--border-rgb),0.08)]" style={{ borderColor: "rgba(var(--border-rgb),0.2)", color: dim(0.85) }}>← Geri</button>
         )}
-        {sub === "invite" && <GoldButton onClick={() => setSub("ideaSource")}>Kuruluma geç →</GoldButton>}
+        {sub === "invite" && (
+          <div className="flex flex-col items-center gap-2">
+            <GoldButton onClick={() => setSub("ideaSource")} disabled={pending.length > 0}>Kuruluma geç →</GoldButton>
+            {pending.length > 0 && (
+              <span className="text-[0.78rem]" style={{ color: dim(0.45) }}>
+                Önce {pending.length} onay bekleyeni onayla
+              </span>
+            )}
+          </div>
+        )}
         {sub === "ideaAssign" && <GoldButton onClick={() => setSub("teamMode")}>Devam →</GoldButton>}
         {sub === "groups" && <GoldButton onClick={() => setSub("duration")}>Devam →</GoldButton>}
         {sub === "duration" && <GoldButton onClick={() => setSub("scoring")}>Devam →</GoldButton>}
+        {sub === "scoring" && config.scoringMode === "rubric" && (
+          <GoldButton onClick={continueRubric} disabled={!rubricReady}>Devam →</GoldButton>
+        )}
         {sub === "teamTurn" && <GoldButton onClick={() => setSub("ready")}>Devam →</GoldButton>}
         {sub === "ready" && <GoldButton onClick={start}>Başlat →</GoldButton>}
       </div>
@@ -720,6 +712,12 @@ function Choice<T extends string>({ value, options, onChange }: { value?: T; opt
 }
 
 const EASE = [0.22, 0.85, 0.25, 1] as const;
+
+const ASSIGN_EXPLAIN: Record<string, string> = {
+  same: "Fikri kim attıysa onun takımı o fikri yapar — insanlar kendi attıkları fikri geliştirir. Fikir sahibinin takımı yoksa kalan eşleşmeler rastgele dağıtılır.",
+  cross: "Hiçbir takım kendi üyesinin attığı fikri yapmaz — fikirler takımlar arasında kasıtlı olarak karıştırılır, kura/reveal animasyonuyla gösterilir.",
+  manual: "Otomatik değil — admin Takımlar ekranında her takım için hangi fikri yapacağını kendisi seçer.",
+};
 
 const IDEA_LABEL: Record<string, string> = {
   static: "Fikir var",
