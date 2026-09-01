@@ -1,8 +1,15 @@
+# CI kapısı: lint → build → şema → seed → veritabanı doğrulaması → Playwright.
+#
+# Supabase CLI KALDIRILDI. Eskiden `supabase start` bir yığın konteyner
+# (postgres + gotrue + postgrest + realtime + kong + studio) ayağa kaldırıyordu
+# ve tek ihtiyacımız olan Postgres'ti. Artık uygulama düz PostgreSQL kullandığı
+# için CI de öyle: tek servis konteyneri, ~4 dakika daha hızlı ve testin
+# koştuğu ortam üretimdekiyle aynı.
 name: CI
 
 on:
   push:
-    branches: [main, "sprint/**"]
+    branches: [main, "sprint/**", "feat/**"]
   pull_request:
     branches: [main]
   workflow_dispatch: {}
@@ -14,7 +21,31 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: fikirsepeti
+          POSTGRES_PASSWORD: ci-postgres-pw
+          POSTGRES_DB: fikirsepeti
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U fikirsepeti -d fikirsepeti"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      # Sahip rolü — şema ve seed için (RLS atlanır).
+      ADMIN_DATABASE_URL: postgresql://fikirsepeti:ci-postgres-pw@127.0.0.1:5432/fikirsepeti
+      # Uygulama rolü — RLS'e TABİ. Uygulama ve izolasyon testleri bunu kullanır.
+      DATABASE_URL: postgresql://fikirsepeti_app:ci-app-pw@127.0.0.1:5432/fikirsepeti
+      APP_DATABASE_URL: postgresql://fikirsepeti_app:ci-app-pw@127.0.0.1:5432/fikirsepeti
+      APP_DB_PASSWORD: ci-app-pw
+      NEXT_PUBLIC_AUTH_BYPASS: "1"
 
     steps:
       - uses: actions/checkout@v4
@@ -24,21 +55,14 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Install dependencies
+      - name: Bağımlılıklar
         run: npm ci
 
-      - uses: supabase/setup-cli@v1
-        with:
-          version: latest
+      - name: Şema (compat + migrations + self-host)
+        run: node scripts/migrate.mjs
 
-      - name: Start local Supabase
-        run: supabase start --ignore-health-check
-
-      - name: Write .env.local from supabase status
-        run: node scripts/write-env-from-supabase.mjs
-
-      - name: Seed database
-        run: node scripts/seed.mjs
+      - name: Seed
+        run: npm run db:seed
 
       - name: Lint
         run: npm run lint
@@ -46,23 +70,24 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Install Playwright Chromium
+      # Sorgu katmanı ve RLS'in doğrulaması. Playwright'tan AYRI ve ondan ÖNCE:
+      # burası kırmızıysa E2E'nin hangi testinin neden düştüğünü aramak yerine
+      # doğrudan sebebi görüyoruz.
+      - name: Veritabanı katmanı doğrulaması
+        run: npm run verify:db
+
+      - name: Playwright Chromium
         run: npx playwright install chromium --with-deps
 
-      - name: Playwright smoke tests
+      - name: E2E testleri
         run: npm test
         env:
           CI: "1"
-          NEXT_PUBLIC_AUTH_BYPASS: "1"
 
-      - name: Upload Playwright report
+      - name: Playwright raporu (hata halinde)
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
           path: playwright-report/
           retention-days: 7
-
-      - name: Stop Supabase
-        if: always()
-        run: supabase stop --no-backup

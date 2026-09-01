@@ -1,0 +1,19 @@
+# Fikir Sepeti temel kaynakları.
+# BİLİNÇLİ olarak dahil edilmeyenler:
+# - secret.example.yaml (gerçek secret deploy workflow'unda kubectl ile üretilir)
+# - migration-job.yaml  (deploy sırasında SHA'lı adla ayrıca uygulanır;
+#                        tamamlanmış bir Job yeniden apply edilemez)
+# - ingress.yaml        (domain bağlanana kadar NodePort kullanılıyor)
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# Namespace overlay'de tanımlanır (fikirsepeti-prod).
+resources:
+  - configmap.yaml
+  - postgres-service.yaml
+  - postgres-statefulset.yaml
+  - web-deployment.yaml
+  - web-service.yaml
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: fikirsepeti
+    includeSelectors: false

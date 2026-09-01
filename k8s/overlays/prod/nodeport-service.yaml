@@ -1,0 +1,25 @@
+# Dış erişim — domain bağlanana kadar.
+#   http://84.247.180.172:30090
+#
+# LogiSlot'un pilot başlangıcıyla aynı yaklaşım: 80/443 Hermes'in olduğu için
+# domain kurulumu (Cloudflare + port yönlendirme) ayrı bir adım; NodePort
+# hemen çalışıyor ve o adım beklenmeden ürün gösterilebiliyor.
+#
+# 30090 seçildi: kümede kullanımda olan NodePort'lar 30082/30083/30087/30088/
+# 30089 (LogiSlot), 30880/30443 (ingress-nginx-test), 31412/30772
+# (ingress-nginx) — 30090 boş.
+apiVersion: v1
+kind: Service
+metadata:
+  name: fikirsepeti-web-nodeport
+  labels:
+    app.kubernetes.io/name: fikirsepeti-web
+spec:
+  type: NodePort
+  selector:
+    app.kubernetes.io/name: fikirsepeti-web
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+      nodePort: 30090

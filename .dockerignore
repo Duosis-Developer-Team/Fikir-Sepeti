@@ -1,0 +1,9 @@
+node_modules
+.next
+.git
+.env*
+test-results
+playwright-report
+*.md
+!AGENTS.md
+Design system documentation

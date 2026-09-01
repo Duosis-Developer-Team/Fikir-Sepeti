@@ -1,0 +1,16 @@
+# Fikir Sepeti PROD — namespace: fikirsepeti-prod.
+#
+# Tek ortam (karar: pilot öncesi, veri yok). dev gerekirse bu overlay
+# kopyalanıp namespace/nodePort değiştirilir; base'e dokunulmaz.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: fikirsepeti-prod
+resources:
+  - namespace.yaml
+  - ../../base
+  - nodeport-service.yaml
+images:
+  - name: ghcr.io/duosis-developer-team/fikir-sepeti-web
+    newTag: prod
+patches:
+  - path: configmap-patch.yaml

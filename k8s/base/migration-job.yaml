@@ -1,0 +1,45 @@
+# Şema migration'ları — deploy sırasında çalışır (deploy.yml adı SHA'lı bir
+# kopya üretip uygular; tamamlanmış bir Job yeniden apply edilemez).
+#
+# Elle:
+#   kubectl -n fikirsepeti-prod delete job fikirsepeti-migration --ignore-not-found
+#   kubectl -n fikirsepeti-prod apply -f k8s/base/migration-job.yaml
+#   kubectl -n fikirsepeti-prod logs -f job/fikirsepeti-migration
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: fikirsepeti-migration
+  labels:
+    app.kubernetes.io/name: fikirsepeti-migration
+    app.kubernetes.io/part-of: fikirsepeti
+spec:
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: fikirsepeti-migration
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: migration
+          # Web ile AYNI imaj — şema ile onu uygulayan kodun sürüm kayması
+          # yapısal olarak imkânsız olsun diye.
+          image: ghcr.io/duosis-developer-team/fikir-sepeti-web:prod
+          command: ["node", "scripts/migrate.mjs"]
+          env:
+            # Sahip rolü — YALNIZCA burada. Web pod'unda yok.
+            - name: ADMIN_DATABASE_URL
+              valueFrom:
+                secretKeyRef: { name: fikirsepeti-secrets, key: ADMIN_DATABASE_URL }
+            # fikirsepeti_app rolünün parolası; compat migration'ı rolü bu
+            # değerle oluşturuyor/güncelliyor (parola rotasyonu da buradan).
+            - name: APP_DB_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: fikirsepeti-secrets, key: APP_DB_PASSWORD }
+          resources:
+            requests:
+              cpu: 100m
+              memory: 192Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
