@@ -101,6 +101,15 @@ export function HackathonRunner({ basketId }: { basketId: string }) {
     });
   }, [user, data, basketId, load]);
 
+  // Onay bekleyen katılımcı: admin onaylayınca hackathon_participants realtime abonesi
+  // zaten `load()`'u tetikliyor, ama "Onay bekleniyor" ekranını süren joinPending state'i
+  // hiçbir zaman yeniden değerlendirilmiyordu — sadece F5 ile yeniden mount olunca temizleniyordu.
+  useEffect(() => {
+    if (!user || !data || !joinPending) return;
+    const me = data.participants.find((p) => p.user_id === user.email);
+    if (me && me.approved !== false) setJoinPending(false);
+  }, [user, data, joinPending]);
+
   // lobiye katılım kararı (bir kez) — sahip ve davet linkiyle gelen otomatik
   // katılır; sadece sepet listesinden tıklayan biri "Katıl" butonunu görür (FS-10).
   useEffect(() => {

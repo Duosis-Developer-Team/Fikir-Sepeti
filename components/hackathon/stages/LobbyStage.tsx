@@ -658,10 +658,14 @@ export function LobbyStage({ data, config, isAdmin, user, refresh, needsJoinActi
 }
 
 function Choice<T extends string>({ value, options, onChange }: { value?: T; options: { v: T; label: string; hint?: string }[]; onChange: (v: T) => void }) {
+  const [hovered, setHovered] = useState<T | null>(null);
   return (
     <div className="flex flex-wrap justify-center gap-5">
       {options.map((o, i) => {
         const on = value === o.v;
+        // Fare üzerine gelince de seçiliymiş gibi altın vurgu göster — sadece tıklanan
+        // değil, üzerine gelinen kartın ne olduğu da net olsun.
+        const active = on || hovered === o.v;
         return (
           <motion.button
             key={o.v}
@@ -670,15 +674,17 @@ function Choice<T extends string>({ value, options, onChange }: { value?: T; opt
             transition={{ duration: 0.42, ease: EASE, delay: 0.08 + i * 0.07 }}
             whileHover={{ y: -6 }}
             whileTap={{ scale: 0.97 }}
+            onMouseEnter={() => setHovered(o.v)}
+            onMouseLeave={() => setHovered((h) => (h === o.v ? null : h))}
             onClick={() => onChange(o.v)}
-            className="min-w-[210px] rounded-[24px] px-10 py-9 text-center"
+            className="min-w-[210px] rounded-[24px] px-10 py-9 text-center transition-colors"
             style={{
-              background: on ? "rgba(231,169,63,0.12)" : "var(--card)",
-              border: `1px solid ${on ? GOLD : "rgba(var(--border-rgb),0.09)"}`,
-              boxShadow: on ? "var(--card-shadow-hover), 0 20px 50px -28px rgba(231,169,63,0.6)" : "var(--card-shadow)",
+              background: active ? "rgba(231,169,63,0.12)" : "var(--card)",
+              border: `1px solid ${active ? GOLD : "rgba(var(--border-rgb),0.09)"}`,
+              boxShadow: active ? "var(--card-shadow-hover), 0 20px 50px -28px rgba(231,169,63,0.6)" : "var(--card-shadow)",
             }}
           >
-            <span className="font-display block text-[1.75rem] font-bold" style={{ color: on ? GOLD : "var(--text)" }}>{o.label}</span>
+            <span className="font-display block text-[1.75rem] font-bold transition-colors" style={{ color: active ? GOLD : "var(--text)" }}>{o.label}</span>
             {o.hint && <span className="mt-1.5 block text-[1rem]" style={{ color: dim(0.5) }}>{o.hint}</span>}
           </motion.button>
         );
