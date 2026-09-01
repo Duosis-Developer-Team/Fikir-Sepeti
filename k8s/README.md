@@ -151,6 +151,59 @@ görüp durur (kasıtlıysa `ALLOW_CHECKSUM_DRIFT=1`).
 
 ---
 
+## İlk yönetici (bootstrap)
+
+Yeni kurulumda **kimsenin admin yetkisi yoktur**: Azure ile ilk giren kullanıcı
+`ensure_app_membership` ile yalnızca `member` rolünü alıyor. İlk `platform_owner`
+elle veriliyor — tavuk-yumurta problemi, çünkü rol atamak `tenant.manage_roles`
+izni istiyor ve onu da henüz kimse taşımıyor.
+
+Roller: `platform_owner` (13 iznin hepsi + `platform.manage_tenants` → `/admin`
+paneli), `tenant_admin` (platform yönetimi hariç hepsi), `organizer`,
+`moderator`, `jury`, `member`, `spectator`.
+
+```bash
+kubectl -n fikirsepeti-prod exec -i fikirsepeti-postgres-0 -c postgres -- \
+  psql -U fikirsepeti -d fikirsepeti <<'SQL'
+insert into user_roles (tenant_id, user_id, role_id)
+select t.id, 'ADRES@duosis.com', r.id
+  from tenants t, roles r
+ where t.id = (select id from tenants where name = 'DuoSis')
+   and r.key = 'platform_owner' and r.tenant_id is null
+on conflict (tenant_id, user_id, role_id) where scope_basket_id is null do nothing;
+SQL
+```
+
+Bundan sonrası arayüzden: `platform_owner` `tenant.manage_roles` taşıdığı için
+diğer kullanıcıları `/admin` panelinden yetkilendirebilir; SQL'e bir daha
+gerek yok.
+
+### Yedek giriş yolu (şifre)
+
+Azure erişilemezse diye aynı hesaba şifre de tanımlanabilir. Şifreli giriş
+`password_hash`'e bakıyor, sağlayıcıdan bağımsız — iki yol da aynı hesaba
+açılıyor, ayrı bir "admin hesabı" oluşturmaya gerek yok (paylaşılan hesap
+kimin ne yaptığını da gizlerdi).
+
+```bash
+# hash repo kökünde üretiliyor; scrypt parametreleri lib/password.ts'te
+PW='...' NODE_OPTIONS=--conditions=react-server npx tsx -e \
+  "import{hashPassword}from'./lib/password';hashPassword(process.env.PW!).then(h=>console.log(h))"
+# çıkan 'scrypt$32768$8$1$...$...' değeri:
+#   update auth_credentials set password_hash = '<hash>' where email = '<adres>';
+```
+
+Doğrulama (gerçek istek, gerçek oturum):
+
+```bash
+curl -s -c /tmp/c.txt -X POST https://<host>/api/auth/login \
+  -H 'content-type: application/json' -d '{"email":"...","password":"..."}'
+curl -s -b /tmp/c.txt "https://<host>/api/permissions?keys=platform.manage_tenants"
+curl -s -b /tmp/c.txt https://<host>/api/admin/tenants   # 200 = panel açılır
+```
+
+---
+
 ## Yedekleme
 
 > **UYARI:** `local-path` StorageClass'ın reclaimPolicy'si `Delete`.
