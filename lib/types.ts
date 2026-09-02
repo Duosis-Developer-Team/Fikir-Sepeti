@@ -154,6 +154,8 @@ export type Team = {
   idea_id?: string | null;
   /** Team angle / angle when ideaCount === 1 (S6). */
   angle?: string | null;
+  /** Rastgele/otomatik dağıtımda seçilen üye — sadece o (veya organizatör) adı değiştirebilir. */
+  leader_user_id?: string | null;
 };
 
 export type TeamMember = {

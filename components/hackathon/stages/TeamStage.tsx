@@ -22,7 +22,7 @@ import { GOLD, dim } from "../contract";
 import { GoldButton, Avatar, StageHeadline } from "../ui";
 
 export function TeamStage(ctx: StageContext) {
-  const { data, config, isAdmin, refresh } = ctx;
+  const { data, config, isAdmin, refresh, user } = ctx;
   const { basket, participants, teams, members, ideas } = data;
 
   const lockedIdeas: Idea[] = useMemo(() => {
@@ -172,14 +172,31 @@ export function TeamStage(ctx: StageContext) {
         : [];
     const currentPair = pairLabelRows[crossRevealIdx];
 
+    // Konu tek (herkes aynı fikir üzerinde çalışıyor) — her takım kartında ayrı ayrı
+    // tekrar etmesin, bir kez üstte gösterilsin.
+    const singleSharedIdea = lockedIdeas.length === 1 ? lockedIdeas[0] : null;
+
     return (
       <div className="mx-auto max-w-[1100px]">
         <StageHeadline pre="Takımlar" accent="hazır" sub="Yapım başlasın — sonra demo." />
+        {singleSharedIdea && (
+          <div
+            className="mb-6 rounded-[22px] p-6 text-center"
+            style={{ background: "var(--card)", border: "1px solid rgba(var(--border-rgb),0.09)", boxShadow: "var(--card-shadow)" }}
+          >
+            <span className="text-[0.7rem] font-semibold uppercase tracking-[0.2em]" style={{ color: dim(0.5) }}>Konu</span>
+            <h2 className="font-display mt-1 text-[1.4rem] font-bold" style={{ color: GOLD }}>{singleSharedIdea.text}</h2>
+            <IdeaDescription text={singleSharedIdea.description} />
+            <IdeaAttachment ideaId={singleSharedIdea.id} />
+          </div>
+        )}
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {teams.map((t, idx) => {
             const mem = members.filter((m) => m.team_id === t.id);
             const assignedIdea = ideaOf(t.idea_id) ?? (lockedIdeas.length === 1 ? lockedIdeas[0] : null);
             const assigned = assignedIdea?.text ?? null;
+            const isLeader = !!t.leader_user_id && (t.leader_user_id === user.email || t.leader_user_id === user.id);
+            const canRenameThis = isAdmin || isLeader;
             return (
               <motion.div
                 key={t.id}
@@ -193,7 +210,7 @@ export function TeamStage(ctx: StageContext) {
                 data-team-idea={assigned ?? ""}
               >
                 <div className="flex items-center justify-between gap-2">
-                  {isAdmin && editingId === t.id ? (
+                  {canRenameThis && editingId === t.id ? (
                     <input
                       autoFocus
                       value={editName}
@@ -209,29 +226,33 @@ export function TeamStage(ctx: StageContext) {
                   ) : (
                     <button
                       onClick={() => {
-                        if (isAdmin) {
+                        if (canRenameThis) {
                           setEditingId(t.id);
                           setEditName(t.name);
                         }
                       }}
                       className="group inline-flex items-center gap-1.5"
-                      style={{ cursor: isAdmin ? "text" : "default" }}
+                      style={{ cursor: canRenameThis ? "text" : "default" }}
                     >
                       <span className="font-display text-[1.2rem] font-bold" style={{ color: GOLD }}>{t.name}</span>
-                      {isAdmin && (
+                      {canRenameThis && (
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-0 transition-opacity group-hover:opacity-60" aria-hidden><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
                       )}
                     </button>
                   )}
                   <span className="tnum shrink-0 text-[0.82rem]" style={{ color: dim(0.45) }}>{mem.length} kişi</span>
                 </div>
-                {assigned && (
+                {!singleSharedIdea && assigned && (
                   <p className="mt-2 text-[0.9rem]" style={{ color: "var(--text-2)" }} data-testid="team-idea-label">
                     Fikir: {assigned}
                   </p>
                 )}
-                <IdeaDescription text={assignedIdea?.description} />
-                {assignedIdea && <IdeaAttachment ideaId={assignedIdea.id} />}
+                {!singleSharedIdea && (
+                  <>
+                    <IdeaDescription text={assignedIdea?.description} />
+                    {assignedIdea && <IdeaAttachment ideaId={assignedIdea.id} />}
+                  </>
+                )}
                 {showAngle && (
                   <div className="mt-3">
                     <input
@@ -248,7 +269,17 @@ export function TeamStage(ctx: StageContext) {
                   </div>
                 )}
                 <div className="mt-3 flex flex-wrap gap-1.5">
-                  {mem.map((m) => <Avatar key={m.id} name={nameOf(m.user_id)} size={34} ring="var(--card)" />)}
+                  {mem.map((m) => {
+                    const memberIsLeader = !!t.leader_user_id && m.user_id === t.leader_user_id;
+                    return (
+                      <div key={m.id} className="relative" title={memberIsLeader ? `${nameOf(m.user_id)} — lider` : nameOf(m.user_id)}>
+                        <Avatar name={nameOf(m.user_id)} size={34} ring={memberIsLeader ? GOLD : "var(--card)"} />
+                        {memberIsLeader && (
+                          <span className="absolute -right-1 -top-1 text-[0.7rem] leading-none" aria-hidden>👑</span>
+                        )}
+                      </div>
+                    );
+                  })}
                   {!mem.length && <span className="text-[0.85rem]" style={{ color: dim(0.4) }}>boş</span>}
                 </div>
               </motion.div>

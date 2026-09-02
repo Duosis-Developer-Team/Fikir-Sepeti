@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { setTeamTurn, upsertScore, voteTeam } from "@/lib/hackathon";
+import { setConfig, setTeamTurn, upsertScore, voteTeam } from "@/lib/hackathon";
 import { DEFAULT_RUBRIC, type RubricCategory } from "@/lib/scoring";
 import { nextTurnEndsAt, requiredReviewers, scoringTurnProgress, teamAtTurn, teamOrder } from "@/lib/teamTurn";
 import { useScopedPermission } from "@/lib/permissions-client";
@@ -99,10 +99,23 @@ export function DemoStage({ data, user, config, refresh, isAdmin, readOnly }: St
       });
   };
 
+  // Lobide teams linki hiç girilmemiş olabilir (toplantı sonradan kuruluyor) —
+  // admin'in geç kalmış bile olsa buradan ekleyebilmesi lazım, lobiye dönüş yok.
+  const [teamsLinkDraft, setTeamsLinkDraft] = useState(config.teamsLink ?? "");
+  const [savingTeamsLink, setSavingTeamsLink] = useState(false);
+  const saveTeamsLink = async () => {
+    const v = teamsLinkDraft.trim();
+    if (!v) return;
+    setSavingTeamsLink(true);
+    await setConfig(basket.id, { ...config, teamsLink: v });
+    setSavingTeamsLink(false);
+    refresh();
+  };
+
   // Sunum aşaması = canlı sunum + puanlama. Bu ekran ne kadar öne çıkarsa
   // katılımcılar toplantıya o kadar erken katılır — puanlamadan önce izlemeleri gereken
   // asıl şey burada oluyor, o yüzden linke değil bir davete benzemesi lazım (bkz. talep #7).
-  const teamsLinkBanner = config.teamsLink && (
+  const teamsLinkBanner = config.teamsLink ? (
     <a
       href={config.teamsLink}
       target="_blank"
@@ -133,7 +146,35 @@ export function DemoStage({ data, user, config, refresh, isAdmin, readOnly }: St
         📞 Toplantıya katıl →
       </span>
     </a>
-  );
+  ) : isAdmin ? (
+    <div
+      className="mb-8 flex flex-col items-center gap-3 rounded-[26px] px-8 py-6 text-center sm:flex-row sm:text-left"
+      style={{ background: "var(--card)", border: "1px dashed rgba(var(--border-rgb),0.2)" }}
+    >
+      <div className="flex-1">
+        <span className="text-[0.72rem] font-bold uppercase tracking-[0.22em]" style={{ color: dim(0.5) }}>Canlı sunum</span>
+        <p className="mt-1 text-[0.9rem]" style={{ color: dim(0.55) }}>Teams toplantı linki henüz eklenmedi — girince herkese görünür olur.</p>
+      </div>
+      <div className="flex w-full gap-2 sm:w-auto">
+        <input
+          value={teamsLinkDraft}
+          onChange={(e) => setTeamsLinkDraft(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && void saveTeamsLink()}
+          placeholder="https://teams.microsoft.com/..."
+          className="flex-1 rounded-full px-4 py-2.5 text-[0.9rem] outline-none sm:w-64"
+          style={{ background: "var(--surface-2)", border: "1px solid rgba(var(--border-rgb),0.12)", color: "var(--text)" }}
+        />
+        <button
+          onClick={() => void saveTeamsLink()}
+          disabled={!teamsLinkDraft.trim() || savingTeamsLink}
+          className="shrink-0 rounded-full px-5 py-2.5 text-[0.9rem] font-semibold transition disabled:opacity-40"
+          style={{ background: GOLD, color: "#17150F" }}
+        >
+          Ekle
+        </button>
+      </div>
+    </div>
+  ) : null;
 
   if (mode === "rubric") {
     // Takımlar sırayla gelir — herkes bitirince ya da süre dolunca admin tarafında
