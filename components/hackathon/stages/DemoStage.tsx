@@ -184,7 +184,7 @@ export function DemoStage({ data, user, config, refresh, isAdmin, readOnly }: St
               </p>
             ) : !isJury ? (
               <p className="py-10 text-center text-[0.95rem]" style={{ color: dim(0.45) }}>
-                Bu hackathon'da sadece jüri puanlayabilir. Puanlar geldikçe skor tablosunda göreceksin.
+                Bu hackathon&apos;da sadece jüri puanlayabilir. Puanlar geldikçe skor tablosunda göreceksin.
               </p>
             ) : (
               <div
