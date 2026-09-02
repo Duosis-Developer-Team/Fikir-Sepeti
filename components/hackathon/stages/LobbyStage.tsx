@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from "motion/react";
 import type { HackathonConfig, Participant, PoolIdea } from "@/lib/types";
 import { setConfig } from "@/lib/hackathon";
 import { ideaStatusLabel } from "@/lib/lobby";
-import { DEFAULT_RUBRIC, SCORE_LIBRARY, MAX_CUSTOM_CATEGORIES, type RubricCategory } from "@/lib/scoring";
+import { DEFAULT_RUBRIC, SCORE_LIBRARY, type RubricCategory } from "@/lib/scoring";
 import { setBasketPhase } from "@/lib/db";
 import { listPoolIdeas, attachPoolIdeas } from "@/lib/pool";
 import type { StageContext } from "../contract";
@@ -131,12 +131,7 @@ export function LobbyStage({ data, config, isAdmin, user, refresh, needsJoinActi
   const continueRubric = () => {
     if (!rubricReady) return;
     const rubric = [...SCORE_LIBRARY.filter((c) => rubricPicked.has(c.key)), ...customCats];
-    patch({
-      scoringMode: "rubric",
-      rubric,
-      juryEnabled: config.juryEnabled ?? false,
-      juryWeight: config.juryWeight ?? 2,
-    });
+    patch({ scoringMode: "rubric", rubric });
     setSub("teamTurn");
   };
 
@@ -509,7 +504,7 @@ export function LobbyStage({ data, config, isAdmin, user, refresh, needsJoinActi
           {config.scoringMode === "rubric" && (
             <div className="mt-8 flex flex-col items-center gap-4" data-testid="rubric-setup">
               <p className="max-w-[460px] text-center text-[0.9rem]" style={{ color: dim(0.55) }}>
-                Kategorileri seç, gerekirse kendi kategorini ekle — {MAX_CUSTOM_CATEGORIES} tane özel kategoriye kadar.
+                Kategorileri seç, gerekirse kendi kategorini ekle.
               </p>
               <div className="flex flex-wrap justify-center gap-2" data-testid="rubric-library">
                 {SCORE_LIBRARY.map((cat) => {
@@ -560,54 +555,38 @@ export function LobbyStage({ data, config, isAdmin, user, refresh, needsJoinActi
                   ))}
                 </div>
               )}
-              {customCats.length < MAX_CUSTOM_CATEGORIES && (
-                <div className="flex items-center gap-2">
-                  <input
-                    value={customDraft}
-                    onChange={(e) => setCustomDraft(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key !== "Enter") return;
-                      const label = customDraft.trim();
-                      if (label.length < 2) return;
-                      setCustomCats((prev) => [...prev, { key: `custom_${Date.now()}_${prev.length}`, label, weight: 1, custom: true }]);
-                      setCustomDraft("");
-                    }}
-                    placeholder="Özel kategori adı…"
-                    className="rounded-full px-4 py-2 text-[0.9rem] outline-none"
-                    style={{ background: "var(--surface-2)", color: "var(--text)", border: "1px solid rgba(var(--border-rgb),0.1)", minWidth: 200 }}
-                    data-testid="rubric-custom-input"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const label = customDraft.trim();
-                      if (label.length < 2) return;
-                      setCustomCats((prev) => [...prev, { key: `custom_${Date.now()}_${prev.length}`, label, weight: 1, custom: true }]);
-                      setCustomDraft("");
-                    }}
-                    disabled={customDraft.trim().length < 2}
-                    className="rounded-full px-4 py-2 text-[0.85rem] font-semibold disabled:opacity-40"
-                    style={{ border: "1px solid rgba(var(--border-rgb),0.2)", color: dim(0.85) }}
-                    data-testid="rubric-custom-add"
-                  >
-                    + Ekle
-                  </button>
-                </div>
-              )}
-              <Segmented
-                label="Jüri ağırlığı"
-                value={config.juryEnabled ? "on" : "off"}
-                onChange={(v) =>
-                  patch({
-                    juryEnabled: v === "on",
-                    juryWeight: config.juryWeight ?? 2,
-                  })
-                }
-                options={[
-                  { v: "off", label: "Kapalı" },
-                  { v: "on", label: "Açık ×2" },
-                ]}
-              />
+              <div className="flex items-center gap-2">
+                <input
+                  value={customDraft}
+                  onChange={(e) => setCustomDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key !== "Enter") return;
+                    const label = customDraft.trim();
+                    if (label.length < 2) return;
+                    setCustomCats((prev) => [...prev, { key: `custom_${Date.now()}_${prev.length}`, label, weight: 1, custom: true }]);
+                    setCustomDraft("");
+                  }}
+                  placeholder="Özel kategori adı…"
+                  className="rounded-full px-4 py-2 text-[0.9rem] outline-none"
+                  style={{ background: "var(--surface-2)", color: "var(--text)", border: "1px solid rgba(var(--border-rgb),0.1)", minWidth: 200 }}
+                  data-testid="rubric-custom-input"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const label = customDraft.trim();
+                    if (label.length < 2) return;
+                    setCustomCats((prev) => [...prev, { key: `custom_${Date.now()}_${prev.length}`, label, weight: 1, custom: true }]);
+                    setCustomDraft("");
+                  }}
+                  disabled={customDraft.trim().length < 2}
+                  className="rounded-full px-4 py-2 text-[0.85rem] font-semibold disabled:opacity-40"
+                  style={{ border: "1px solid rgba(var(--border-rgb),0.2)", color: dim(0.85) }}
+                  data-testid="rubric-custom-add"
+                >
+                  + Ekle
+                </button>
+              </div>
             </div>
           )}
         </>

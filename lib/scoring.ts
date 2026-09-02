@@ -98,6 +98,3 @@ export function computeTeamScores(args: {
     return { teamId, total, categories };
   });
 }
-
-/** Max custom categories allowed beyond library (plan: ≤2). */
-export const MAX_CUSTOM_CATEGORIES = 2;
