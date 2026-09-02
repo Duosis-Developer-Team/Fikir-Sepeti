@@ -76,6 +76,15 @@ test.describe("S7 rubric scoring", () => {
       tenant_id: DUOSIS_TENANT_ID,
     });
 
+    // Rubrik puanlama artik sadece jury izni olanlara acik (0026_jury_only_scoring.sql) —
+    // tenant_admin/platform_owner bunu artik otomatik tasimiyor, bu sepete ozel ata.
+    await sb.from("user_roles").insert({
+      tenant_id: DUOSIS_TENANT_ID,
+      user_id: SEED.adminEmail,
+      role_id: "c0000000-0000-4000-8000-000000000005", // jury (bkz. 0004_rbac.sql)
+      scope_basket_id: basketId,
+    });
+
     // Seed one category score so scoreboard shows breakdown immediately
     await sb.from("scores").insert({
       basket_id: basketId,

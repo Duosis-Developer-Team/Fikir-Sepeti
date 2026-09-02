@@ -6,7 +6,8 @@ import {
 } from "@/lib/server-auth";
 
 /**
- * POST /api/scores — upsert rubric score; is_jury derived server-side from hackathon.jury.
+ * POST /api/scores — upsert rubric score. Yalnizca hackathon.jury izni olanlar
+ * puan verebilir (RLS de ayni kontrolu tasiyor, bkz. 0026_jury_only_scoring.sql).
  */
 export async function POST(req: Request) {
   const identity = await resolveIdentity(req);
@@ -48,6 +49,9 @@ export async function POST(req: Request) {
     "hackathon.jury",
     body.basket_id,
     req);
+  if (!isJury) {
+    return NextResponse.json({ error: "forbidden", permission: "hackathon.jury" }, { status: 403 });
+  }
 
   const { data, error } = await sb
     .from("scores")

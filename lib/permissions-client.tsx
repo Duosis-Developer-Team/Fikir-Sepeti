@@ -17,8 +17,7 @@ const ALL_KEYS = PERMISSIONS.join(",");
 /**
  * Global (sepet-kapsamsız) izin kümesi — oturum açık kullanıcı için TEK
  * seferde çekilip önbelleğe alınır, her buton kendi isteğini atmaz. Sepete
- * özel roller (jüri gibi) burada YOK — onlar zaten ilgili sayfanın kendi
- * veri paketiyle (isAdmin vb.) geliyor.
+ * özel roller (jüri gibi) burada YOK — bkz. useScopedPermission.
  */
 export function PermissionsProvider({ children }: { children: React.ReactNode }) {
   const { user } = useSession();
@@ -62,4 +61,29 @@ export function usePermissions(keys: Permission[]): PermMap {
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `sig` is keys' content signature, keys itself is a fresh literal every render
   }, [permissions, sig]);
+}
+
+/**
+ * Sepete-özel izin (jüri gibi — bkz. supabase/migrations/0026_jury_only_scoring.sql):
+ * global PermissionsProvider'daki kataloğa girmez, çünkü basketId'ye göre değişir.
+ * Yüklenene kadar (ve izin yoksa) false — "yetkisizken kontrol gizlensin" varsayılanı.
+ */
+export function useScopedPermission(key: Permission, basketId: string | null | undefined): boolean {
+  const [allowed, setAllowed] = useState(false);
+
+  useEffect(() => {
+    if (!basketId) {
+      setAllowed(false);
+      return;
+    }
+    let cancelled = false;
+    void apiFetch<{ permissions: PermMap }>(`/api/permissions?keys=${key}&basketId=${basketId}`).then((res) => {
+      if (!cancelled) setAllowed(res.data?.permissions?.[key] === true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [key, basketId]);
+
+  return allowed;
 }

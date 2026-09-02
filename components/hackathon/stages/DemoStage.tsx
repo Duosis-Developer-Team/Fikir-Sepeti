@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { setTeamTurn, upsertScore, voteTeam } from "@/lib/hackathon";
 import { DEFAULT_RUBRIC, type RubricCategory } from "@/lib/scoring";
 import { nextTurnEndsAt, requiredReviewers, scoringTurnProgress, teamAtTurn, teamOrder } from "@/lib/teamTurn";
+import { useScopedPermission } from "@/lib/permissions-client";
 import { Scoreboard } from "../Scoreboard";
 import { TeamTurnBar } from "../TeamTurnBar";
 import type { StageContext } from "../contract";
@@ -14,6 +15,9 @@ import { Avatar, StageHeadline } from "../ui";
 export function DemoStage({ data, user, config, refresh, isAdmin, readOnly }: StageContext) {
   const { basket, teams, members, teamVotes, participants, ideas, scores } = data;
   const selected = ideas.find((i) => i.id === basket.selected_idea_id) ?? null;
+  // Rubrik puanlama artık sadece jüriye açık (bkz. 0026_jury_only_scoring.sql) —
+  // "Basit oy" (team_votes/vote()) ayrı bir mekanizma, herkese açık kalır.
+  const isJury = useScopedPermission("hackathon.jury", basket.id);
   const mode = config.scoringMode ?? "simple";
   const rubric: RubricCategory[] = config.rubric?.length ? config.rubric : DEFAULT_RUBRIC;
   const myTeamId = members.find((m) => m.user_id === user.email || m.user_id === user.id)?.team_id ?? null;
@@ -56,7 +60,7 @@ export function DemoStage({ data, user, config, refresh, isAdmin, readOnly }: St
   };
 
   const setStars = (teamId: string, key: string, stars: number) => {
-    if (readOnly || blockedSelfTeam(teamId)) return;
+    if (readOnly || blockedSelfTeam(teamId) || !isJury) return;
     // Puanı önce yerelde göster - bekleyen ağ isteği/reload olmadan tıklama anında
     // görsel geri bildirim verir (realtime abonelik zaten scores değişince yeniden yükler).
     const k = starsKey(teamId, key);
@@ -177,6 +181,10 @@ export function DemoStage({ data, user, config, refresh, isAdmin, readOnly }: St
             {myTurnBlocked ? (
               <p className="py-10 text-center text-[0.95rem]" style={{ color: dim(0.45) }}>
                 Bu senin takımın — kendini puanlayamazsın. Sıradaki takım gelene kadar bekle.
+              </p>
+            ) : !isJury ? (
+              <p className="py-10 text-center text-[0.95rem]" style={{ color: dim(0.45) }}>
+                Bu hackathon'da sadece jüri puanlayabilir. Puanlar geldikçe skor tablosunda göreceksin.
               </p>
             ) : (
               <div
