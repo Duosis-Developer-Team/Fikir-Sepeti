@@ -255,17 +255,23 @@ export function TeamStage(ctx: StageContext) {
                 )}
                 {showAngle && (
                   <div className="mt-3">
-                    <input
-                      value={angleDraft[t.id] ?? t.angle ?? ""}
-                      onChange={(e) => setAngleDraft((d) => ({ ...d, [t.id]: e.target.value }))}
-                      onBlur={() => {
-                        const v = angleDraft[t.id];
-                        if (v != null) void setTeamAngle(t.id, v, basket.id).then(refresh);
-                      }}
-                      placeholder="Takım açısı (opsiyonel)"
-                      className="w-full rounded-lg px-3 py-2 text-[0.85rem] outline-none"
-                      style={{ background: "var(--surface-2)", border: "1px solid rgba(var(--border-rgb),0.1)", color: "var(--text)" }}
-                    />
+                    {canRenameThis ? (
+                      <input
+                        value={angleDraft[t.id] ?? t.angle ?? ""}
+                        onChange={(e) => setAngleDraft((d) => ({ ...d, [t.id]: e.target.value }))}
+                        onBlur={() => {
+                          const v = angleDraft[t.id];
+                          if (v != null) void setTeamAngle(t.id, v, basket.id).then(refresh);
+                        }}
+                        placeholder="Takım açısı (opsiyonel)"
+                        className="w-full rounded-lg px-3 py-2 text-[0.85rem] outline-none"
+                        style={{ background: "var(--surface-2)", border: "1px solid rgba(var(--border-rgb),0.1)", color: "var(--text)" }}
+                      />
+                    ) : (
+                      t.angle && (
+                        <p className="text-[0.85rem]" style={{ color: dim(0.55) }}>{t.angle}</p>
+                      )
+                    )}
                   </div>
                 )}
                 <div className="mt-3 flex flex-wrap gap-1.5">

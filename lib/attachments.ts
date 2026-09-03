@@ -2,9 +2,14 @@
 
 import type { IdeaAttachment } from "./types";
 
-/** İndirme/önizleme linki — img/PDF gibi tarayıcının açabildiği tipler sekmede direkt açılır. */
+/** Önizleme linki — img/PDF gibi tarayıcının açabildiği tipler sekmede direkt açılır. */
 export function ideaAttachmentUrl(ideaId: string): string {
   return `/api/ideas/${ideaId}/attachment`;
+}
+
+/** İndirme linki — Content-Disposition: attachment döner, tarayıcı sekmede açmak yerine kaydeder. */
+export function ideaAttachmentDownloadUrl(ideaId: string): string {
+  return `/api/ideas/${ideaId}/attachment?download=1`;
 }
 
 export async function getIdeaAttachmentMeta(

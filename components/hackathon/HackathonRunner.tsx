@@ -201,8 +201,8 @@ export function HackathonRunner({ basketId }: { basketId: string }) {
 
   return (
     <div className="pb-40">
-      {/* stepper — admin daha önce ulaşılmış herhangi bir aşamayı salt okunur önizleyebilir */}
-      <Stepper phase={phase} displayPhase={displayPhase} isAdmin={isAdmin} onView={viewOnly} />
+      {/* stepper — herkes daha önce ulaşılmış herhangi bir aşamayı salt okunur önizleyebilir */}
+      <Stepper phase={phase} displayPhase={displayPhase} onView={viewOnly} />
 
       {/* aktif modül — fazlar arası orkestre giriş */}
       <motion.div
@@ -267,12 +267,10 @@ export function HackathonRunner({ basketId }: { basketId: string }) {
 function Stepper({
   phase,
   displayPhase,
-  isAdmin,
   onView,
 }: {
   phase: StagePhase;
   displayPhase: StagePhase;
-  isAdmin: boolean;
   onView: (p: StagePhase) => void;
 }) {
   const steps = PHASE_ORDER.filter((p) => p !== "done");
@@ -293,7 +291,8 @@ function Stepper({
             : reached
               ? { background: "rgba(231,169,63,0.13)", color: GOLD_SOFT }
               : { background: "transparent", color: dim(0.42) };
-          const clickable = isAdmin && reached;
+          // önizleme artık admin'e özel değil — katılan herkes ulaşılmış bir aşamaya bakabilir.
+          const clickable = reached;
           const cls = `relative flex-1 whitespace-nowrap rounded-full px-3 py-2.5 text-center text-[0.85rem] font-semibold transition-colors ${clickable ? "cursor-pointer" : "cursor-default"}`;
           const content = (
             <>

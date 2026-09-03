@@ -38,7 +38,9 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
   const idea = await loadIdea(req, id, identity.tenantId);
   if (!idea) return NextResponse.json({ error: "not_found" }, { status: 404 });
 
-  const metaOnly = new URL(req.url).searchParams.get("meta") === "1";
+  const params = new URL(req.url).searchParams;
+  const metaOnly = params.get("meta") === "1";
+  const forceDownload = params.get("download") === "1";
 
   const result = await withIdentity(identity.email, (client) =>
     client.query(
@@ -68,7 +70,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
   return new NextResponse(body, {
     headers: {
       "Content-Type": file.mime_type || "application/octet-stream",
-      "Content-Disposition": `inline; filename="${encodeURIComponent(file.filename)}"`,
+      "Content-Disposition": `${forceDownload ? "attachment" : "inline"}; filename="${encodeURIComponent(file.filename)}"`,
       "Content-Length": String(file.size_bytes),
       "Cache-Control": "private, max-age=0, must-revalidate",
     },
