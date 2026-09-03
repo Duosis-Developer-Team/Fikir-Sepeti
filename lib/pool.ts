@@ -1,16 +1,11 @@
 "use client";
 
-import { supabase } from "./supabase";
-import { apiAuthHeaders } from "./api-headers";
-import type { PoolIdea } from "./types";
+import { apiAuthHeaders, apiFetch } from "./api-headers";
+import type { PoolComment, PoolIdea } from "./types";
 
 export async function listPoolIdeas(tenantId: string): Promise<PoolIdea[]> {
-  const { data } = await supabase
-    .from("idea_pool")
-    .select("*")
-    .eq("tenant_id", tenantId)
-    .order("created_at", { ascending: false });
-  return (data as PoolIdea[]) ?? [];
+  const res = await apiFetch<{ ideas: PoolIdea[] }>("/api/pool", { tenantId });
+  return res.data?.ideas ?? [];
 }
 
 export async function createPoolIdea(input: {
@@ -133,6 +128,57 @@ export async function deletePoolIdea(input: {
   const json = (await res.json().catch(() => ({}))) as { error?: string };
   if (!res.ok) return { ok: false, error: json.error };
   return { ok: true };
+}
+
+export async function listPoolComments(poolIdeaId: string, actor: string, tenantId: string): Promise<PoolComment[]> {
+  const res = await fetch(`/api/pool/comments?pool_idea_id=${encodeURIComponent(poolIdeaId)}`, {
+    headers: await apiAuthHeaders(actor, tenantId),
+  });
+  if (!res.ok) return [];
+  const json = (await res.json().catch(() => ({}))) as { comments?: PoolComment[] };
+  return json.comments ?? [];
+}
+
+export async function addPoolComment(input: {
+  pool_idea_id: string;
+  text: string;
+  author: string;
+  tenant_id: string;
+  acknowledge?: boolean;
+}): Promise<PoolComment | null> {
+  const res = await fetch("/api/pool/comments", {
+    method: "POST",
+    headers: await apiAuthHeaders(input.author, input.tenant_id),
+    body: JSON.stringify({
+      pool_idea_id: input.pool_idea_id,
+      text: input.text,
+      author_name: input.author,
+      acknowledge: input.acknowledge,
+    }),
+  });
+  const json = (await res.json().catch(() => ({}))) as {
+    comment?: PoolComment;
+    error?: string;
+    message?: string;
+  };
+  if (res.status === 422) {
+    if (typeof window !== "undefined") {
+      window.alert("Bu metin kurallara takıldı ve gönderilemiyor.");
+    }
+    return null;
+  }
+  if (res.status === 409 && json.error === "warn") {
+    if (typeof window !== "undefined") {
+      const ok = window.confirm(
+        json.message || "Metinde uyarılan kelimeler var. Göndermek istediğine emin misin?"
+      );
+      if (!ok) return null;
+      return addPoolComment({ ...input, acknowledge: true });
+    }
+    return null;
+  }
+  if (!res.ok) return null;
+  return json.comment ?? null;
 }
 
 export async function markPoolWinner(input: {

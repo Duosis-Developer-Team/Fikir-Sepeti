@@ -2,16 +2,18 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { AnimatePresence, motion } from "motion/react";
 import { BrandIcon } from "@/components/BrandIcon";
 import { useSession } from "@/components/AuthGate";
-import { supabase } from "@/lib/supabase";
+import { apiFetch } from "@/lib/api-headers";
 import {
   normalizeDomainInput,
   normalizeInviteCode,
   routeAfterPeek,
 } from "@/lib/register";
 
-type Step = "account" | "confirm" | "choose" | "create" | "invite";
+const EASE = [0.22, 0.85, 0.25, 1] as const;
+type Step = "email" | "password" | "confirm" | "choose" | "create" | "invite";
 
 const RESEND_COOLDOWN_S = 60;
 
@@ -34,7 +36,7 @@ export default function RegisterPage() {
     signOut,
   } = useSession();
 
-  const [step, setStep] = useState<Step>("account");
+  const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [workspaceName, setWorkspaceName] = useState("");
@@ -82,6 +84,16 @@ export default function RegisterPage() {
 
   const err = localError || loginError;
 
+  const onEmailContinue = () => {
+    setLocalError(null);
+    clearLoginError();
+    if (!email.trim().includes("@")) {
+      setLocalError("Geçerli bir e-posta gerekli.");
+      return;
+    }
+    setStep("password");
+  };
+
   const onAccountContinue = async () => {
     setLocalError(null);
     clearLoginError();
@@ -92,10 +104,11 @@ export default function RegisterPage() {
     }
     setBusy(true);
     try {
-      const { data: peekRows } = await supabase.rpc("peek_tenant_for_email", {
-        p_email: clean,
-      });
-      const row = Array.isArray(peekRows) ? peekRows[0] : peekRows;
+      const peek = await apiFetch<{ tenant: { id: string; name: string; via: string } | null }>(
+        `/api/tenant/peek?email=${encodeURIComponent(clean)}`
+      );
+      const t = peek.data?.tenant ?? null;
+      const row = t ? { tenant_id: t.id, tenant_name: t.name, via: t.via } : null;
       const route = routeAfterPeek(
         row
           ? {
@@ -133,7 +146,7 @@ export default function RegisterPage() {
     clearLoginError();
     setLocalError(null);
     setPassword("");
-    setStep("account");
+    setStep("email");
   };
 
   const onCreate = async () => {
@@ -194,7 +207,8 @@ export default function RegisterPage() {
           Kayıt
         </h1>
         <p className="mt-1.5 text-[0.92rem]" style={{ color: "var(--text-muted)" }}>
-          {step === "account" && "Hesap oluştur; domain eşleşirse otomatik katılır, yoksa çalışma alanı açarsın."}
+          {step === "email" && "Hesap oluştur; domain eşleşirse otomatik katılır, yoksa çalışma alanı açarsın."}
+          {step === "password" && "Şifreni belirle — en az 6 karakter."}
           {step === "confirm" && "Neredeyse bitti — e-postanı onayla."}
           {step === "choose" &&
             (domainTenant
@@ -214,59 +228,103 @@ export default function RegisterPage() {
           </p>
         )}
 
-        {step === "account" && (
-          <>
-            <input
-              autoFocus
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="iş e-postan"
-              className="mt-6 w-full rounded-lg px-3.5 py-3 text-[0.95rem] outline-none"
-              style={{
-                background: "var(--surface-2)",
-                border: "1px solid rgba(var(--border-rgb),0.09)",
-                color: "var(--text)",
-              }}
-              disabled={busy}
-            />
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && void onAccountContinue()}
-              placeholder="şifre (en az 6 karakter)"
-              className="mt-3 w-full rounded-lg px-3.5 py-3 text-[0.95rem] outline-none"
-              style={{
-                background: "var(--surface-2)",
-                border: "1px solid rgba(var(--border-rgb),0.09)",
-                color: "var(--text)",
-              }}
-              disabled={busy}
-            />
-            <button
-              type="button"
-              onClick={() => void onAccountContinue()}
-              disabled={busy}
-              className="mt-3 w-full rounded-full py-3 text-[0.95rem] font-semibold transition disabled:opacity-40"
-              style={{ background: "var(--text)", color: "var(--bg)" }}
-            >
-              {busy ? "…" : "Devam"}
-            </button>
-            {!bypass && (
-              <button
-                type="button"
-                onClick={loginAzure}
-                className="mt-3 w-full rounded-full py-3 text-[0.9rem] font-semibold transition hover:opacity-90"
-                style={{
-                  border: "1px solid rgba(var(--border-rgb),0.18)",
-                  color: "var(--text)",
-                }}
-              >
-                Microsoft ile devam
-              </button>
-            )}
-          </>
+        {(step === "email" || step === "password") && (
+          <div className="relative mt-6 overflow-hidden">
+            <AnimatePresence mode="wait" initial={false}>
+              {step === "email" ? (
+                <motion.div
+                  key="email"
+                  initial={{ opacity: 0, x: 16 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -16 }}
+                  transition={{ duration: 0.28, ease: EASE }}
+                >
+                  <input
+                    autoFocus
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && onEmailContinue()}
+                    placeholder="iş e-postan"
+                    className="w-full rounded-lg px-3.5 py-3 text-[0.95rem] outline-none"
+                    style={{
+                      background: "var(--surface-2)",
+                      border: "1px solid rgba(var(--border-rgb),0.09)",
+                      color: "var(--text)",
+                    }}
+                    disabled={busy}
+                  />
+                  <button
+                    type="button"
+                    onClick={onEmailContinue}
+                    disabled={busy}
+                    className="mt-3 w-full rounded-full py-3 text-[0.95rem] font-semibold transition disabled:opacity-40"
+                    style={{ background: "var(--text)", color: "var(--bg)" }}
+                  >
+                    Devam
+                  </button>
+                  {!bypass && (
+                    <button
+                      type="button"
+                      onClick={loginAzure}
+                      className="mt-3 w-full rounded-full py-3 text-[0.9rem] font-semibold transition hover:opacity-90"
+                      style={{
+                        border: "1px solid rgba(var(--border-rgb),0.18)",
+                        color: "var(--text)",
+                      }}
+                    >
+                      Microsoft ile devam
+                    </button>
+                  )}
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="password"
+                  initial={{ opacity: 0, x: 16 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -16 }}
+                  transition={{ duration: 0.28, ease: EASE }}
+                >
+                  <p className="mb-3 text-[0.85rem]" style={{ color: "var(--text-muted)" }}>
+                    <span style={{ color: "var(--text-2)" }}>{email}</span> için şifre belirle
+                  </p>
+                  <input
+                    autoFocus
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && void onAccountContinue()}
+                    placeholder="şifre (en az 6 karakter)"
+                    className="w-full rounded-lg px-3.5 py-3 text-[0.95rem] outline-none"
+                    style={{
+                      background: "var(--surface-2)",
+                      border: "1px solid rgba(var(--border-rgb),0.09)",
+                      color: "var(--text)",
+                    }}
+                    disabled={busy}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void onAccountContinue()}
+                    disabled={busy}
+                    className="mt-3 w-full rounded-full py-3 text-[0.95rem] font-semibold transition disabled:opacity-40"
+                    style={{ background: "var(--text)", color: "var(--bg)" }}
+                  >
+                    {busy ? "…" : "Kayıt ol"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStep("email")}
+                    disabled={busy}
+                    className="mt-3 w-full text-[0.85rem]"
+                    style={{ color: "var(--text-faint)" }}
+                  >
+                    ← Geri
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         )}
 
         {step === "confirm" && (

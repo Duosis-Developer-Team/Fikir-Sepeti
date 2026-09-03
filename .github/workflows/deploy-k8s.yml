@@ -1,0 +1,180 @@
+# Kubernetes deploy — fikirsepeti-prod namespace'i.
+#
+# GÜVENLİK KURALLARI (değiştirmeyin):
+# - NAMESPACE yalnızca fikirsepeti-prod olabilir (guard adımı).
+# - Hermes / LogiSlot / ingress / monitoring namespace'lerine ASLA dokunulmaz.
+# - delete yalnızca kendi namespace'imizdeki migration job'ları için.
+# - PVC delete HİÇBİR koşulda yok (local-path reclaimPolicy=Delete → veri gider).
+# - kubeconfig asla loglanmaz.
+name: Deploy (Kubernetes)
+
+on:
+  workflow_call:
+    inputs:
+      image_tag:
+        description: "Deploy edilecek imaj etiketi"
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "İmaj etiketi (boş = prod)"
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-fikirsepeti-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    env:
+      NAMESPACE: fikirsepeti-prod
+      IMAGE_TAG: ${{ inputs.image_tag || 'prod' }}
+      IMAGE: ghcr.io/duosis-developer-team/fikir-sepeti
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Kubeconfig (loglanmaz)
+        run: |
+          mkdir -p ~/.kube
+          if [[ -z "${{ secrets.KUBE_CONFIG }}" ]]; then
+            echo "::error::KUBE_CONFIG secret'ı tanımlı değil."
+            exit 1
+          fi
+          printf '%s' "${{ secrets.KUBE_CONFIG }}" | base64 -d > ~/.kube/config
+          chmod 600 ~/.kube/config
+          kubectl version --client=true >/dev/null
+
+      - name: Namespace guard
+        run: |
+          if [[ "$NAMESPACE" != "fikirsepeti-prod" ]]; then
+            echo "::error::Geçersiz namespace: $NAMESPACE"; exit 1
+          fi
+
+      - name: Namespace + secret
+        env:
+          POSTGRES_PASSWORD: ${{ secrets.PROD_POSTGRES_PASSWORD }}
+          APP_DB_PASSWORD: ${{ secrets.PROD_APP_DB_PASSWORD }}
+          AZURE_CLIENT_ID: ${{ secrets.PROD_AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.PROD_AZURE_CLIENT_SECRET }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${POSTGRES_PASSWORD:-}" || -z "${APP_DB_PASSWORD:-}" ]]; then
+            echo "::error::PROD_POSTGRES_PASSWORD ve PROD_APP_DB_PASSWORD gerekli."
+            exit 1
+          fi
+          kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
+
+          # İKİ AYRI BAĞLANTI — web yalnızca RLS'e tabi olanı görür (bkz.
+          # web-deployment.yaml). Sahip rolünün URL'i sadece migration Job'unda.
+          kubectl -n "$NAMESPACE" create secret generic fikirsepeti-secrets \
+            --from-literal=POSTGRES_USER=fikirsepeti \
+            --from-literal=POSTGRES_PASSWORD="$POSTGRES_PASSWORD" \
+            --from-literal=POSTGRES_DB=fikirsepeti \
+            --from-literal=APP_DB_PASSWORD="$APP_DB_PASSWORD" \
+            --from-literal=DATABASE_URL="postgresql://fikirsepeti_app:${APP_DB_PASSWORD}@fikirsepeti-postgres:5432/fikirsepeti" \
+            --from-literal=ADMIN_DATABASE_URL="postgresql://fikirsepeti:${POSTGRES_PASSWORD}@fikirsepeti-postgres:5432/fikirsepeti" \
+            --from-literal=AZURE_CLIENT_ID="${AZURE_CLIENT_ID:-}" \
+            --from-literal=AZURE_CLIENT_SECRET="${AZURE_CLIENT_SECRET:-}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: GHCR pull secret guard
+        # Yeni namespace tuzağı: paketler private ve manifestlerde
+        # imagePullSecrets yok; kimlik namespace'in default ServiceAccount'una
+        # bağlı `ghcr-pull` secret'ında yaşıyor. Yeni namespace bunu MİRAS
+        # ALMAZ — LogiSlot'ta prod ilk kurulumunda tüm pod'lar
+        # ImagePullBackOff'a düştü ve sebep 15 dakika sonra anlaşıldı.
+        run: |
+          set -euo pipefail
+          if [[ -n "${{ secrets.GHCR_PULL_TOKEN }}" ]]; then
+            kubectl -n "$NAMESPACE" create secret docker-registry ghcr-pull \
+              --docker-server=ghcr.io \
+              --docker-username="${{ github.repository_owner }}" \
+              --docker-password="${{ secrets.GHCR_PULL_TOKEN }}" \
+              --dry-run=client -o yaml | kubectl apply -f -
+          fi
+          if ! kubectl -n "$NAMESPACE" get secret ghcr-pull >/dev/null 2>&1; then
+            echo "::error::'$NAMESPACE' içinde ghcr-pull yok; private GHCR imajı çekilemez."
+            echo "Çözüm A: GHCR_PULL_TOKEN repo secret'ı ekleyin (read:packages PAT)."
+            echo "Çözüm B: fikir-sepeti paketini public yapın."
+            exit 1
+          fi
+          if ! kubectl -n "$NAMESPACE" get serviceaccount default \
+                -o jsonpath='{.imagePullSecrets[*].name}' | grep -q ghcr-pull; then
+            kubectl -n "$NAMESPACE" patch serviceaccount default \
+              -p '{"imagePullSecrets":[{"name":"ghcr-pull"}]}'
+          fi
+
+      - name: Manifestleri uygula
+        run: |
+          set -euo pipefail
+          cd k8s/overlays/prod
+          kubectl kustomize . | sed "s|$IMAGE:prod|$IMAGE:$IMAGE_TAG|g" | kubectl apply -f -
+          cd -
+          kubectl -n "$NAMESPACE" rollout status statefulset/fikirsepeti-postgres --timeout=300s
+
+      - name: Migration
+        run: |
+          set -euo pipefail
+          JOB="fikirsepeti-migration-${IMAGE_TAG##*-}"
+          kubectl -n "$NAMESPACE" delete job \
+            -l app.kubernetes.io/name=fikirsepeti-migration --ignore-not-found=true
+          sed -e "s|name: fikirsepeti-migration|name: $JOB|" \
+              -e "s|$IMAGE:prod|$IMAGE:$IMAGE_TAG|" \
+              k8s/base/migration-job.yaml | kubectl -n "$NAMESPACE" apply -f -
+
+          # `wait --for=condition=complete` job ÇÖKSE de timeout'un sonuna kadar
+          # bekliyor. Burada iki koşul birden izleniyor: başarıda hemen çık,
+          # hatada hemen düş.
+          DEADLINE=$((SECONDS + 600))
+          STATE=timeout
+          while (( SECONDS < DEADLINE )); do
+            if [[ $(kubectl -n "$NAMESPACE" get job "$JOB" \
+                  -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}') == "True" ]]; then
+              STATE=complete; break
+            fi
+            if [[ $(kubectl -n "$NAMESPACE" get job "$JOB" \
+                  -o jsonpath='{.status.conditions[?(@.type=="Failed")].status}') == "True" ]]; then
+              STATE=failed; break
+            fi
+            sleep 5
+          done
+          kubectl -n "$NAMESPACE" logs "job/$JOB" --tail 40 || true
+          if [[ "$STATE" != "complete" ]]; then
+            echo "::error::Migration job durumu: $STATE"
+            kubectl -n "$NAMESPACE" describe job "$JOB" | tail -30
+            exit 1
+          fi
+
+      - name: Rollout + sağlık
+        run: |
+          set -euo pipefail
+          kubectl -n "$NAMESPACE" rollout status deploy/fikirsepeti-web --timeout=300s
+          kubectl -n "$NAMESPACE" port-forward svc/fikirsepeti-web 18030:3000 >/dev/null 2>&1 &
+          PF=$!
+          trap 'kill "$PF" 2>/dev/null || true' EXIT
+          OK=0
+          for _ in $(seq 1 30); do
+            if curl -fsS --max-time 5 http://localhost:18030/login >/dev/null 2>&1; then OK=1; break; fi
+            sleep 2
+          done
+          if [[ "$OK" != "1" ]]; then
+            echo "::error::/login 60 sn içinde cevap vermedi"
+            kubectl -n "$NAMESPACE" get pods -o wide
+            kubectl -n "$NAMESPACE" logs deploy/fikirsepeti-web --tail 100 || true
+            exit 1
+          fi
+          # Oturumsuz /api/me 401 dönmeli — 200 dönerse kimlik kapısı açık demektir.
+          CODE=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:18030/api/me)
+          if [[ "$CODE" != "401" ]]; then
+            echo "::error::/api/me oturumsuz $CODE döndü (401 bekleniyordu)"
+            exit 1
+          fi
+          echo "Sağlık: /login 200, /api/me 401 ✓"
+          kubectl -n "$NAMESPACE" get pods -o wide

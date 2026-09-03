@@ -1,13 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { motion } from "motion/react";
 import { useNameContext } from "@/components/AuthGate";
 import { POOL_ACCENT, soft } from "@/lib/accent";
-import { createPoolIdea, deletePoolIdea } from "@/lib/pool";
+import { addPoolComment, createPoolIdea, deletePoolIdea, listPoolComments } from "@/lib/pool";
 import { useRealtimePool, type PromotedBasketInfo } from "@/lib/useRealtimePool";
-import type { PoolIdea, PoolStatus } from "@/lib/types";
+import type { PoolComment, PoolIdea, PoolStatus } from "@/lib/types";
 
 const CLAY = POOL_ACCENT;
 const STATUS_LABEL: Record<PoolStatus, string> = {
@@ -74,8 +74,10 @@ export function PoolPanel() {
   const submit = async () => {
     if (!tenantId || text.trim().length < 2) return;
     setBusy(true);
+    // Süreli/süresiz poll sadece genel "Fikir" girişlerinde anlamlı — hackathon/etkinlik
+    // etiketli fikirler doğrudan lobiden/kuradan tüketiliyor, pool'da oylanmıyor.
     const closes =
-      pollHours > 0 ? new Date(Date.now() + pollHours * 3600_000).toISOString() : null;
+      !trackHint && pollHours > 0 ? new Date(Date.now() + pollHours * 3600_000).toISOString() : null;
     await createPoolIdea({
       text: text.trim(),
       brief: trackHint ? null : brief.trim() || null,
@@ -194,17 +196,19 @@ export function PoolPanel() {
               ))}
             </select>
           )}
-          <select
-            value={pollHours}
-            onChange={(e) => setPollHours(Number(e.target.value))}
-            className="rounded-full px-4 py-2 text-[0.85rem] outline-none"
-            style={{ background: "var(--surface-2)", color: "var(--text)", border: "1px solid rgba(var(--border-rgb),0.1)" }}
-            data-testid="pool-poll-hours"
-          >
-            <option value={0}>süresiz</option>
-            <option value={1}>1 saatlik poll</option>
-            <option value={24}>24 saatlik poll</option>
-          </select>
+          {!trackHint && (
+            <select
+              value={pollHours}
+              onChange={(e) => setPollHours(Number(e.target.value))}
+              className="rounded-full px-4 py-2 text-[0.85rem] outline-none"
+              style={{ background: "var(--surface-2)", color: "var(--text)", border: "1px solid rgba(var(--border-rgb),0.1)" }}
+              data-testid="pool-poll-hours"
+            >
+              <option value={0}>süresiz</option>
+              <option value={1}>1 saatlik poll</option>
+              <option value={24}>24 saatlik poll</option>
+            </select>
+          )}
           <button
             type="button"
             disabled={busy || text.trim().length < 2}
@@ -289,6 +293,7 @@ export function PoolPanel() {
             onDeleteOption={(id) => void deleteIdea(id)}
             onAddOption={(text) => void addOptionTo(idea, text)}
             currentUser={name}
+            tenantId={tenantId}
           />
         ))}
         {!filtered.length && (
@@ -314,6 +319,7 @@ function PoolCard({
   onDeleteOption,
   onAddOption,
   currentUser,
+  tenantId,
 }: {
   idea: PoolIdea;
   voted: boolean;
@@ -327,10 +333,12 @@ function PoolCard({
   onDeleteOption: (id: string) => void;
   onAddOption: (text: string) => void;
   currentUser: string;
+  tenantId: string | null;
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [addingOption, setAddingOption] = useState(false);
   const [optionDraft, setOptionDraft] = useState("");
+  const [commentsOpen, setCommentsOpen] = useState(false);
   const closed = idea.poll_closes_at ? new Date(idea.poll_closes_at) < new Date() : false;
   // Seçenek/poll mekaniği sadece genel "fikir" maddelerinde anlamlı — hackathon/
   // etkinlik'e özgülenmiş fikirler doğrudan lobiden tüketiliyor, poll'lanmıyor.
@@ -420,25 +428,40 @@ function PoolCard({
               {idea.winner_label ? `, kazanan: ${idea.winner_label}` : ""}
             </Link>
           )}
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="tnum font-display text-[1.5rem] font-bold" style={{ color: voted ? CLAY.base : CLAY.light }}>
-            {idea.vote_count}
-          </span>
           <button
             type="button"
-            onClick={onVote}
-            disabled={voted || closed || idea.status === "promoted" || idea.status === "archived"}
-            className="rounded-full px-4 py-2 text-[0.85rem] font-semibold disabled:opacity-40"
-            style={
-              voted
-                ? { background: CLAY.base, color: "#161616" }
-                : { border: "1px solid rgba(var(--border-rgb),0.2)", color: "var(--text)" }
-            }
-            data-testid={`pool-vote-${idea.id}`}
+            onClick={() => setCommentsOpen((v) => !v)}
+            className="mt-2 inline-flex items-center gap-1.5 text-[0.82rem] font-medium transition hover:opacity-75"
+            style={{ color: "var(--text-muted)" }}
+            data-testid={`pool-open-comments-${idea.id}`}
           >
-            {voted ? "✓ oyun" : closed ? "kapandı" : "oy ver"}
+            💬 {commentsOpen ? "Yorumları gizle" : "Yorumlar"}
           </button>
+        </div>
+        <div className="flex items-center gap-3">
+          {/* Hackathon/etkinlik'e özgülenmiş fikirler doğrudan lobiden/kuradan tüketiliyor —
+              oylamaya gerek yok, o yüzden bu fikirlerde oy butonu hiç gösterilmiyor. */}
+          {!idea.track_hint && (
+            <>
+              <span className="tnum font-display text-[1.5rem] font-bold" style={{ color: voted ? CLAY.base : CLAY.light }}>
+                {idea.vote_count}
+              </span>
+              <button
+                type="button"
+                onClick={onVote}
+                disabled={voted || closed || idea.status === "promoted" || idea.status === "archived"}
+                className="rounded-full px-4 py-2 text-[0.85rem] font-semibold disabled:opacity-40"
+                style={
+                  voted
+                    ? { background: CLAY.base, color: "#161616" }
+                    : { border: "1px solid rgba(var(--border-rgb),0.2)", color: "var(--text)" }
+                }
+                data-testid={`pool-vote-${idea.id}`}
+              >
+                {voted ? "✓ oyun" : closed ? "kapandı" : "oy ver"}
+              </button>
+            </>
+          )}
           {canDelete && (
             confirmDelete ? (
               <div className="flex items-center gap-1.5">
@@ -525,7 +548,101 @@ function PoolCard({
           )}
         </div>
       )}
+
+      {commentsOpen && (
+        <PoolComments ideaId={idea.id} currentUser={currentUser} tenantId={tenantId} />
+      )}
     </motion.div>
+  );
+}
+
+function PoolComments({
+  ideaId,
+  currentUser,
+  tenantId,
+}: {
+  ideaId: string;
+  currentUser: string;
+  tenantId: string | null;
+}) {
+  const [comments, setComments] = useState<PoolComment[] | null>(null);
+  const [draft, setDraft] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!tenantId) return;
+    let cancelled = false;
+    listPoolComments(ideaId, currentUser, tenantId).then((rows) => {
+      if (!cancelled) setComments(rows);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [ideaId, currentUser, tenantId]);
+
+  const submit = async () => {
+    if (!tenantId || draft.trim().length < 2) return;
+    setBusy(true);
+    const row = await addPoolComment({
+      pool_idea_id: ideaId,
+      text: draft.trim(),
+      author: currentUser,
+      tenant_id: tenantId,
+    });
+    setBusy(false);
+    if (row) {
+      setComments((prev) => [...(prev ?? []), row]);
+      setDraft("");
+    }
+  };
+
+  return (
+    <div className="ml-8 mt-3 flex flex-col gap-2.5 border-l pl-4" style={{ borderColor: "rgba(var(--border-rgb),0.1)" }} data-testid={`pool-comments-${ideaId}`}>
+      {comments === null ? (
+        <div className="h-8 w-40 animate-pulse rounded-full" style={{ background: "var(--surface-2)" }} />
+      ) : (
+        <>
+          {comments.map((c) => (
+            <div key={c.id} className="flex gap-2.5" data-testid={`pool-comment-${c.id}`}>
+              <span
+                className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-[0.68rem] font-bold"
+                style={{ background: "var(--surface-2)", color: "var(--text)" }}
+              >
+                {(c.author_name || c.author_id || "?").slice(0, 2).toUpperCase()}
+              </span>
+              <div className="min-w-0">
+                <p className="text-[0.72rem]" style={{ color: "var(--text-faint)" }}>{c.author_name || c.author_id}</p>
+                <p className="text-[0.9rem]" style={{ color: "var(--text)" }}>{c.text}</p>
+              </div>
+            </div>
+          ))}
+          {!comments.length && (
+            <p className="text-[0.85rem]" style={{ color: "var(--text-faint)" }}>Henüz yorum yok — ilkini sen yaz.</p>
+          )}
+        </>
+      )}
+      <div className="flex items-center gap-2">
+        <input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && void submit()}
+          placeholder="Yorum yaz…"
+          className="min-w-[160px] flex-1 rounded-full px-4 py-2 text-[0.88rem] outline-none"
+          style={{ background: "var(--surface-2)", color: "var(--text)", border: "1px solid rgba(var(--border-rgb),0.1)" }}
+          data-testid={`pool-comment-input-${ideaId}`}
+        />
+        <button
+          type="button"
+          onClick={() => void submit()}
+          disabled={busy || draft.trim().length < 2}
+          className="rounded-full px-4 py-2 text-[0.8rem] font-semibold disabled:opacity-40"
+          style={{ background: CLAY.base, color: "#161616" }}
+          data-testid={`pool-comment-submit-${ideaId}`}
+        >
+          Gönder
+        </button>
+      </div>
+    </div>
   );
 }
 

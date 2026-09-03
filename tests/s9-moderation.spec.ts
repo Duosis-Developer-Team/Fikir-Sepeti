@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { loginAs } from "./helpers";
 import { DUOSIS_TENANT_ID } from "../lib/tenant";
+import { serviceClient } from "./db";
 
 const BASE = process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000";
 const ARCHIVE_ETKINLIK = "99999999-9999-4999-8999-999999999999";
@@ -114,12 +115,7 @@ test.describe("S9 Moderation", () => {
   });
 
   test("role assign writes audit_log", async ({ request }) => {
-    const { createClient } = await import("@supabase/supabase-js");
-    const sb = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { persistSession: false } }
-    );
+        const sb = serviceClient();
 
     const roles = await request.get(`${BASE}/api/tenant/roles`, {
       headers: headers("admin@duosis.dev"),

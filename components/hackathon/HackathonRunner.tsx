@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
-import { supabase } from "@/lib/supabase";
+import { subscribeChanges } from "@/lib/realtime";
 import { setBasketPhase } from "@/lib/db";
-import { joinLobbyGated, listParticipants, listScores, listTeamMembers, listTeamVotes, listTeams, startHackathonTimer } from "@/lib/hackathon";
+import { joinLobbyGated, loadHackData, setTeamTurn, startHackathonTimer } from "@/lib/hackathon";
 import { decideLobbyJoin } from "@/lib/lobby";
+import { nextTurnEndsAt } from "@/lib/teamTurn";
 import { useSession } from "@/components/AuthGate";
-import type { Basket, Idea, Score } from "@/lib/types";
 import type { HackData, StageContext, StageDef, StagePhase } from "./contract";
 import { PHASE_ORDER, PHASE_LABEL, GOLD, GOLD_SOFT, dim, configReady } from "./contract";
 import { LobbyStage } from "./stages/LobbyStage";
@@ -38,43 +38,37 @@ export function HackathonRunner({ basketId }: { basketId: string }) {
   const [joinBlocked, setJoinBlocked] = useState(false);
   const [joinPending, setJoinPending] = useState(false);
   const [needsJoinAction, setNeedsJoinAction] = useState(false);
+  // admin üst stepper'dan geçmiş bir aşamayı önizliyorsa gerçek fazdan farklı olur — bkz. Stepper.
+  const [viewPhase, setViewPhase] = useState<StagePhase | null>(null);
+  const livePhaseKey = (data && PHASE_ORDER.includes(data.basket.phase as StagePhase) ? data.basket.phase : "lobby") as StagePhase;
+  useEffect(() => {
+    setViewPhase(null);
+  }, [livePhaseKey]);
 
+  // Tek uç: 7 ayrı sorgu yerine sunucuda paralel koşan tek bir veri paketi.
   const load = useCallback(async () => {
-    const [basketRes, ideasRes, participants, teams, members, teamVotes, scores] = await Promise.all([
-      supabase.from("baskets").select("*").eq("id", basketId).single(),
-      supabase.from("ideas").select("*").eq("basket_id", basketId).order("vote_count", { ascending: false }),
-      listParticipants(basketId),
-      listTeams(basketId),
-      listTeamMembers(basketId),
-      listTeamVotes(basketId),
-      listScores(basketId),
-    ]);
-    const basket = basketRes.data as Basket | null;
-    if (!basket) return;
-    setData({
-      basket,
-      ideas: (ideasRes.data as Idea[]) ?? [],
-      participants,
-      teams,
-      members,
-      teamVotes,
-      scores: scores as Score[],
-    });
+    const bundle = await loadHackData(basketId);
+    if (!bundle) return;
+    setData(bundle);
   }, [basketId]);
 
   useEffect(() => {
     void load();
-    const ch = supabase
-      .channel(`hack:${basketId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "baskets", filter: `id=eq.${basketId}` }, () => load())
-      .on("postgres_changes", { event: "*", schema: "public", table: "ideas", filter: `basket_id=eq.${basketId}` }, () => load())
-      .on("postgres_changes", { event: "*", schema: "public", table: "hackathon_participants", filter: `basket_id=eq.${basketId}` }, () => load())
-      .on("postgres_changes", { event: "*", schema: "public", table: "teams", filter: `basket_id=eq.${basketId}` }, () => load())
-      .on("postgres_changes", { event: "*", schema: "public", table: "team_members", filter: `basket_id=eq.${basketId}` }, () => load())
-      .on("postgres_changes", { event: "*", schema: "public", table: "team_votes", filter: `basket_id=eq.${basketId}` }, () => load())
-      .on("postgres_changes", { event: "*", schema: "public", table: "scores", filter: `basket_id=eq.${basketId}` }, () => load())
-      .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    // Abonelikler eskisiyle birebir aynı tablo/filtre kümesi; taşıyıcı
+    // Supabase Realtime yerine SSE (bkz. lib/realtime.ts). Her olay yine
+    // yeniden yükleme tetikliyor — bu davranış korundu.
+    return subscribeChanges({
+      filters: [
+        { table: "baskets", column: "id", value: basketId },
+        { table: "ideas", column: "basket_id", value: basketId },
+        { table: "hackathon_participants", column: "basket_id", value: basketId },
+        { table: "teams", column: "basket_id", value: basketId },
+        { table: "team_members", column: "basket_id", value: basketId },
+        { table: "team_votes", column: "basket_id", value: basketId },
+        { table: "scores", column: "basket_id", value: basketId },
+      ],
+      onChange: () => void load(),
+    });
   }, [basketId, load]);
 
   const doJoin = useCallback(() => {
@@ -94,6 +88,15 @@ export function HackathonRunner({ basketId }: { basketId: string }) {
       void load();
     });
   }, [user, data, basketId, load]);
+
+  // Onay bekleyen katılımcı: admin onaylayınca hackathon_participants realtime abonesi
+  // zaten `load()`'u tetikliyor, ama "Onay bekleniyor" ekranını süren joinPending state'i
+  // hiçbir zaman yeniden değerlendirilmiyordu — sadece F5 ile yeniden mount olunca temizleniyordu.
+  useEffect(() => {
+    if (!user || !data || !joinPending) return;
+    const me = data.participants.find((p) => p.user_id === user.email);
+    if (me && me.approved !== false) setJoinPending(false);
+  }, [user, data, joinPending]);
 
   // lobiye katılım kararı (bir kez) — sahip ve davet linkiyle gelen otomatik
   // katılır; sadece sepet listesinden tıklayan biri "Katıl" butonunu görür (FS-10).
@@ -158,41 +161,52 @@ export function HackathonRunner({ basketId }: { basketId: string }) {
     );
   }
 
-  const phase = (PHASE_ORDER.includes(data.basket.phase as StagePhase) ? data.basket.phase : "lobby") as StagePhase;
+  const phase = livePhaseKey;
+  const displayPhase = viewPhase ?? phase;
+  const viewingLive = displayPhase === phase;
   const isAdmin = data.basket.created_by === user.email;
   const ctx: StageContext = {
     data,
     config: data.basket.config ?? {},
     user,
-    isAdmin,
+    // geçmişe bakarken mutasyon yüzeyini kapat — çoğu aşama zaten isAdmin'e göre
+    // yazma kontrollerini gizliyor, bu yüzden burada false vermek yeterli.
+    isAdmin: isAdmin && viewingLive,
     refresh: load,
     needsJoinAction,
     onJoin: doJoin,
+    readOnly: !viewingLive,
   };
-  const def = STAGES[phase];
+  const def = STAGES[displayPhase];
   const idx = PHASE_ORDER.indexOf(phase);
   const nextPhase = PHASE_ORDER[idx + 1];
   const prevPhase = PHASE_ORDER[idx - 1];
-  const canAdvance = phase !== "done" && phase !== "production" && def.canAdvance(ctx);
+  const canAdvance = phase !== "done" && phase !== "production" && STAGES[phase].canAdvance(ctx);
 
-  // faza gir (hackathon'a girerken geri sayımı başlat)
+  // faza gir (hackathon'a girerken geri sayımı başlat) — sadece gerçek fazı değiştirir
   const enterPhase = async (p: StagePhase) => {
     if (p === phase) return;
     if (p === "hackathon" && !data.basket.hackathon_ends_at) await startHackathonTimer(basketId, ctx.config);
+    // Sıralı takım turu (puanlama + feedback) her ikisine girişte de sıfırdan başlar.
+    if (p === "demo" || p === "feedback") {
+      await setTeamTurn(basketId, 0, nextTurnEndsAt(ctx.config.teamTurnMinutes));
+    }
     await setBasketPhase(basketId, p);
     load();
   };
   const advance = () => { if (nextPhase) void enterPhase(nextPhase); };
   const goBack = () => { if (prevPhase) void setBasketPhase(basketId, prevPhase).then(load); };
+  // stepper'dan bir adıma tıklamak sadece görüntüler — basket.phase'i değiştirmez.
+  const viewOnly = (p: StagePhase) => setViewPhase(p === phase ? null : p);
 
   return (
     <div className="pb-40">
-      {/* stepper — admin herhangi bir faza atlayabilir */}
-      <Stepper phase={phase} isAdmin={isAdmin} onJump={enterPhase} />
+      {/* stepper — herkes daha önce ulaşılmış herhangi bir aşamayı salt okunur önizleyebilir */}
+      <Stepper phase={phase} displayPhase={displayPhase} onView={viewOnly} />
 
       {/* aktif modül — fazlar arası orkestre giriş */}
       <motion.div
-        key={phase}
+        key={displayPhase}
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
@@ -205,25 +219,42 @@ export function HackathonRunner({ basketId }: { basketId: string }) {
       {isAdmin && phase !== "done" && phase !== "lobby" && phase !== "hackathon" && (
         <div className="fixed inset-x-0 bottom-0 z-30 flex justify-center px-4 pb-5">
           <div className="flex items-center gap-3 rounded-full px-3 py-2.5" style={{ background: "var(--card)", border: "1px solid rgba(var(--border-rgb),0.1)", boxShadow: "0 20px 50px -24px rgba(0,0,0,0.7)" }}>
-            <button
-              onClick={goBack}
-              disabled={!prevPhase}
-              className="rounded-full border px-5 py-2.5 text-[0.9rem] transition hover:bg-[rgba(var(--border-rgb),0.08)] disabled:opacity-25"
-              style={{ borderColor: "rgba(var(--border-rgb),0.2)", color: dim(0.85) }}
-            >
-              ← {prevPhase ? PHASE_LABEL[prevPhase] : "Geri"}
-            </button>
-            {phase !== "production" && (
+            {!viewingLive ? (
               <>
-                <span className="px-1 text-[0.82rem]" style={{ color: dim(0.45) }}>{canAdvance ? "Hazır" : "Bu aşamayı tamamla"}</span>
+                <span className="px-1 text-[0.82rem]" style={{ color: dim(0.5) }}>
+                  Geçmiş görünüm · {PHASE_LABEL[displayPhase]} (salt okunur)
+                </span>
                 <button
-                  onClick={advance}
-                  disabled={!canAdvance || !nextPhase}
-                  className="rounded-full px-6 py-2.5 text-[0.9rem] font-semibold transition hover:opacity-90 disabled:opacity-30"
+                  onClick={() => setViewPhase(null)}
+                  className="rounded-full px-6 py-2.5 text-[0.9rem] font-semibold transition hover:opacity-90"
                   style={{ background: GOLD, color: "#17150F" }}
                 >
-                  {nextPhase ? `Sonraki: ${PHASE_LABEL[nextPhase]} →` : "Bitti"}
+                  Canlıya dön: {PHASE_LABEL[phase]} →
                 </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={goBack}
+                  disabled={!prevPhase}
+                  className="rounded-full border px-5 py-2.5 text-[0.9rem] transition hover:bg-[rgba(var(--border-rgb),0.08)] disabled:opacity-25"
+                  style={{ borderColor: "rgba(var(--border-rgb),0.2)", color: dim(0.85) }}
+                >
+                  ← {prevPhase ? PHASE_LABEL[prevPhase] : "Geri"}
+                </button>
+                {phase !== "production" && (
+                  <>
+                    <span className="px-1 text-[0.82rem]" style={{ color: dim(0.45) }}>{canAdvance ? "Hazır" : "Bu aşamayı tamamla"}</span>
+                    <button
+                      onClick={advance}
+                      disabled={!canAdvance || !nextPhase}
+                      className="rounded-full px-6 py-2.5 text-[0.9rem] font-semibold transition hover:opacity-90 disabled:opacity-30"
+                      style={{ background: GOLD, color: "#17150F" }}
+                    >
+                      {nextPhase ? `Sonraki: ${PHASE_LABEL[nextPhase]} →` : "Bitti"}
+                    </button>
+                  </>
+                )}
               </>
             )}
           </div>
@@ -233,9 +264,18 @@ export function HackathonRunner({ basketId }: { basketId: string }) {
   );
 }
 
-function Stepper({ phase, isAdmin, onJump }: { phase: StagePhase; isAdmin: boolean; onJump: (p: StagePhase) => void }) {
+function Stepper({
+  phase,
+  displayPhase,
+  onView,
+}: {
+  phase: StagePhase;
+  displayPhase: StagePhase;
+  onView: (p: StagePhase) => void;
+}) {
   const steps = PHASE_ORDER.filter((p) => p !== "done");
-  const active = Math.min(PHASE_ORDER.indexOf(phase), steps.length - 1);
+  const activeReal = Math.min(PHASE_ORDER.indexOf(phase), steps.length - 1);
+  const activeDisplay = Math.min(PHASE_ORDER.indexOf(displayPhase), steps.length - 1);
   return (
     <div className="mx-auto max-w-[1080px] px-2">
       <div
@@ -243,21 +283,32 @@ function Stepper({ phase, isAdmin, onJump }: { phase: StagePhase; isAdmin: boole
         style={{ background: "rgba(var(--border-rgb),0.05)", border: "1px solid rgba(var(--border-rgb),0.08)", borderRadius: 999, padding: 5 }}
       >
         {steps.map((p, i) => {
-          const done = i < active;
-          const on = i === active;
-          const st = on
+          // sadece daha önce ulaşılmış aşamalar önizlenebilir — ileri atlama yok (bu eski bug'ın kaynağıydı).
+          const reached = i <= activeReal;
+          const viewing = i === activeDisplay;
+          const st = viewing
             ? { background: GOLD, color: "var(--bg)", boxShadow: `0 6px 18px -6px ${GOLD}` }
-            : done
+            : reached
               ? { background: "rgba(231,169,63,0.13)", color: GOLD_SOFT }
               : { background: "transparent", color: dim(0.42) };
-          const cls = "flex-1 whitespace-nowrap rounded-full px-3 py-2.5 text-center text-[0.85rem] font-semibold transition-colors";
-          return isAdmin ? (
-            <motion.button key={p} whileTap={{ scale: 0.96 }} onClick={() => onJump(p)} className={`${cls} cursor-pointer`} style={st}>
+          // önizleme artık admin'e özel değil — katılan herkes ulaşılmış bir aşamaya bakabilir.
+          const clickable = reached;
+          const cls = `relative flex-1 whitespace-nowrap rounded-full px-3 py-2.5 text-center text-[0.85rem] font-semibold transition-colors ${clickable ? "cursor-pointer" : "cursor-default"}`;
+          const content = (
+            <>
               {PHASE_LABEL[p]}
+              {p === phase && !viewing && (
+                <span className="absolute right-2 top-1.5 h-1.5 w-1.5 rounded-full" style={{ background: GOLD }} aria-hidden />
+              )}
+            </>
+          );
+          return clickable ? (
+            <motion.button key={p} whileTap={{ scale: 0.96 }} onClick={() => onView(p)} className={cls} style={st}>
+              {content}
             </motion.button>
           ) : (
-            <div key={p} className={`${cls} cursor-default`} style={st} aria-disabled="true" tabIndex={-1}>
-              {PHASE_LABEL[p]}
+            <div key={p} className={cls} style={st} aria-disabled="true" tabIndex={-1}>
+              {content}
             </div>
           );
         })}

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useNameContext, useSession } from "@/components/AuthGate";
 import { PERMISSIONS, PERMISSION_LABELS } from "@/lib/permissions";
-import { supabase } from "@/lib/supabase";
+import { apiFetch } from "@/lib/api-headers";
 
 type Role = { id: string; key: string; label: string; is_system: boolean };
 type Assignment = { id: string; user_id: string; role_id: string; scope_basket_id: string | null };
@@ -73,13 +73,15 @@ export default function TenantRolesPage() {
     if (!tenantId) return;
     setInviteBusy(true);
     setInviteCode(null);
-    const { data, error: invErr } = await supabase.rpc("create_tenant_invite", {
-      p_tenant_id: tenantId,
+    const res = await apiFetch<{ code: string }>("/api/tenant/invite", {
+      method: "POST",
+      email: name,
+      tenantId,
     });
-    if (invErr) {
-      setError(invErr.message);
+    if (!res.ok) {
+      setError(res.error ?? "Davet kodu üretilemedi");
     } else {
-      setInviteCode(data as string);
+      setInviteCode(res.data?.code ?? null);
       setError(null);
     }
     setInviteBusy(false);

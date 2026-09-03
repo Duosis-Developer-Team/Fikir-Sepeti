@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from "motion/react";
 import type { HackathonConfig, Participant, PoolIdea } from "@/lib/types";
 import { setConfig } from "@/lib/hackathon";
 import { ideaStatusLabel } from "@/lib/lobby";
-import { DEFAULT_RUBRIC, SCORE_LIBRARY, MAX_CUSTOM_CATEGORIES, type RubricCategory } from "@/lib/scoring";
+import { DEFAULT_RUBRIC, SCORE_LIBRARY, type RubricCategory } from "@/lib/scoring";
 import { setBasketPhase } from "@/lib/db";
 import { listPoolIdeas, attachPoolIdeas } from "@/lib/pool";
 import type { StageContext } from "../contract";
@@ -15,7 +15,7 @@ import { GoldButton, StageHeadline, NumberStepper, Segmented, Avatar } from "../
 import { InvitePanel } from "../InvitePanel";
 import { apiAuthHeaders } from "@/lib/api-headers";
 
-type Sub = "invite" | "ideaSource" | "repoPick" | "poolSelect" | "ideaAssign" | "teamMode" | "groups" | "duration" | "scoring" | "ready";
+type Sub = "invite" | "ideaSource" | "repoPick" | "poolSelect" | "ideaAssign" | "teamMode" | "groups" | "duration" | "scoring" | "teamTurn" | "ready";
 
 const UNITS: { v: "hour" | "day" | "week"; label: string }[] = [
   { v: "hour", label: "Saat" },
@@ -83,12 +83,17 @@ export function LobbyStage({ data, config, isAdmin, user, refresh, needsJoinActi
     listPoolIdeas(basket.tenant_id).then((all) => {
       if (cancelled) return;
       const attached = new Set(config.repoPoolIdeaIds ?? []);
+      // Hackathonda henüz kullanılmamış TÜM fikirler adaydır — oylamaya girmiş
+      // (status "voting") ya da "etkinlik" etiketli olması onu burada dışlamamalı,
+      // sadece başka bir sepete zaten organize edilmiş / arşivlenmiş / reddedilmiş
+      // ya da bu kuruluma zaten eklenmiş olanlar hariç tutulur.
       setPoolIdeas(
         all.filter(
           (i) =>
             !i.parent_idea_id &&
-            i.status === "new" &&
-            i.track_hint !== "etkinlik" &&
+            i.status !== "promoted" &&
+            i.status !== "archived" &&
+            i.status !== "rejected" &&
             !attached.has(i.id)
         )
       );
@@ -122,6 +127,13 @@ export function LobbyStage({ data, config, isAdmin, user, refresh, needsJoinActi
     patch({ groups: { count: 3, size: 4, assignment: "random", ...config.groups, ...g } });
   const patchDuration = (d: Partial<NonNullable<HackathonConfig["duration"]>>) =>
     patch({ duration: { value: 1, unit: "day", ...config.duration, ...d } });
+  const rubricReady = rubricPicked.size + customCats.length > 0;
+  const continueRubric = () => {
+    if (!rubricReady) return;
+    const rubric = [...SCORE_LIBRARY.filter((c) => rubricPicked.has(c.key)), ...customCats];
+    patch({ scoringMode: "rubric", rubric });
+    setSub("teamTurn");
+  };
 
   const approved = participants.filter((p) => p.approved !== false);
   const pending = participants.filter((p) => p.approved === false);
@@ -152,7 +164,8 @@ export function LobbyStage({ data, config, isAdmin, user, refresh, needsJoinActi
       case "groups": return "teamMode";
       case "duration": return config.teamMode === "groups" ? "groups" : "teamMode";
       case "scoring": return "duration";
-      case "ready": return "scoring";
+      case "teamTurn": return "scoring";
+      case "ready": return "teamTurn";
       default: return null;
     }
   };
@@ -407,15 +420,8 @@ export function LobbyStage({ data, config, isAdmin, user, refresh, needsJoinActi
 
       {sub === "ideaAssign" && (
         <>
-          <StageHeadline pre="Dağıtım" accent="nasıl?" sub="Kaç fikir ve kimin fikri kime?" />
-          <div className="mx-auto flex w-full max-w-[640px] flex-col items-center gap-8">
-            <NumberStepper
-              label="Fikir sayısı"
-              value={config.ideaCount ?? 1}
-              min={1}
-              max={8}
-              onChange={(n) => patch({ ideaCount: n })}
-            />
+          <StageHeadline pre="Dağıtım" accent="nasıl?" sub="Kimin fikri kime gidecek?" />
+          <div className="mx-auto flex w-full max-w-[520px] flex-col items-center gap-4">
             <Segmented
               label="Atama"
               value={config.ideaAssignment ?? "same"}
@@ -426,15 +432,9 @@ export function LobbyStage({ data, config, isAdmin, user, refresh, needsJoinActi
                 { v: "manual", label: "Elle" },
               ]}
             />
-            <Segmented
-              label="Çekiliş animasyonu"
-              value={config.revealAnimation === false ? "off" : "on"}
-              onChange={(v) => patch({ revealAnimation: v === "on" })}
-              options={[
-                { v: "on", label: "Açık" },
-                { v: "off", label: "Kapalı" },
-              ]}
-            />
+            <p className="text-center text-[0.88rem] leading-relaxed" style={{ color: dim(0.55) }} data-testid="idea-assign-explain">
+              {ASSIGN_EXPLAIN[config.ideaAssignment ?? "same"]}
+            </p>
           </div>
         </>
       )}
@@ -491,7 +491,7 @@ export function LobbyStage({ data, config, isAdmin, user, refresh, needsJoinActi
             onChange={(v) => {
               if (v === "simple") {
                 patch({ scoringMode: "simple", rubric: undefined, juryEnabled: false });
-                setSub("ready");
+                setSub("teamTurn");
               } else {
                 patch({ scoringMode: "rubric" });
               }
@@ -504,7 +504,7 @@ export function LobbyStage({ data, config, isAdmin, user, refresh, needsJoinActi
           {config.scoringMode === "rubric" && (
             <div className="mt-8 flex flex-col items-center gap-4" data-testid="rubric-setup">
               <p className="max-w-[460px] text-center text-[0.9rem]" style={{ color: dim(0.55) }}>
-                Kategorileri seç, gerekirse kendi kategorini ekle — {MAX_CUSTOM_CATEGORIES} tane özel kategoriye kadar.
+                Kategorileri seç, gerekirse kendi kategorini ekle.
               </p>
               <div className="flex flex-wrap justify-center gap-2" data-testid="rubric-library">
                 {SCORE_LIBRARY.map((cat) => {
@@ -555,75 +555,64 @@ export function LobbyStage({ data, config, isAdmin, user, refresh, needsJoinActi
                   ))}
                 </div>
               )}
-              {customCats.length < MAX_CUSTOM_CATEGORIES && (
-                <div className="flex items-center gap-2">
-                  <input
-                    value={customDraft}
-                    onChange={(e) => setCustomDraft(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key !== "Enter") return;
-                      const label = customDraft.trim();
-                      if (label.length < 2) return;
-                      setCustomCats((prev) => [...prev, { key: `custom_${Date.now()}_${prev.length}`, label, weight: 1, custom: true }]);
-                      setCustomDraft("");
-                    }}
-                    placeholder="Özel kategori adı…"
-                    className="rounded-full px-4 py-2 text-[0.9rem] outline-none"
-                    style={{ background: "var(--surface-2)", color: "var(--text)", border: "1px solid rgba(var(--border-rgb),0.1)", minWidth: 200 }}
-                    data-testid="rubric-custom-input"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const label = customDraft.trim();
-                      if (label.length < 2) return;
-                      setCustomCats((prev) => [...prev, { key: `custom_${Date.now()}_${prev.length}`, label, weight: 1, custom: true }]);
-                      setCustomDraft("");
-                    }}
-                    disabled={customDraft.trim().length < 2}
-                    className="rounded-full px-4 py-2 text-[0.85rem] font-semibold disabled:opacity-40"
-                    style={{ border: "1px solid rgba(var(--border-rgb),0.2)", color: dim(0.85) }}
-                    data-testid="rubric-custom-add"
-                  >
-                    + Ekle
-                  </button>
-                </div>
-              )}
-              <GoldButton
-                onClick={() => {
-                  const rubric = [
-                    ...SCORE_LIBRARY.filter((c) => rubricPicked.has(c.key)),
-                    ...customCats,
-                  ];
-                  if (!rubric.length) return;
-                  patch({
-                    scoringMode: "rubric",
-                    rubric,
-                    juryEnabled: config.juryEnabled ?? false,
-                    juryWeight: config.juryWeight ?? 2,
-                  });
-                  setSub("ready");
-                }}
-                disabled={rubricPicked.size + customCats.length === 0}
-              >
-                Devam →
-              </GoldButton>
-              <Segmented
-                label="Jüri ağırlığı"
-                value={config.juryEnabled ? "on" : "off"}
-                onChange={(v) =>
-                  patch({
-                    juryEnabled: v === "on",
-                    juryWeight: config.juryWeight ?? 2,
-                  })
-                }
-                options={[
-                  { v: "off", label: "Kapalı" },
-                  { v: "on", label: "Açık ×2" },
-                ]}
-              />
+              <div className="flex items-center gap-2">
+                <input
+                  value={customDraft}
+                  onChange={(e) => setCustomDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key !== "Enter") return;
+                    const label = customDraft.trim();
+                    if (label.length < 2) return;
+                    setCustomCats((prev) => [...prev, { key: `custom_${Date.now()}_${prev.length}`, label, weight: 1, custom: true }]);
+                    setCustomDraft("");
+                  }}
+                  placeholder="Özel kategori adı…"
+                  className="rounded-full px-4 py-2 text-[0.9rem] outline-none"
+                  style={{ background: "var(--surface-2)", color: "var(--text)", border: "1px solid rgba(var(--border-rgb),0.1)", minWidth: 200 }}
+                  data-testid="rubric-custom-input"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const label = customDraft.trim();
+                    if (label.length < 2) return;
+                    setCustomCats((prev) => [...prev, { key: `custom_${Date.now()}_${prev.length}`, label, weight: 1, custom: true }]);
+                    setCustomDraft("");
+                  }}
+                  disabled={customDraft.trim().length < 2}
+                  className="rounded-full px-4 py-2 text-[0.85rem] font-semibold disabled:opacity-40"
+                  style={{ border: "1px solid rgba(var(--border-rgb),0.2)", color: dim(0.85) }}
+                  data-testid="rubric-custom-add"
+                >
+                  + Ekle
+                </button>
+              </div>
             </div>
           )}
+        </>
+      )}
+
+      {sub === "teamTurn" && (
+        <>
+          <StageHeadline
+            pre="Takımlar"
+            accent="sıra sıra mı?"
+            sub="Puanlama ve feedback'te takımlar teker teker gelir — herkes bitirince ya da süre dolunca sıradakine geçilir."
+          />
+          <div className="mx-auto flex max-w-[420px] flex-col items-center gap-3">
+            <NumberStepper
+              label="Takım başına süre (dakika)"
+              value={config.teamTurnMinutes ?? 0}
+              min={0}
+              max={30}
+              onChange={(n) => patch({ teamTurnMinutes: n })}
+            />
+            <p className="text-center text-[0.85rem]" style={{ color: dim(0.5) }}>
+              {config.teamTurnMinutes
+                ? `Her takıma ${config.teamTurnMinutes} dakika — süre dolunca ya da herkes bitirince otomatik geçilir.`
+                : "Süresiz — admin sıradaki takıma elle geçer, ya da herkes bitirince otomatik geçilir."}
+            </p>
+          </div>
         </>
       )}
 
@@ -642,10 +631,23 @@ export function LobbyStage({ data, config, isAdmin, user, refresh, needsJoinActi
         {back && (
           <button onClick={() => setSub(back)} className="rounded-full border px-6 py-3 text-[0.95rem] transition hover:bg-[rgba(var(--border-rgb),0.08)]" style={{ borderColor: "rgba(var(--border-rgb),0.2)", color: dim(0.85) }}>← Geri</button>
         )}
-        {sub === "invite" && <GoldButton onClick={() => setSub("ideaSource")}>Kuruluma geç →</GoldButton>}
+        {sub === "invite" && (
+          <div className="flex flex-col items-center gap-2">
+            <GoldButton onClick={() => setSub("ideaSource")} disabled={pending.length > 0}>Kuruluma geç →</GoldButton>
+            {pending.length > 0 && (
+              <span className="text-[0.78rem]" style={{ color: dim(0.45) }}>
+                Önce {pending.length} onay bekleyeni onayla
+              </span>
+            )}
+          </div>
+        )}
         {sub === "ideaAssign" && <GoldButton onClick={() => setSub("teamMode")}>Devam →</GoldButton>}
         {sub === "groups" && <GoldButton onClick={() => setSub("duration")}>Devam →</GoldButton>}
         {sub === "duration" && <GoldButton onClick={() => setSub("scoring")}>Devam →</GoldButton>}
+        {sub === "scoring" && config.scoringMode === "rubric" && (
+          <GoldButton onClick={continueRubric} disabled={!rubricReady}>Devam →</GoldButton>
+        )}
+        {sub === "teamTurn" && <GoldButton onClick={() => setSub("ready")}>Devam →</GoldButton>}
         {sub === "ready" && <GoldButton onClick={start}>Başlat →</GoldButton>}
       </div>
     </div>
@@ -653,10 +655,14 @@ export function LobbyStage({ data, config, isAdmin, user, refresh, needsJoinActi
 }
 
 function Choice<T extends string>({ value, options, onChange }: { value?: T; options: { v: T; label: string; hint?: string }[]; onChange: (v: T) => void }) {
+  const [hovered, setHovered] = useState<T | null>(null);
   return (
     <div className="flex flex-wrap justify-center gap-5">
       {options.map((o, i) => {
         const on = value === o.v;
+        // Fare üzerine gelince de seçiliymiş gibi altın vurgu göster — sadece tıklanan
+        // değil, üzerine gelinen kartın ne olduğu da net olsun.
+        const active = on || hovered === o.v;
         return (
           <motion.button
             key={o.v}
@@ -665,15 +671,17 @@ function Choice<T extends string>({ value, options, onChange }: { value?: T; opt
             transition={{ duration: 0.42, ease: EASE, delay: 0.08 + i * 0.07 }}
             whileHover={{ y: -6 }}
             whileTap={{ scale: 0.97 }}
+            onMouseEnter={() => setHovered(o.v)}
+            onMouseLeave={() => setHovered((h) => (h === o.v ? null : h))}
             onClick={() => onChange(o.v)}
-            className="min-w-[210px] rounded-[24px] px-10 py-9 text-center"
+            className="min-w-[210px] rounded-[24px] px-10 py-9 text-center transition-colors"
             style={{
-              background: on ? "rgba(231,169,63,0.12)" : "var(--card)",
-              border: `1px solid ${on ? GOLD : "rgba(var(--border-rgb),0.09)"}`,
-              boxShadow: on ? "var(--card-shadow-hover), 0 20px 50px -28px rgba(231,169,63,0.6)" : "var(--card-shadow)",
+              background: active ? "rgba(231,169,63,0.12)" : "var(--card)",
+              border: `1px solid ${active ? GOLD : "rgba(var(--border-rgb),0.09)"}`,
+              boxShadow: active ? "var(--card-shadow-hover), 0 20px 50px -28px rgba(231,169,63,0.6)" : "var(--card-shadow)",
             }}
           >
-            <span className="font-display block text-[1.75rem] font-bold" style={{ color: on ? GOLD : "var(--text)" }}>{o.label}</span>
+            <span className="font-display block text-[1.75rem] font-bold transition-colors" style={{ color: active ? GOLD : "var(--text)" }}>{o.label}</span>
             {o.hint && <span className="mt-1.5 block text-[1rem]" style={{ color: dim(0.5) }}>{o.hint}</span>}
           </motion.button>
         );
@@ -683,6 +691,12 @@ function Choice<T extends string>({ value, options, onChange }: { value?: T; opt
 }
 
 const EASE = [0.22, 0.85, 0.25, 1] as const;
+
+const ASSIGN_EXPLAIN: Record<string, string> = {
+  same: "Fikri kim attıysa onun takımı o fikri yapar — insanlar kendi attıkları fikri geliştirir. Fikir sahibinin takımı yoksa kalan eşleşmeler rastgele dağıtılır.",
+  cross: "Hiçbir takım kendi üyesinin attığı fikri yapmaz — fikirler takımlar arasında kasıtlı olarak karıştırılır, kura/reveal animasyonuyla gösterilir.",
+  manual: "Otomatik değil — admin Takımlar ekranında her takım için hangi fikri yapacağını kendisi seçer.",
+};
 
 const IDEA_LABEL: Record<string, string> = {
   static: "Fikir var",
@@ -704,6 +718,7 @@ function Summary({ config }: { config: HackathonConfig }) {
     config.scoringMode === "rubric" && "Puanlama: Rubrik",
     (config.scoringMode ?? "simple") === "simple" && "Puanlama: Basit",
     config.duration && `Süre: ${config.duration.value} ${UNITS.find((u) => u.v === config.duration!.unit)?.label ?? ""}`,
+    config.teamTurnMinutes ? `Takım turu: ${config.teamTurnMinutes} dk` : "Takım turu: süresiz",
   ].filter(Boolean) as string[];
   return (
     <div className="mt-2 flex flex-wrap justify-center gap-2">

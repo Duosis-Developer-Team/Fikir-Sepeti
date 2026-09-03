@@ -13,6 +13,7 @@ export async function submitModeratedIdea(input: {
   tenantId: string;
   basket_id: string;
   text: string;
+  description?: string | null;
   tag?: string | null;
   acknowledge?: boolean;
 }): Promise<
@@ -25,6 +26,7 @@ export async function submitModeratedIdea(input: {
     body: JSON.stringify({
       basket_id: input.basket_id,
       text: input.text,
+      description: input.description,
       tag: input.tag,
       acknowledge: input.acknowledge,
     }),
@@ -90,6 +92,7 @@ export async function addIdeaModerated(input: {
   tenantId: string;
   basket_id: string;
   text: string;
+  description?: string | null;
   tag?: string | null;
 }): Promise<unknown | null> {
   const first = await submitModeratedIdea(input);

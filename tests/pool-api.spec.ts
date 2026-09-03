@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { DUOSIS_TENANT_ID } from "../lib/tenant";
+import { serviceClient } from "./db";
 
 const BASE = process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000";
 
@@ -77,12 +78,7 @@ test.describe("S4 Pool API", () => {
     const attachBody = await attach.json();
     expect(attachBody.basketId).toBe(basket.id);
 
-    const { createClient } = await import("@supabase/supabase-js");
-    const sb = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { persistSession: false } }
-    );
+        const sb = serviceClient();
     const { data: attachedIdea } = await sb
       .from("ideas")
       .select("*")
@@ -117,12 +113,7 @@ test.describe("S4 Pool API", () => {
     });
     const { basketId } = await promote.json();
 
-    const { createClient } = await import("@supabase/supabase-js");
-    const sb = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { persistSession: false } }
-    );
+        const sb = serviceClient();
 
     const { data: extra } = await sb
       .from("ideas")

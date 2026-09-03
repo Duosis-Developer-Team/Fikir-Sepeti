@@ -35,10 +35,12 @@ export type StageContext = {
   config: HackathonConfig;
   user: SessionUser;
   isAdmin: boolean;
-  refresh: () => void;
+  refresh: () => Promise<void>;
   /** S11 (FS-10): lobide, davetsiz/sahipsiz bir ziyaretçi henüz katılmadıysa true. */
   needsJoinAction?: boolean;
   onJoin?: () => void;
+  /** Admin üst stepper'dan geçmiş bir aşamayı önizliyor — mutasyon yok, sadece görüntüleme. */
+  readOnly?: boolean;
 };
 
 export type StageDef = {

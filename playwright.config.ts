@@ -32,16 +32,31 @@ export default defineConfig({
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {
-    command: `npm run start -- --hostname 127.0.0.1 --port ${PORT}`,
+    // `next start` "output: standalone" ile DESTEKLENMİYOR (Next uyarı veriyor).
+    // Daha önemlisi: konteynerde çalışan şey `node server.js` — testler de tam
+    // olarak o artefakta karşı koşmalı, yoksa "yerelde geçti, imajda patladı"
+    // sınıfı hatalar teste hiç yakalanmaz. start:standalone, Dockerfile'ın
+    // yaptığının aynısını yapıyor (static + public'i standalone'a kopyala).
+    command: "npm run start:standalone",
     url: BASE_URL,
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,
     env: {
       ...process.env,
+      // NODE_OPTIONS TEMİZLENİYOR — bu şart.
+      // `npm test` süreci --conditions=react-server ile koşuyor (lib/server/*
+      // içindeki `server-only` guard'ı Next dışında fırlatıyor). Ama o koşul
+      // alt sürece sızarsa standalone sunucu React'i "react-server" dalından
+      // çözmeye çalışıp açılışta ölüyor. Test süreci ve uygulama sürecinin
+      // farklı koşullara ihtiyacı var.
+      NODE_OPTIONS: "",
+      HOSTNAME: "127.0.0.1",
+      PORT: String(PORT),
       NEXT_PUBLIC_AUTH_BYPASS: "1",
-      NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
-      SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
+      // Uygulama RLS'e tabi rolle bağlanır; testlerin kurulum yaptığı
+      // ADMIN_DATABASE_URL sunucuya VERİLMEZ — uygulama hiçbir zaman RLS'i
+      // atlayan bir bağlantı görmemeli.
+      DATABASE_URL: process.env.DATABASE_URL ?? "",
     },
   },
 });

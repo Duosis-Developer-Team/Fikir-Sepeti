@@ -3,8 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRealtimeVotes } from "@/lib/useRealtimeVotes";
 import { addIdea, resolveBasket } from "@/lib/db";
-import { markPoolWinner, returnIdeaToPool } from "@/lib/pool";
-import { supabase } from "@/lib/supabase";
+import { listPoolIdeas, markPoolWinner, returnIdeaToPool } from "@/lib/pool";
 import { LiveVotePanel } from "@/components/shared/LiveVotePanel";
 import { ResultScreen } from "@/components/shared/ResultScreen";
 import { Avatars } from "@/components/shared/Avatars";
@@ -36,15 +35,13 @@ export function SocialBasket({ basket: initial, voter, accent }: { basket: Baske
   }, [ideas, b.created_by]);
 
   const annotatePool = async (winnerText: string) => {
-    const { data } = await supabase
-      .from("idea_pool")
-      .select("id")
-      .eq("promoted_basket_id", b.id)
-      .limit(1)
-      .maybeSingle();
-    if (data?.id) {
+    // Bu sepete dönüştürülmüş sepet fikrini bul — sepet listesi zaten
+    // promoted_basket_id taşıyor, ayrı bir sorguya gerek yok.
+    const pool = await listPoolIdeas(b.tenant_id);
+    const source = pool.find((i) => i.promoted_basket_id === b.id);
+    if (source) {
       await markPoolWinner({
-        pool_idea_id: data.id as string,
+        pool_idea_id: source.id,
         winner_label: winnerText,
         tenant_id: b.tenant_id,
         actor: voter,

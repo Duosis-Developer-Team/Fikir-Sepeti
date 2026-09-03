@@ -22,12 +22,18 @@ export async function POST(req: Request) {
   const sb = getDb(req);
   const { data: idea } = await sb
     .from("idea_pool")
-    .select("id, tenant_id, status, poll_closes_at")
+    .select("id, tenant_id, status, poll_closes_at, track_hint")
     .eq("id", poolIdeaId)
     .maybeSingle();
 
   if (!idea || idea.tenant_id !== identity.tenantId) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
+  }
+
+  // Hackathon/etkinlik'e özgülenmiş fikirler pool'da oylanmaz — doğrudan
+  // lobiden/kuradan tüketilir (bkz. idea_pool_comments ve repoPick akışı).
+  if (idea.track_hint) {
+    return NextResponse.json({ error: "not_votable" }, { status: 400 });
   }
 
   if (idea.poll_closes_at && new Date(idea.poll_closes_at as string) < new Date()) {

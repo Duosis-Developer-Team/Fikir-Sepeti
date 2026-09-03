@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { supabase } from "./supabase";
+import { apiFetch } from "./api-headers";
+import { subscribeChanges } from "./realtime";
 import type { Basket, Idea, Phase } from "./types";
 
 type State = {
@@ -32,46 +33,31 @@ export function useRealtimeVotes(basketId: string, voter: string) {
   const tenantRef = useRef<string | null>(null);
 
   const fetchAll = useCallback(async () => {
-    const [basketRes, ideasRes] = await Promise.all([
-      supabase.from("baskets").select("*").eq("id", basketId).single(),
-      supabase
-        .from("ideas")
-        .select("*")
-        .eq("basket_id", basketId)
-        .order("created_at", { ascending: true }),
-    ]);
+    // Sepet + fikirler + KENDİ oyların tek uçtan. Kendi oyunu okumak
+    // `vote.view_all` istemiyor; sunucu bunu list_my_votes RPC'siyle ayırıyor
+    // (S3 kararı). Eskiden burada RPC başarısız olursa votes tablosuna düşen
+    // bir yedek yol vardı — artık gerekmiyor, ayrım sunucuda tek yerde.
+    const res = await apiFetch<{
+      basket: Basket;
+      ideas: Idea[];
+      myVotes: { phase: string; idea_id: string }[];
+    }>(`/api/basket/${basketId}/live`);
 
-    if (basketRes.data) {
-      tenantRef.current = (basketRes.data as Basket).tenant_id ?? null;
-    }
+    if (!res.ok || !res.data) return;
 
-    // Prefer masked RPC; fall back to filtered votes select (own rows / vote.view_all)
-    let voteRows: { phase: string; idea_id: string }[] = [];
-    const rpc = await supabase.rpc("list_my_votes", { p_basket: basketId });
-    if (!rpc.error && rpc.data) {
-      voteRows = rpc.data as { phase: string; idea_id: string }[];
-    } else {
-      const votesRes = await supabase
-        .from("votes")
-        .select("phase, idea_id")
-        .eq("basket_id", basketId)
-        .eq("voter", voter);
-      voteRows = (votesRes.data as { phase: string; idea_id: string }[]) ?? [];
-    }
+    tenantRef.current = res.data.basket?.tenant_id ?? null;
 
     const myVotes: Record<string, string> = {};
-    for (const v of voteRows) {
-      myVotes[v.phase] = v.idea_id;
-    }
+    for (const v of res.data.myVotes ?? []) myVotes[v.phase] = v.idea_id;
 
     setState((prev) => ({
       ...prev,
-      basket: (basketRes.data as Basket) ?? prev.basket,
-      ideas: (ideasRes.data as Idea[]) ?? prev.ideas,
+      basket: res.data!.basket ?? prev.basket,
+      ideas: res.data!.ideas ?? prev.ideas,
       myVotes,
       loading: false,
     }));
-  }, [basketId, voter]);
+  }, [basketId]);
 
   const stopPolling = useCallback(() => {
     if (pollRef.current) {
@@ -91,54 +77,53 @@ export function useRealtimeVotes(basketId: string, voter: string) {
     let active = true;
     void fetchAll();
 
-    const channel = supabase
-      .channel("basket:" + basketId)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "ideas", filter: `basket_id=eq.${basketId}` },
-        (payload) => {
-          if (!active) return;
-          setState((prev) => {
-            let ideas = prev.ideas;
-            if (payload.eventType === "INSERT") {
-              const row = payload.new as Idea;
-              ideas = prev.ideas.some((i) => i.id === row.id)
-                ? prev.ideas
-                : [...prev.ideas, row];
-            } else if (payload.eventType === "UPDATE") {
-              const row = payload.new as Idea;
-              ideas = prev.ideas.map((i) => (i.id === row.id ? { ...i, ...row } : i));
-            } else if (payload.eventType === "DELETE") {
-              const old = payload.old as { id: string };
-              ideas = prev.ideas.filter((i) => i.id !== old.id);
-            }
-            return { ...prev, ideas };
-          });
-        }
-      )
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "baskets", filter: `id=eq.${basketId}` },
-        (payload) => {
-          if (!active) return;
-          setState((prev) => ({ ...prev, basket: payload.new as Basket }));
-        }
-      )
-      .subscribe((status) => {
+    // Abonelik: fikirler satır bazında yerinde güncelleniyor (yeniden çekmeden),
+    // sepet güncellemesi ise tümüyle değiştiriliyor — eski davranışın aynısı.
+    // NOTIFY 8KB sınırını aşarsa satır gelmiyor (truncated); o durumda yeniden
+    // çekiyoruz, yoksa liste sessizce eskir.
+    const unsubscribe = subscribeChanges({
+      filters: [
+        { table: "ideas", column: "basket_id", value: basketId },
+        { table: "baskets", column: "id", value: basketId },
+      ],
+      onChange: (payload) => {
         if (!active) return;
-        if (status === "SUBSCRIBED") {
-          setState((prev) => ({ ...prev, connected: true }));
+        if (payload.truncated) {
+          void fetchAll();
+          return;
+        }
+        if (payload.table === "baskets") {
+          if (payload.eventType === "UPDATE" && payload.new) {
+            setState((prev) => ({ ...prev, basket: payload.new as unknown as Basket }));
+          }
+          return;
+        }
+        setState((prev) => {
+          let ideas = prev.ideas;
+          if (payload.eventType === "INSERT" && payload.new) {
+            const row = payload.new as unknown as Idea;
+            ideas = prev.ideas.some((i) => i.id === row.id) ? prev.ideas : [...prev.ideas, row];
+          } else if (payload.eventType === "UPDATE" && payload.new) {
+            const row = payload.new as unknown as Idea;
+            ideas = prev.ideas.map((i) => (i.id === row.id ? { ...i, ...row } : i));
+          } else if (payload.eventType === "DELETE" && payload.old) {
+            const old = payload.old as { id: string };
+            ideas = prev.ideas.filter((i) => i.id !== old.id);
+          }
+          return { ...prev, ideas };
+        });
+      },
+      onStatus: (isConnected) => {
+        if (!active) return;
+        setState((prev) => ({ ...prev, connected: isConnected }));
+        if (isConnected) {
           stopPolling();
-          void fetchAll(); // reconnect sonrası stale veriyi düzelt
-        } else if (
-          status === "CHANNEL_ERROR" ||
-          status === "TIMED_OUT" ||
-          status === "CLOSED"
-        ) {
-          setState((prev) => ({ ...prev, connected: false }));
+          void fetchAll(); // yeniden bağlandıktan sonra kaçırılanları topla
+        } else {
           startPolling();
         }
-      });
+      },
+    });
 
     const onVisible = () => {
       if (document.visibilityState === "visible") void fetchAll();
@@ -149,7 +134,7 @@ export function useRealtimeVotes(basketId: string, voter: string) {
       active = false;
       document.removeEventListener("visibilitychange", onVisible);
       stopPolling();
-      supabase.removeChannel(channel);
+      unsubscribe();
     };
   }, [basketId, fetchAll, startPolling, stopPolling]);
 
@@ -185,31 +170,27 @@ export function useRealtimeVotes(basketId: string, voter: string) {
         };
       });
 
-      const delOld = () =>
-        supabase.from("votes").delete().eq("basket_id", basketId).eq("phase", phase).eq("voter", voter);
-      const insNew = () =>
-        supabase.from("votes").insert({
-          basket_id: basketId,
-          idea_id: ideaId,
-          phase,
-          voter,
-          tenant_id: tenantRef.current,
-        });
-
       try {
         if (h.action === "unvote") {
-          const { error } = await delOld();
-          if (error) throw error;
+          const res = await apiFetch(
+            `/api/basket/${basketId}/vote?phase=${encodeURIComponent(phase)}`,
+            { method: "DELETE", email: voter, tenantId: tenantRef.current }
+          );
+          if (!res.ok) throw new Error(res.error);
         } else {
-          if (h.action === "change") {
-            const { error: delError } = await delOld();
-            if (delError) throw delError;
-          }
-          const { error } = await insNew();
-          if (error && error.code !== "23505") throw error;
+          // Sunucu eski oyu kendisi siliyor (unique(basket,phase,voter) zaten
+          // ikinciyi reddederdi); istemcinin sil+ekle sırasını yönetmesine
+          // gerek kalmadı.
+          const res = await apiFetch(`/api/basket/${basketId}/vote`, {
+            method: "POST",
+            email: voter,
+            tenantId: tenantRef.current,
+            body: JSON.stringify({ idea_id: ideaId, phase }),
+          });
+          if (!res.ok) throw new Error(res.error);
         }
       } catch {
-        void fetchAll(); // hata → server doğrusunu getir
+        void fetchAll(); // hata → sunucunun doğrusunu getir
       }
     },
     [basketId, voter, fetchAll]

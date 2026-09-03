@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { DUOSIS_TENANT_ID } from "../lib/tenant";
+import { serviceClient } from "./db";
 
 const BASE = process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000";
 
@@ -40,12 +41,7 @@ test.describe("S2 RBAC API", () => {
   });
 
   test("basket-scoped jury applies only when scope matches", async ({ request }) => {
-    const { createClient } = await import("@supabase/supabase-js");
-    const sb = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { persistSession: false } }
-    );
+        const sb = serviceClient();
     const juryRole = "c0000000-0000-4000-8000-000000000005";
     const basketA = "11111111-1111-4111-8111-111111111111";
     const basketB = "22222222-2222-4222-8222-222222222222";

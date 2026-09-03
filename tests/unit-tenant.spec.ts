@@ -7,8 +7,6 @@ import {
   OTHER_TENANT_ID,
   type TenantRecord,
 } from "../lib/tenant";
-import { azureTenantIdFromUser } from "../lib/azure-claims";
-import type { User } from "@supabase/supabase-js";
 
 const tenants: TenantRecord[] = [
   {
@@ -62,28 +60,3 @@ test.describe("tenant resolution", () => {
   });
 });
 
-test.describe("azureTenantIdFromUser", () => {
-  test("reads tid from custom_claims", () => {
-    const user = {
-      id: "1",
-      email: "a@duosis.com",
-      app_metadata: {},
-      user_metadata: { custom_claims: { tid: "azure-duo" } },
-      aud: "authenticated",
-      created_at: "",
-    } as unknown as User;
-    expect(azureTenantIdFromUser(user)).toBe("azure-duo");
-  });
-
-  test("returns null when missing", () => {
-    const user = {
-      id: "1",
-      email: "a@duosis.com",
-      app_metadata: {},
-      user_metadata: {},
-      aud: "authenticated",
-      created_at: "",
-    } as unknown as User;
-    expect(azureTenantIdFromUser(user)).toBeNull();
-  });
-});

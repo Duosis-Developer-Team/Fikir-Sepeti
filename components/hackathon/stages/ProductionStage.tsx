@@ -5,8 +5,8 @@ import { motion } from "motion/react";
 import { markDone, listFeedback } from "@/lib/hackathon";
 import { markPoolWinner, returnIdeaToPool } from "@/lib/pool";
 import { groupFeedbackByTeam } from "@/lib/feedback-groups";
-import { DEFAULT_RUBRIC } from "@/lib/scoring";
-import { supabase } from "@/lib/supabase";
+import { computeTeamScores, DEFAULT_RUBRIC } from "@/lib/scoring";
+import { subscribeChanges } from "@/lib/realtime";
 import type { Feedback } from "@/lib/types";
 import type { StageContext } from "../contract";
 import { GOLD, GOLD_SOFT, dim } from "../contract";
@@ -16,8 +16,22 @@ import { Scoreboard } from "../Scoreboard";
 export function ProductionStage({ data, config, user, isAdmin }: StageContext) {
   const { basket, teams, members, teamVotes, ideas, participants, scores } = data;
   const selected = ideas.find((i) => i.id === basket.selected_idea_id) ?? null;
+  const isRubric = (config.scoringMode ?? "simple") === "rubric";
+  const rubric = config.rubric?.length ? config.rubric : DEFAULT_RUBRIC;
+  // Rubrik modunda "kazanan" basit oy (team_votes) değil, yıldız puanı toplamıyla belirlenir —
+  // aksi halde herkes 0 oy görür ve gerçek puanı olan takım "0 oy ile" gösterilir (bkz. talep #9).
+  const rubricScores = computeTeamScores({
+    teamIds: teams.map((t) => t.id),
+    scores,
+    rubric,
+    juryEnabled: config.juryEnabled,
+    juryWeight: config.juryWeight,
+  });
   const votesOf = (id: string) => teamVotes.filter((v) => v.team_id === id).length;
-  const winner = [...teams].sort((a, b) => votesOf(b.id) - votesOf(a.id))[0] ?? null;
+  const scoreOf = (id: string) =>
+    isRubric ? rubricScores.find((r) => r.teamId === id)?.total ?? 0 : votesOf(id);
+  const rankedTeams = [...teams].sort((a, b) => scoreOf(b.id) - scoreOf(a.id));
+  const winner = rankedTeams[0] ?? null;
   const winnerMembers = winner ? members.filter((m) => m.team_id === winner.id) : [];
   const done = basket.status === "resolved" || basket.phase === "done";
   const [returned, setReturned] = useState<Set<string>>(new Set());
@@ -36,17 +50,10 @@ export function ProductionStage({ data, config, user, isAdmin }: StageContext) {
 
   useEffect(() => {
     loadFeedback();
-    const ch = supabase
-      .channel(`fb-prod:${basket.id}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "feedback", filter: `basket_id=eq.${basket.id}` },
-        () => loadFeedback()
-      )
-      .subscribe();
-    return () => {
-      supabase.removeChannel(ch);
-    };
+    return subscribeChanges({
+      filters: [{ table: "feedback", column: "basket_id", value: basket.id }],
+      onChange: () => loadFeedback(),
+    });
   }, [basket.id, loadFeedback]);
 
   const teamNames = useMemo(() => {
@@ -131,7 +138,9 @@ export function ProductionStage({ data, config, user, isAdmin }: StageContext) {
             >
               🏆 {winner.name}
             </motion.h2>
-            <p className="relative mt-2 tnum text-[1.05rem]" style={{ color: GOLD_SOFT }}>{votesOf(winner.id)} oy ile</p>
+            <p className="relative mt-2 tnum text-[1.05rem]" style={{ color: GOLD_SOFT }}>
+              {isRubric ? `${scoreOf(winner.id).toFixed(2)} puan ile` : `${scoreOf(winner.id)} oy ile`}
+            </p>
             <div className="relative mt-5 flex flex-wrap justify-center gap-1.5">
               {winnerMembers.map((m) => (
                 <span key={m.id} className="inline-flex items-center gap-2 rounded-full py-1 pl-1 pr-3 text-[0.9rem]" style={{ background: "rgba(var(--border-rgb),0.05)", color: "var(--text)" }}>
@@ -148,7 +157,7 @@ export function ProductionStage({ data, config, user, isAdmin }: StageContext) {
         {teams.length > 0 && (
           <div className="mt-6 flex flex-col gap-2 text-left">
             <span className="text-[0.7rem] font-semibold uppercase tracking-[0.22em]" style={{ color: dim(0.45) }}>Sıralama</span>
-            {[...teams].sort((a, b) => votesOf(b.id) - votesOf(a.id)).map((t, rank) => {
+            {rankedTeams.map((t, rank) => {
               const mem = members.filter((m) => m.team_id === t.id);
               const win = winner?.id === t.id;
               return (
@@ -156,7 +165,9 @@ export function ProductionStage({ data, config, user, isAdmin }: StageContext) {
                   <span className="tnum font-display w-5 font-bold" style={{ color: win ? GOLD_SOFT : dim(0.4) }}>{rank + 1}</span>
                   <span className="flex-1 truncate font-semibold" style={{ color: "var(--text)" }}>{t.name}</span>
                   <div className="flex gap-1">{mem.map((m) => <Avatar key={m.id} name={nameOf(m.user_id)} size={22} />)}</div>
-                  <span className="tnum font-display text-[1.1rem] font-bold" style={{ color: win ? GOLD : dim(0.7) }}>{votesOf(t.id)}</span>
+                  <span className="tnum font-display text-[1.1rem] font-bold" style={{ color: win ? GOLD : dim(0.7) }}>
+                    {isRubric ? scoreOf(t.id).toFixed(2) : scoreOf(t.id)}
+                  </span>
                 </div>
               );
             })}
@@ -169,7 +180,7 @@ export function ProductionStage({ data, config, user, isAdmin }: StageContext) {
           </p>
         )}
 
-        {done && ideas.length > 1 && (
+        {done && isAdmin && ideas.length > 1 && (
           <div className="mt-6 text-left" data-testid="return-to-pool">
             <span className="text-[0.7rem] font-semibold uppercase tracking-[0.22em]" style={{ color: dim(0.45) }}>
               Kaybedenleri sepete at

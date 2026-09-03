@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { loginAs, SEED } from "./helpers";
 import { DUOSIS_TENANT_ID, OTHER_TENANT_ID } from "../lib/tenant";
+import { serviceClient } from "./db";
 
 const BASE = process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000";
 const ARCHIVE_ETKINLIK = "99999999-9999-4999-8999-999999999999";
@@ -58,12 +59,7 @@ test.describe("S5 Archive", () => {
 
   test("member without archive.view_all only sees participated baskets", async ({ request }) => {
     // Create a resolved basket member never touched
-    const { createClient } = await import("@supabase/supabase-js");
-    const sb = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { persistSession: false } }
-    );
+        const sb = serviceClient();
     const secretId = "ffff6666-6666-4666-8666-666666666666";
     await sb.from("baskets").delete().eq("id", secretId);
     await sb.from("baskets").insert({

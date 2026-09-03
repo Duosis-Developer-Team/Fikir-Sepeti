@@ -1,12 +1,10 @@
 import { test, expect } from "@playwright/test";
-import { createClient } from "@supabase/supabase-js";
 import { loginAs, SEED } from "./helpers";
 import { DUOSIS_TENANT_ID } from "../lib/tenant";
+import { serviceClient } from "./db";
 
 function admin() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-  return createClient(url, key, { auth: { persistSession: false } });
+  return serviceClient();
 }
 
 test.describe("S6 signature raffle", () => {

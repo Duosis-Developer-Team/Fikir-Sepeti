@@ -1,8 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { BrandIcon } from "@/components/BrandIcon";
 import { useSession } from "@/components/AuthGate";
+
+const EASE = [0.22, 0.85, 0.25, 1] as const;
+type PwStep = "email" | "password";
 
 export default function LoginPage() {
   const {
@@ -15,15 +19,118 @@ export default function LoginPage() {
     loginAzure,
     loginWithPassword,
     requestPasswordReset,
+    passwordRecovery,
+    updatePassword,
     devLogin,
     signOut,
     clearLoginError,
   } = useSession();
   const [draft, setDraft] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [step, setStep] = useState<PwStep>("email");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [resetMsg, setResetMsg] = useState<string | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [newPasswordConfirm, setNewPasswordConfirm] = useState("");
+  const [newPasswordDone, setNewPasswordDone] = useState(false);
+
+  // PASSWORD_RECOVERY: "Şifremi unuttum" linkiyle dönüldü — normal giriş yerine
+  // yeni şifre formu göster (recoveryda bile isek AuthGate yönlendirmiyor).
+  if (passwordRecovery) {
+    const onSubmitNewPassword = async () => {
+      if (newPassword.length < 6) return;
+      if (newPassword !== newPasswordConfirm) {
+        clearLoginError();
+        setResetMsg(null);
+        return;
+      }
+      setSubmitting(true);
+      clearLoginError();
+      try {
+        await updatePassword(newPassword);
+        setNewPasswordDone(true);
+      } catch {
+        /* loginError set */
+      } finally {
+        setSubmitting(false);
+      }
+    };
+    const mismatch = newPasswordConfirm.length > 0 && newPassword !== newPasswordConfirm;
+    return (
+      <div className="flex min-h-screen items-center justify-center px-6" style={{ background: "var(--bg)" }}>
+        <div
+          className="w-full max-w-sm rounded-[22px] p-8"
+          style={{ background: "var(--card)", border: "1px solid rgba(var(--border-rgb),0.09)" }}
+        >
+          <BrandIcon size="md" priority />
+          <h1 className="font-display mt-5 text-[1.5rem] font-bold tracking-tight" style={{ color: "var(--text)" }}>
+            Yeni şifre belirle
+          </h1>
+          <p className="mt-1.5 text-[0.92rem]" style={{ color: "var(--text-muted)" }}>
+            {newPasswordDone
+              ? "Şifren güncellendi. Yeni şifrenle giriş yapabilirsin."
+              : "Hesabına yeni bir şifre belirle."}
+          </p>
+          {loginError && (
+            <p className="mt-3 rounded-lg px-3 py-2 text-[0.85rem]" style={{ background: "rgba(242,121,95,0.12)", color: "#F2795F" }} role="alert">
+              {loginError}
+            </p>
+          )}
+          {newPasswordDone ? (
+            /* Sıfırlama linki OTURUM AÇTIRMIYOR — yalnızca yeni şifre
+               belirlemeye yetiyor (ve sunucu eski oturumların hepsini iptal
+               ediyor). O yüzden buradan "/"'a göndermek anlamsız olurdu:
+               AuthGate hemen /login'e geri atardı. Kullanıcı giriş formuna
+               düşüyor ve yeni şifresiyle giriyor. */
+            <button
+              type="button"
+              onClick={() => window.location.assign("/login")}
+              className="mt-6 w-full rounded-full py-3 text-[0.95rem] font-semibold transition disabled:opacity-40"
+              style={{ background: "var(--text)", color: "var(--bg)" }}
+            >
+              Giriş yap →
+            </button>
+          ) : (
+            <>
+              <input
+                autoFocus
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="yeni şifre (en az 6 karakter)"
+                className="mt-6 w-full rounded-lg px-3.5 py-3 text-[0.95rem] outline-none"
+                style={{ background: "var(--surface-2)", border: "1px solid rgba(var(--border-rgb),0.09)", color: "var(--text)" }}
+                disabled={submitting}
+              />
+              <input
+                type="password"
+                value={newPasswordConfirm}
+                onChange={(e) => setNewPasswordConfirm(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && void onSubmitNewPassword()}
+                placeholder="yeni şifre (tekrar)"
+                className="mt-3 w-full rounded-lg px-3.5 py-3 text-[0.95rem] outline-none"
+                style={{ background: "var(--surface-2)", border: "1px solid rgba(var(--border-rgb),0.09)", color: "var(--text)" }}
+                disabled={submitting}
+              />
+              {mismatch && (
+                <p className="mt-2 text-[0.82rem]" style={{ color: "#F2795F" }}>Şifreler eşleşmiyor.</p>
+              )}
+              <button
+                type="button"
+                onClick={() => void onSubmitNewPassword()}
+                disabled={submitting || newPassword.length < 6 || newPassword !== newPasswordConfirm}
+                className="mt-3 w-full rounded-full py-3 text-[0.95rem] font-semibold transition disabled:opacity-40"
+                style={{ background: "var(--text)", color: "var(--bg)" }}
+              >
+                {submitting ? "…" : "Şifreyi güncelle"}
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   if (!ready || user?.tenantId) {
     return (
@@ -189,54 +296,105 @@ export default function LoginPage() {
               <span className="h-px flex-1" style={{ background: "rgba(var(--border-rgb),0.12)" }} />
             </div>
 
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="iş e-postan"
-              className="mt-4 w-full rounded-lg px-3.5 py-3 text-[0.95rem] outline-none"
-              style={{
-                background: "var(--surface-2)",
-                border: "1px solid rgba(var(--border-rgb),0.09)",
-                color: "var(--text)",
-              }}
-              disabled={submitting}
-            />
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && void onPasswordLogin()}
-              placeholder="şifre"
-              className="mt-3 w-full rounded-lg px-3.5 py-3 text-[0.95rem] outline-none"
-              style={{
-                background: "var(--surface-2)",
-                border: "1px solid rgba(var(--border-rgb),0.09)",
-                color: "var(--text)",
-              }}
-              disabled={submitting}
-            />
-            <button
-              type="button"
-              onClick={() => void onPasswordLogin()}
-              disabled={submitting || !email.includes("@") || !password}
-              className="mt-3 w-full rounded-full py-3 text-[0.95rem] font-semibold transition disabled:opacity-40"
-              style={{
-                border: "1px solid rgba(var(--border-rgb),0.18)",
-                color: "var(--text)",
-              }}
-            >
-              {submitting ? "…" : "E-posta ile giriş yap"}
-            </button>
-            <button
-              type="button"
-              onClick={() => void onForgotPassword()}
-              disabled={submitting}
-              className="mt-3 w-full text-center text-[0.82rem] font-medium disabled:opacity-40"
-              style={{ color: "var(--text-faint)" }}
-            >
-              Şifremi unuttum
-            </button>
+            <div className="relative mt-4 overflow-hidden">
+              <AnimatePresence mode="wait" initial={false}>
+                {step === "email" ? (
+                  <motion.div
+                    key="email"
+                    initial={{ opacity: 0, x: 16 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -16 }}
+                    transition={{ duration: 0.28, ease: EASE }}
+                  >
+                    <input
+                      autoFocus
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && email.includes("@") && setStep("password")}
+                      placeholder="iş e-postan"
+                      className="w-full rounded-lg px-3.5 py-3 text-[0.95rem] outline-none"
+                      style={{
+                        background: "var(--surface-2)",
+                        border: "1px solid rgba(var(--border-rgb),0.09)",
+                        color: "var(--text)",
+                      }}
+                      disabled={submitting}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setStep("password")}
+                      disabled={!email.includes("@")}
+                      className="mt-3 w-full rounded-full py-3 text-[0.95rem] font-semibold transition disabled:opacity-40"
+                      style={{
+                        border: "1px solid rgba(var(--border-rgb),0.18)",
+                        color: "var(--text)",
+                      }}
+                    >
+                      Devam
+                    </button>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="password"
+                    initial={{ opacity: 0, x: 16 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -16 }}
+                    transition={{ duration: 0.28, ease: EASE }}
+                  >
+                    <p className="mb-3 text-[0.85rem]" style={{ color: "var(--text-muted)" }}>
+                      <span style={{ color: "var(--text-2)" }}>{email}</span> için şifre gir
+                    </p>
+                    <input
+                      autoFocus
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && void onPasswordLogin()}
+                      placeholder="şifre"
+                      className="w-full rounded-lg px-3.5 py-3 text-[0.95rem] outline-none"
+                      style={{
+                        background: "var(--surface-2)",
+                        border: "1px solid rgba(var(--border-rgb),0.09)",
+                        color: "var(--text)",
+                      }}
+                      disabled={submitting}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void onPasswordLogin()}
+                      disabled={submitting || !password}
+                      className="mt-3 w-full rounded-full py-3 text-[0.95rem] font-semibold transition disabled:opacity-40"
+                      style={{
+                        border: "1px solid rgba(var(--border-rgb),0.18)",
+                        color: "var(--text)",
+                      }}
+                    >
+                      {submitting ? "…" : "Giriş yap"}
+                    </button>
+                    <div className="mt-3 flex items-center justify-between">
+                      <button
+                        type="button"
+                        onClick={() => setStep("email")}
+                        className="text-[0.82rem] font-medium"
+                        style={{ color: "var(--text-faint)" }}
+                      >
+                        ← Geri
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void onForgotPassword()}
+                        disabled={submitting}
+                        className="text-[0.82rem] font-medium disabled:opacity-40"
+                        style={{ color: "var(--text-faint)" }}
+                      >
+                        Şifremi unuttum
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </>
         )}
       </div>

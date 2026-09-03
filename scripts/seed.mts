@@ -1,14 +1,16 @@
 #!/usr/bin/env node
 /**
- * Deterministic seed for local / CI tests.
- * Fixed UUIDs so Playwright helpers can deep-link when needed.
+ * Yerel / CI için deterministik seed. Sabit UUID'ler — Playwright derin
+ * bağlantı kurabilsin diye.
  *
- * Usage:
- *   SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... node scripts/seed.mjs
- *   (or after `supabase start` — reads from `npx supabase status -o env`)
+ * Supabase CLI'ya bağımlı DEĞİL: düz PostgreSQL'e ADMIN_DATABASE_URL ile
+ * bağlanır (tablo sahibi rolü → RLS atlanır, kurulum verisi yazılabilir).
+ *
+ * Çalıştır:  npm run db:seed
  */
-import { createClient } from "@supabase/supabase-js";
-import { execSync } from "node:child_process";
+import { Pool } from "pg";
+import { makeDb } from "../lib/server/pgrest";
+import { hashPassword } from "../lib/password";
 
 const IDS = {
   duoTenant: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
@@ -32,43 +34,20 @@ const IDS = {
 const ADMIN = "admin@duosis.dev";
 const OTHER_ADMIN = "admin@other.com";
 
-function statusEnv() {
-  try {
-    const out = execSync("npx supabase status -o env", {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-    const map = {};
-    for (const line of out.split("\n")) {
-      const m = line.match(/^([A-Z0-9_]+)=("?)(.*)\2$/);
-      if (m) map[m[1]] = m[3];
-    }
-    return map;
-  } catch {
-    return {};
-  }
-}
-
-const status = statusEnv();
-const url =
-  process.env.SUPABASE_URL ||
-  process.env.NEXT_PUBLIC_SUPABASE_URL ||
-  status.API_URL ||
-  status.SUPABASE_URL;
-const serviceKey =
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  status.SERVICE_ROLE_KEY ||
-  status.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!url || !serviceKey) {
-  console.error(
-    "Missing SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY (or run `supabase start` first)."
-  );
+const url = process.env.ADMIN_DATABASE_URL || process.env.DATABASE_URL;
+if (!url) {
+  console.error("ADMIN_DATABASE_URL gerekli (tablo sahibi rolü).");
   process.exit(1);
 }
 
-const sb = createClient(url, serviceKey, {
-  auth: { persistSession: false, autoRefreshToken: false },
+const pool = new Pool({ connectionString: url, max: 4 });
+const sb = makeDb(async (fn) => {
+  const client = await pool.connect();
+  try {
+    return await fn(client);
+  } finally {
+    client.release();
+  }
 });
 
 async function wipe() {
@@ -84,6 +63,8 @@ async function wipe() {
   await sb.from("squad_members").delete().neq("id", "00000000-0000-0000-0000-000000000000");
   await sb.from("baskets").delete().neq("id", "00000000-0000-0000-0000-000000000000");
   await sb.from("app_users").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+  // Oturumlar seed'ler arasında taşınmasın; kimlik kayıtları yeniden yazılıyor.
+  await sb.from("auth_sessions").delete().neq("id", "00000000-0000-0000-0000-000000000000");
   // keep default DuoSis from migration; upsert Other Corp
 }
 
@@ -409,31 +390,30 @@ async function main() {
   const { error: rErr } = await sb.from("user_roles").insert(roleRows);
   if (rErr) throw rErr;
 
-  // Auth users for RLS (JWT) — password shared with AuthGate DEV_AUTH_PASSWORD
+  // Giriş yapabilen kullanıcılar. GoTrue yerine kendi auth_credentials
+  // tablomuz; parola AuthGate'in devLogin'iyle aynı (lib/dev-auth.ts).
   const DEV_PASSWORD = process.env.NEXT_PUBLIC_DEV_AUTH_PASSWORD || "test-password-123";
+  const passwordHash = await hashPassword(DEV_PASSWORD);
   const authEmails = [ADMIN, "member@duosis.dev", OTHER_ADMIN];
-  for (const email of authEmails) {
-    const { data: listed } = await sb.auth.admin.listUsers({ page: 1, perPage: 200 });
-    const existing = listed?.users?.find((u) => u.email === email);
-    if (existing) {
-      await sb.auth.admin.updateUserById(existing.id, {
-        password: DEV_PASSWORD,
-        email_confirm: true,
-      });
-    } else {
-      const { error: aErr } = await sb.auth.admin.createUser({
-        email,
-        password: DEV_PASSWORD,
-        email_confirm: true,
-      });
-      if (aErr) console.warn("auth create", email, aErr.message);
-    }
-  }
+  const { error: aErr } = await sb.from("auth_credentials").upsert(
+    authEmails.map((email) => ({
+      email,
+      password_hash: passwordHash,
+      email_verified: true,
+      provider: "password",
+      display_name: email.split("@")[0],
+    })),
+    { onConflict: "email" }
+  );
+  if (aErr) throw aErr;
 
   console.log("Seed OK", IDS);
 }
 
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+main()
+  .then(() => pool.end())
+  .catch(async (e) => {
+    console.error(e);
+    await pool.end().catch(() => {});
+    process.exit(1);
+  });

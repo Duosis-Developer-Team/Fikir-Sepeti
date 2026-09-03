@@ -59,6 +59,8 @@ export type HackathonConfig = {
   allowLateJoin?: boolean;
   /** Paylaşılan Teams toplantı linki (opsiyonel, kurulumda eklenir). */
   teamsLink?: string;
+  /** Sıralı takım turu (puanlama + feedback): takım başına dakika. 0/undefined = süresiz. */
+  teamTurnMinutes?: number;
 };
 
 export type PoolStatus = "new" | "voting" | "promoted" | "archived" | "rejected";
@@ -80,6 +82,16 @@ export type PoolIdea = {
   winner_label: string | null;
   /** Bir poll seçeneğiyse, ait olduğu kök fikrin id'si (FS-05). */
   parent_idea_id: string | null;
+  created_at: string;
+};
+
+export type PoolComment = {
+  id: string;
+  tenant_id: string;
+  pool_idea_id: string;
+  author_id: string | null;
+  author_name: string | null;
+  text: string;
   created_at: string;
 };
 
@@ -106,6 +118,10 @@ export type Basket = {
   project_link?: string | null;
   /** S11: new joins blocked when true (unless allowLateJoin). */
   lobby_locked?: boolean;
+  /** Sıralı takım turu: teams[] içinde (created_at sırasına göre) kimin sırası olduğu. */
+  team_turn_idx: number;
+  /** Mevcut takım turunun bitiş zamanı — admin süre koymadıysa null. */
+  team_turn_ends_at: string | null;
 };
 
 export type Tenant = {
@@ -138,6 +154,8 @@ export type Team = {
   idea_id?: string | null;
   /** Team angle / angle when ideaCount === 1 (S6). */
   angle?: string | null;
+  /** Rastgele/otomatik dağıtımda seçilen üye — sadece o (veya organizatör) adı değiştirebilir. */
+  leader_user_id?: string | null;
 };
 
 export type TeamMember = {
@@ -170,6 +188,8 @@ export type Idea = {
   id: string;
   basket_id: string;
   text: string;
+  /** Fikrin detay açıklaması — hackathon "fikir belirtme" formunda opsiyonel. */
+  description: string | null;
   tag: string | null;
   is_finalist: boolean;
   demo_url: string | null;
@@ -177,6 +197,18 @@ export type Idea = {
   live_at: string | null;
   created_by: string | null;
   vote_count: number;
+  created_at: string;
+};
+
+/** Bir fikre eklenen dosyanın meta verisi — baytlar ayrı bir uçtan çekilir. */
+export type IdeaAttachment = {
+  id: string;
+  idea_id: string;
+  tenant_id: string;
+  filename: string;
+  mime_type: string;
+  size_bytes: number;
+  uploaded_by: string | null;
   created_at: string;
 };
 
@@ -209,6 +241,8 @@ export type Suggestion = {
   status: "open" | "done";
   vote_count: number;
   created_at: string;
+  /** Sunucuda hesaplanır: sahibi ya da tenant.manage_settings taşıyan biri mi (anonim olsa da doğru). */
+  canDelete: boolean;
 };
 
 export type VoteRow = {

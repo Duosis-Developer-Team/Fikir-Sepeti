@@ -1,13 +1,11 @@
 import { test, expect } from "@playwright/test";
-import { createClient } from "@supabase/supabase-js";
 import { loginAs, SEED } from "./helpers";
 import { DUOSIS_TENANT_ID } from "../lib/tenant";
 import { DEFAULT_RUBRIC } from "../lib/scoring";
+import { serviceClient } from "./db";
 
 function admin() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-  return createClient(url, key, { auth: { persistSession: false } });
+  return serviceClient();
 }
 
 test.describe("S7 rubric scoring", () => {
@@ -76,6 +74,15 @@ test.describe("S7 rubric scoring", () => {
       display_name: "Admin",
       role: "admin",
       tenant_id: DUOSIS_TENANT_ID,
+    });
+
+    // Rubrik puanlama artik sadece jury izni olanlara acik (0026_jury_only_scoring.sql) —
+    // tenant_admin/platform_owner bunu artik otomatik tasimiyor, bu sepete ozel ata.
+    await sb.from("user_roles").insert({
+      tenant_id: DUOSIS_TENANT_ID,
+      user_id: SEED.adminEmail,
+      role_id: "c0000000-0000-4000-8000-000000000005", // jury (bkz. 0004_rbac.sql)
+      scope_basket_id: basketId,
     });
 
     // Seed one category score so scoreboard shows breakdown immediately

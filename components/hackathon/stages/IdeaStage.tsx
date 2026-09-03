@@ -5,34 +5,45 @@ import { AnimatePresence, motion } from "motion/react";
 import { addIdea } from "@/lib/db";
 import { lockIdeas, setSelectedIdea } from "@/lib/hackathon";
 import { pickRandomIdeas } from "@/lib/assignment";
-import { supabase } from "@/lib/supabase";
+import { apiFetch } from "@/lib/api-headers";
+import { uploadIdeaAttachment } from "@/lib/attachments";
 import { ACCENTS } from "@/lib/accent";
 import type { Idea } from "@/lib/types";
 import { RaffleRevealStage } from "@/components/shared/RaffleRevealStage";
+import { IdeaAttachment } from "../IdeaAttachment";
+import { IdeaDescription } from "../IdeaDescription";
 import type { StageContext } from "../contract";
 import { GOLD, GOLD_SOFT, dim } from "../contract";
 import { Card, GoldButton, StageHeadline, Avatar } from "../ui";
 
 export function IdeaStage(ctx: StageContext) {
-  const { data, config, user, isAdmin, refresh } = ctx;
+  const { data, config, user, isAdmin, refresh, readOnly } = ctx;
   const { basket, ideas } = data;
   const selected = ideas.find((i) => i.id === basket.selected_idea_id) ?? null;
   const [draft, setDraft] = useState("");
   const [myVoteId, setMyVoteId] = useState<string | null>(null);
   const [rafflePick, setRafflePick] = useState<Idea[] | null>(null);
 
+  // "Fikir var" (static) formu: başlık + açıklama + opsiyonel dosya eki.
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const [submittingStatic, setSubmittingStatic] = useState(false);
+
   useEffect(() => {
-    supabase
-      .from("votes")
-      .select("idea_id")
-      .eq("basket_id", basket.id)
-      .eq("phase", "idea")
-      .eq("voter", user.email)
-      .maybeSingle()
-      .then(({ data }) => setMyVoteId((data?.idea_id as string) ?? null));
+    // Kendi oyunu okumak `vote.view_all` izni gerektirmiyor; sunucu bunu
+    // list_my_votes RPC'siyle ayırıyor (S3 kararı, korundu).
+    void apiFetch<{ myVotes: { phase: string; idea_id: string }[] }>(
+      `/api/basket/${basket.id}/live`
+    ).then((res) => {
+      const mine = res.data?.myVotes?.find((v) => v.phase === "idea");
+      setMyVoteId(mine?.idea_id ?? null);
+    });
   }, [basket.id, user.email, ideas]);
 
   const submitIdea = async () => {
+    if (readOnly) return;
     const t = draft.trim();
     if (t.length < 2) return;
     const created = await addIdea({
@@ -46,14 +57,36 @@ export function IdeaStage(ctx: StageContext) {
     refresh();
   };
 
-  const voteFor = async (ideaId: string) => {
-    await supabase.from("votes").delete().eq("basket_id", basket.id).eq("phase", "idea").eq("voter", user.email);
-    await supabase.from("votes").insert({
-      idea_id: ideaId,
+  const submitStaticIdea = async () => {
+    if (readOnly || submittingStatic) return;
+    const t = title.trim();
+    if (t.length < 2) return;
+    setSubmittingStatic(true);
+    const created = await addIdea({
       basket_id: basket.id,
-      phase: "idea",
-      voter: user.email,
+      text: t,
+      description: description.trim() || null,
+      created_by: user.email,
       tenant_id: basket.tenant_id,
+    });
+    if (created && file) {
+      await uploadIdeaAttachment(created.id, file);
+    }
+    if (created) await setSelectedIdea(basket.id, created.id);
+    setTitle("");
+    setDescription("");
+    setFile(null);
+    setSubmittingStatic(false);
+    refresh();
+  };
+
+  const voteFor = async (ideaId: string) => {
+    if (readOnly) return;
+    await apiFetch(`/api/basket/${basket.id}/vote`, {
+      method: "POST",
+      email: user.email,
+      tenantId: basket.tenant_id,
+      body: JSON.stringify({ idea_id: ideaId, phase: "idea" }),
     });
     refresh();
   };
@@ -117,6 +150,8 @@ export function IdeaStage(ctx: StageContext) {
               <h2 className="font-display text-[clamp(1.6rem,3.4vw,2.6rem)] font-extrabold leading-tight" style={{ color: GOLD }}>
                 {idea.text}
               </h2>
+              <IdeaDescription text={idea.description} />
+              <IdeaAttachment ideaId={idea.id} />
             </Card>
           ))}
         </div>
@@ -125,13 +160,63 @@ export function IdeaStage(ctx: StageContext) {
   }
 
   if (config.ideaSource === "static") {
+    const onDrop = (e: React.DragEvent) => {
+      e.preventDefault();
+      setDragOver(false);
+      const f = e.dataTransfer.files?.[0];
+      if (f) setFile(f);
+    };
     return (
       <div className="mx-auto max-w-[640px]">
         <StageHeadline pre="Fikri" accent="koy" sub={isAdmin ? "Üzerinde çalışacağınız tek fikir." : undefined} />
         {isAdmin ? (
           <Card>
-            <textarea value={draft} onChange={(e) => setDraft(e.target.value)} rows={3} placeholder="Örn: PR'ları otomatik özetleyen bot" className="w-full resize-none rounded-xl px-4 py-3 text-[1.1rem] outline-none" style={{ background: "var(--surface-2)", border: "1px solid rgba(var(--border-rgb),0.09)", color: "var(--text)" }} />
-            <div className="mt-4 flex justify-center"><GoldButton onClick={submitIdea} disabled={draft.trim().length < 2}>Fikri belirle →</GoldButton></div>
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Başlık — örn: PR'ları otomatik özetleyen bot"
+              className="w-full rounded-xl px-4 py-3 text-[1.1rem] outline-none"
+              style={{ background: "var(--surface-2)", border: "1px solid rgba(var(--border-rgb),0.09)", color: "var(--text)" }}
+              data-testid="static-idea-title"
+            />
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={4}
+              placeholder="Açıklama (opsiyonel) — konunun içeriğini, kapsamını anlat"
+              className="mt-3 w-full resize-none rounded-xl px-4 py-3 text-[0.98rem] outline-none"
+              style={{ background: "var(--surface-2)", border: "1px solid rgba(var(--border-rgb),0.09)", color: "var(--text)" }}
+              data-testid="static-idea-description"
+            />
+            <label
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={onDrop}
+              className="mt-3 flex cursor-pointer flex-col items-center gap-1.5 rounded-xl px-4 py-6 text-center transition"
+              style={{
+                background: dragOver ? "rgba(231,169,63,0.1)" : "var(--surface-2)",
+                border: `1px dashed ${dragOver ? GOLD : "rgba(var(--border-rgb),0.2)"}`,
+              }}
+              data-testid="static-idea-file-drop"
+            >
+              <input
+                type="file"
+                className="hidden"
+                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              />
+              {file ? (
+                <span className="text-[0.92rem]" style={{ color: GOLD_SOFT }}>📎 {file.name} — değiştirmek için tıkla</span>
+              ) : (
+                <span className="text-[0.9rem]" style={{ color: dim(0.5) }}>
+                  Dosya sürükle bırak ya da tıklayıp seç (opsiyonel)
+                </span>
+              )}
+            </label>
+            <div className="mt-4 flex justify-center">
+              <GoldButton onClick={submitStaticIdea} disabled={submittingStatic || title.trim().length < 2}>
+                {submittingStatic ? "…" : "Fikri belirle →"}
+              </GoldButton>
+            </div>
           </Card>
         ) : (
           <p className="text-center text-[1rem]" style={{ color: dim(0.5) }}>Admin fikri giriyor…</p>
@@ -171,7 +256,7 @@ export function IdeaStage(ctx: StageContext) {
             className="flex-1 rounded-2xl px-6 py-5 text-[1.2rem] outline-none transition focus:border-[rgba(231,169,63,0.5)]"
             style={{ background: "var(--surface-2)", border: "1px solid rgba(var(--border-rgb),0.1)", color: "var(--text)" }}
           />
-          <GoldButton onClick={submitIdea} disabled={draft.trim().length < 2}>Ekle</GoldButton>
+          <GoldButton onClick={submitIdea} disabled={readOnly || draft.trim().length < 2}>Ekle</GoldButton>
         </div>
       )}
 
@@ -199,9 +284,11 @@ export function IdeaStage(ctx: StageContext) {
                   <div className="flex items-center gap-3.5">
                     <span className="tnum font-display text-[1.7rem] font-bold" style={{ color: mine ? GOLD : GOLD_SOFT }}>{idea.vote_count}</span>
                     <motion.button
+                      type="button"
+                      disabled={readOnly}
                       whileTap={{ scale: 0.94 }}
                       onClick={() => voteFor(idea.id)}
-                      className="rounded-full px-5 py-2.5 text-[0.9rem] font-semibold transition"
+                      className="rounded-full px-5 py-2.5 text-[0.9rem] font-semibold transition disabled:cursor-not-allowed disabled:opacity-50"
                       style={mine ? { background: GOLD, color: "#17150F" } : { border: "1px solid rgba(var(--border-rgb),0.2)", color: dim(0.85) }}
                     >
                       {mine ? "✓ oyun" : "oy ver"}
