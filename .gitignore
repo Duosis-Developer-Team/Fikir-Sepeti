@@ -47,3 +47,9 @@ next-env.d.ts
 # design import (büyük binary)
 Design system documentation.zip
 .DS_Store
+AGENTS.md
+.claude/settings.json
+AGENTS.md.yedek
+AGENTS.md
+AGENTS.md
+AGENTS.md
