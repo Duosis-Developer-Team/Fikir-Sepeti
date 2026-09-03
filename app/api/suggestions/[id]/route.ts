@@ -30,6 +30,17 @@ export async function PATCH(req: Request, ctx: Ctx) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
 
+  // Tamamlandı işaretlemek öneriyi atanın değil, adminin işi — sahiplik istisnası yok.
+  const canManage = await userHasPermission(
+    identity.tenantId,
+    identity.userId,
+    "tenant.manage_settings",
+    req
+  );
+  if (!canManage) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
+
   const { data, error } = await sb
     .from("suggestions")
     .update({ status: body.status })

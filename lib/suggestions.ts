@@ -6,13 +6,17 @@ import type { Suggestion } from "./types";
 export async function listSuggestions(
   email: string,
   tenantId: string
-): Promise<{ suggestions: Suggestion[]; myVotes: string[] }> {
+): Promise<{ suggestions: Suggestion[]; myVotes: string[]; canManage: boolean }> {
   const res = await fetch("/api/suggestions", {
     headers: await apiAuthHeaders(email, tenantId),
   });
-  if (!res.ok) return { suggestions: [], myVotes: [] };
-  const json = (await res.json()) as { suggestions?: Suggestion[]; myVotes?: string[] };
-  return { suggestions: json.suggestions ?? [], myVotes: json.myVotes ?? [] };
+  if (!res.ok) return { suggestions: [], myVotes: [], canManage: false };
+  const json = (await res.json()) as {
+    suggestions?: Suggestion[];
+    myVotes?: string[];
+    canManage?: boolean;
+  };
+  return { suggestions: json.suggestions ?? [], myVotes: json.myVotes ?? [], canManage: json.canManage === true };
 }
 
 export async function createSuggestion(input: {

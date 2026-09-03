@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { resolveIdentity, getDb } from "@/lib/server-auth";
+import { resolveIdentity, getDb, userHasPermission } from "@/lib/server-auth";
 
 export async function GET(req: Request) {
   const identity = await resolveIdentity(req);
@@ -29,12 +29,22 @@ export async function GET(req: Request) {
     (r) => r.suggestion_id
   );
 
-  // Anonim gönderilenlerde gönderenin kimliği hiçbir görüntüleyene sızmaz.
-  const suggestions = (data ?? []).map((s) =>
-    s.anonymous ? { ...s, created_by: null } : s
+  const canManage = await userHasPermission(
+    identity.tenantId,
+    identity.userId,
+    "tenant.manage_settings",
+    req
   );
 
-  return NextResponse.json({ suggestions, myVotes });
+  // canDelete gerçek (maskelenmemiş) created_by üstünden hesaplanır — anonim gönderen
+  // kendi önerisini yine silebilsin diye. Ardından gösterim için kimlik maskeleniyor.
+  const suggestions = (data ?? []).map((s) => ({
+    ...s,
+    canDelete: canManage || s.created_by === identity.email,
+    created_by: s.anonymous ? null : s.created_by,
+  }));
+
+  return NextResponse.json({ suggestions, myVotes, canManage });
 }
 
 export async function POST(req: Request) {

@@ -65,6 +65,7 @@ export default function ProfilePage() {
 
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [myVotes, setMyVotes] = useState<Set<string>>(new Set());
+  const [canManageSuggestions, setCanManageSuggestions] = useState(false);
   const [sugLoading, setSugLoading] = useState(true);
   const [sugText, setSugText] = useState("");
   const [sugAnonymous, setSugAnonymous] = useState(false);
@@ -100,9 +101,10 @@ export default function ProfilePage() {
       setSugLoading(false);
       return;
     }
-    const { suggestions, myVotes } = await listSuggestions(name, tenantId);
+    const { suggestions, myVotes, canManage } = await listSuggestions(name, tenantId);
     setSuggestions(suggestions);
     setMyVotes(new Set(myVotes));
+    setCanManageSuggestions(canManage);
     setSugLoading(false);
   };
   useEffect(() => {
@@ -290,7 +292,8 @@ export default function ProfilePage() {
               key={s.id}
               suggestion={s}
               voted={myVotes.has(s.id)}
-              canDelete={s.created_by === name}
+              canDelete={s.canDelete}
+              canManage={canManageSuggestions}
               onVote={() => void voteOnSuggestion(s.id)}
               onToggleDone={(done) => void toggleSuggestionDone(s.id, done)}
               onDelete={() => void removeSuggestion(s.id)}
@@ -306,6 +309,7 @@ function SuggestionCard({
   suggestion: s,
   voted,
   canDelete,
+  canManage,
   onVote,
   onToggleDone,
   onDelete,
@@ -313,6 +317,7 @@ function SuggestionCard({
   suggestion: Suggestion;
   voted: boolean;
   canDelete: boolean;
+  canManage: boolean;
   onVote: () => void;
   onToggleDone: (done: boolean) => void;
   onDelete: () => void;
@@ -337,14 +342,16 @@ function SuggestionCard({
           {s.created_by ?? "Anonim"} · {new Date(s.created_at).toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}
         </p>
         <div className="mt-2 flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            onClick={() => onToggleDone(!done)}
-            className="text-[0.78rem] font-semibold"
-            style={{ color: done ? "var(--text-faint)" : "var(--green)" }}
-          >
-            {done ? "Açığa al" : "✓ Tamamlandı işaretle"}
-          </button>
+          {canManage && (
+            <button
+              type="button"
+              onClick={() => onToggleDone(!done)}
+              className="text-[0.78rem] font-semibold"
+              style={{ color: done ? "var(--text-faint)" : "var(--green)" }}
+            >
+              {done ? "Açığa al" : "✓ Tamamlandı işaretle"}
+            </button>
+          )}
           {canDelete && (
             confirmDelete ? (
               <span className="flex items-center gap-2 text-[0.78rem]">

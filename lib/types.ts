@@ -241,6 +241,8 @@ export type Suggestion = {
   status: "open" | "done";
   vote_count: number;
   created_at: string;
+  /** Sunucuda hesaplanır: sahibi ya da tenant.manage_settings taşıyan biri mi (anonim olsa da doğru). */
+  canDelete: boolean;
 };
 
 export type VoteRow = {
