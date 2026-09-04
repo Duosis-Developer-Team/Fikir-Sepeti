@@ -3,9 +3,17 @@
 import { useEffect, useState } from "react";
 import { patchBasket, setBasketPhase } from "@/lib/db";
 import { extendedEndsAt, renameTeam } from "@/lib/hackathon";
+import type { DurationUnit } from "@/lib/types";
 import type { StageContext } from "../contract";
 import { GOLD, dim } from "../contract";
-import { Avatar, GoldButton, StageHeadline } from "../ui";
+import { Avatar, GoldButton, NumberStepper, Segmented, StageHeadline } from "../ui";
+
+// Lobideki "Ne kadar sürecek" adımıyla aynı birim seti — tutarlı olsun.
+const UNITS: { v: DurationUnit; label: string }[] = [
+  { v: "hour", label: "Saat" },
+  { v: "day", label: "Gün" },
+  { v: "week", label: "Hafta" },
+];
 
 export function HackathonStage({ data, isAdmin, refresh, user }: StageContext) {
   const { basket, teams, members, participants } = data;
@@ -50,8 +58,12 @@ export function HackathonStage({ data, isAdmin, refresh, user }: StageContext) {
   // Süre dolmuş olsa bile ekleyebilsin diye şimdiden başlar — dolmadıysa mevcut bitişe eklenir.
   // Hesaplama lib/hackathon.ts'te: Date.now() component gövdesinde olursa
   // react-hooks/purity hata veriyor (impure çağrı), düz fonksiyonda sorun değil.
-  const addTime = (minutes: number) => {
-    void patchBasket(basket.id, { hackathon_ends_at: extendedEndsAt(basket.hackathon_ends_at, minutes) }).then(() => refresh());
+  const [extendValue, setExtendValue] = useState(1);
+  const [extendUnit, setExtendUnit] = useState<DurationUnit>("hour");
+  const addTime = () => {
+    void patchBasket(basket.id, {
+      hackathon_ends_at: extendedEndsAt(basket.hackathon_ends_at, extendValue, extendUnit),
+    }).then(() => refresh());
   };
 
   return (
@@ -71,18 +83,16 @@ export function HackathonStage({ data, isAdmin, refresh, user }: StageContext) {
 
       {isAdmin && (
         <div className="mt-12 flex flex-col items-center gap-3">
-          <div className="flex items-center justify-center gap-2">
-            <span className="mr-1 text-[0.8rem]" style={{ color: dim(0.45) }}>Süre ekle:</span>
-            {[5, 15, 30, 60].map((m) => (
-              <button
-                key={m}
-                onClick={() => addTime(m)}
-                className="rounded-full border px-4 py-1.5 text-[0.85rem] font-semibold transition hover:bg-[rgba(231,169,63,0.1)]"
-                style={{ borderColor: "rgba(231,169,63,0.35)", color: GOLD }}
-              >
-                +{m < 60 ? `${m} dk` : "1 sa"}
-              </button>
-            ))}
+          <div className="flex flex-wrap items-end justify-center gap-x-6 gap-y-3">
+            <NumberStepper label="Süre ekle" value={extendValue} min={1} max={99} onChange={setExtendValue} />
+            <Segmented label="Birim" value={extendUnit} onChange={setExtendUnit} options={UNITS} />
+            <button
+              onClick={addTime}
+              className="rounded-full border px-5 py-2.5 text-[0.88rem] font-semibold transition hover:bg-[rgba(231,169,63,0.1)]"
+              style={{ borderColor: "rgba(231,169,63,0.35)", color: GOLD }}
+            >
+              Ekle →
+            </button>
           </div>
           <div className="flex items-center justify-center gap-3">
             <button onClick={back} className="rounded-full border px-6 py-3 text-[0.95rem] transition hover:bg-[rgba(var(--border-rgb),0.08)]" style={{ borderColor: "rgba(var(--border-rgb),0.2)", color: dim(0.85) }}>← Takım</button>
