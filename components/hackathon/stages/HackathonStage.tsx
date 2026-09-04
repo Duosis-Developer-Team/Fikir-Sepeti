@@ -47,6 +47,12 @@ export function HackathonStage({ data, isAdmin, refresh, user }: StageContext) {
   // GEÇİCİ TEST BUTONU — test için süreyi beklemeden bitirir, iş bitince kaldır.
   const forceTimeUp = () =>
     patchBasket(basket.id, { hackathon_ends_at: new Date().toISOString() }).then(() => refresh());
+  // Süre dolmuş olsa bile ekleyebilsin diye şimdiden başlar — dolmadıysa mevcut bitişe eklenir.
+  const addTime = (minutes: number) => {
+    const base = Math.max(Date.now(), endsAt ?? Date.now());
+    const next = new Date(base + minutes * 60_000).toISOString();
+    void patchBasket(basket.id, { hackathon_ends_at: next }).then(() => refresh());
+  };
 
   return (
     <div className="mx-auto flex min-h-[58vh] max-w-[960px] flex-col items-center justify-center text-center">
@@ -65,6 +71,19 @@ export function HackathonStage({ data, isAdmin, refresh, user }: StageContext) {
 
       {isAdmin && (
         <div className="mt-12 flex flex-col items-center gap-3">
+          <div className="flex items-center justify-center gap-2">
+            <span className="mr-1 text-[0.8rem]" style={{ color: dim(0.45) }}>Süre ekle:</span>
+            {[5, 15, 30, 60].map((m) => (
+              <button
+                key={m}
+                onClick={() => addTime(m)}
+                className="rounded-full border px-4 py-1.5 text-[0.85rem] font-semibold transition hover:bg-[rgba(231,169,63,0.1)]"
+                style={{ borderColor: "rgba(231,169,63,0.35)", color: GOLD }}
+              >
+                +{m < 60 ? `${m} dk` : "1 sa"}
+              </button>
+            ))}
+          </div>
           <div className="flex items-center justify-center gap-3">
             <button onClick={back} className="rounded-full border px-6 py-3 text-[0.95rem] transition hover:bg-[rgba(var(--border-rgb),0.08)]" style={{ borderColor: "rgba(var(--border-rgb),0.2)", color: dim(0.85) }}>← Takım</button>
             <GoldButton onClick={finish} disabled={!over}>Hackathon&apos;u bitir → Demo</GoldButton>
