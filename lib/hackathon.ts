@@ -57,6 +57,17 @@ export async function startHackathonTimer(basketId: string, config: HackathonCon
   });
 }
 
+/**
+ * Süre uzat: dolmadıysa mevcut bitişe eklenir, dolduysa şimdiden başlar.
+ * Date.now() burada (component değil, düz fonksiyon) — react-hooks/purity
+ * component/hook gövdesindeki impure çağrılara hata veriyor.
+ */
+export function extendedEndsAt(currentEndsAt: string | null, minutes: number): string {
+  const currentMs = currentEndsAt ? new Date(currentEndsAt).getTime() : Date.now();
+  const base = Math.max(Date.now(), currentMs);
+  return new Date(base + minutes * 60_000).toISOString();
+}
+
 /** Hackathon'u kapat — kazanan fikri işaretle, üretime alındı. */
 export async function markDone(
   basketId: string,

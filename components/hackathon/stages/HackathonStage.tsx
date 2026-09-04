@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { patchBasket, setBasketPhase } from "@/lib/db";
-import { renameTeam } from "@/lib/hackathon";
+import { extendedEndsAt, renameTeam } from "@/lib/hackathon";
 import type { StageContext } from "../contract";
 import { GOLD, dim } from "../contract";
 import { Avatar, GoldButton, StageHeadline } from "../ui";
@@ -48,10 +48,10 @@ export function HackathonStage({ data, isAdmin, refresh, user }: StageContext) {
   const forceTimeUp = () =>
     patchBasket(basket.id, { hackathon_ends_at: new Date().toISOString() }).then(() => refresh());
   // Süre dolmuş olsa bile ekleyebilsin diye şimdiden başlar — dolmadıysa mevcut bitişe eklenir.
+  // Hesaplama lib/hackathon.ts'te: Date.now() component gövdesinde olursa
+  // react-hooks/purity hata veriyor (impure çağrı), düz fonksiyonda sorun değil.
   const addTime = (minutes: number) => {
-    const base = Math.max(Date.now(), endsAt ?? Date.now());
-    const next = new Date(base + minutes * 60_000).toISOString();
-    void patchBasket(basket.id, { hackathon_ends_at: next }).then(() => refresh());
+    void patchBasket(basket.id, { hackathon_ends_at: extendedEndsAt(basket.hackathon_ends_at, minutes) }).then(() => refresh());
   };
 
   return (
